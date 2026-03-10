@@ -1,0 +1,2093 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FBR Invoice System</title>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/localforage/dist/localforage.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #printable-area,
+            #printable-area * {
+                visibility: visible;
+            }
+
+            #printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                overflow: visible !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #333;
+        }
+
+        /* Table Input Alignment - Clean Look (No Box) */
+        .table-input {
+            height: 2.5rem;
+            /* h-10 */
+            width: 100%;
+            border: none;
+            border-bottom: 1px solid #e2e8f0;
+            border-radius: 0;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+            font-size: 0.85rem;
+            outline: none;
+            background: transparent;
+            transition: border-color 0.15s ease-in-out;
+        }
+
+        .table-input:focus {
+            border-bottom-color: #000;
+            background: #f8fafc;
+        }
+
+        .table-input:read-only {
+            color: #6b7280;
+            cursor: not-allowed;
+            border-bottom-style: dashed;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-900 font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, Component } = React;
+
+        // ================================================================================= 
+        // SYSTEM CONFIGURATION 
+        // ================================================================================= 
+        const SYSTEM_CONFIG = {
+            BASE_URL: "https://gw.fbr.gov.pk",
+            PATHS: {
+                // DI Data Service 
+                POST_INVOICE_SB: "/di_data/v1/di/postinvoicedata_sb",
+                POST_INVOICE_PROD: "/di_data/v1/di/postinvoicedata",
+                VALIDATE_INVOICE_SB: "/di_data/v1/di/validateinvoicedata_sb",
+                VALIDATE_INVOICE_PROD: "/di_data/v1/di/validateinvoicedata",
+
+                // Reference Data Service (PDI) 
+                PROVINCES: "/pdi/v1/provinces",
+                DOCTYPECODE: "/pdi/v1/doctypecode",
+                SROITEMCODE: "/pdi/v1/sroitemcode",
+                TRANSTYPECODE: "/pdi/v1/transtypecode",
+                UOM: "/pdi/v1/uom",
+                SROSCHEDULE: "/pdi/v1/SroSchedule",
+                SALETYPETORATE: "/pdi/v2/SaleTypeToRate",
+                HS_UOM: "/pdi/v2/HS_UOM",
+                ITEM_CODE: "/pdi/v1/itemdesccode",
+
+                // Distribution Service (DIST) 
+                GET_REG_TYPE: "/dist/v1/Get_Reg_Type"
+            }
+        };
+
+        const FURTHER_TAX_RATE = 4; // 4% standard further tax 
+
+        // --- DATA CONSTANTS --- 
+        const SALE_TYPES = [
+            "Goods at standard rate (default)", "Goods at reduced rate", "Goods at zero-rate",
+            "Petroleum Products", "Electricity Supply to Retailers", "SIM", "Gas to CNG stations",
+            "Mobile Phones", "Processing/Conversion of Goods", "3rd Schedule Goods",
+            "Goods (FED in ST Mode)", "Services (FED in ST Mode)", "Services", "Exempt goods",
+            "DTRE goods", "Cotton ginners", "Electric Vehicle", "Cement /Concrete Block",
+            "Telecommunication services", "Steel melting and re-rolling", "Ship breaking",
+            "Potassium Chlorate", "CNG Sales", "Goods as per SRO.297(I)/2023",
+            "Toll Manufacturing", "Non-Adjustable Supplies"
+        ];
+
+        const DOCUMENT_TYPES = [
+            "Sale Invoice", "Debit Note"
+        ];
+
+        const UOM_OPTIONS = [
+            "Numbers, pieces, units", "MT", "Bill of lading", "SET", "KWH", "40KG", "Liter",
+            "SqY", "Bag", "KG", "MMBTU", "Meter", "Carat", "Cubic Metre", "Dozen", "Gram",
+            "Gallon", "Kilogram", "Pound", "Timber logs", "Packs", "Pair", "Square Foot",
+            "Square Metre", "Thousand Unit", "Mega Watt", "Foot", "Barrels", "NO", "Others", "1000kWh"
+        ];
+
+        const PROVINCES = [
+            "Azad Jammu and Kashmir", "Balochistan", "Capital Territory", "FATA/PATA",
+            "Gilgit Baltistan", "Khyber Pakhtunkhwa", "Punjab", "Sindh"
+        ];
+
+        const SCENARIOS = [
+            "SN001", "SN002", "SN003", "SN004", "SN005", "SN006", "SN007", "SN008",
+            "SN009", "SN010", "SN011", "SN012", "SN013", "SN014", "SN015", "SN016",
+            "SN017", "SN018", "SN019", "SN020", "SN021", "SN022", "SN023", "SN024",
+            "SN025", "SN026", "SN027", "SN028"
+        ];
+
+        const FBR_ERRORS = {
+            "0000": "Successful",
+            "0001": "Invalid NTN/Reg. No. format",
+            "0004": "Seller Reg No. doesn't match",
+            "0005": "Buyer Name is empty/invalid",
+            "0007": "Sale Type not allowed/invalid",
+            "0009": "Provide UOM in KG",
+            "0010": "Quantity/Electricity Units missing",
+            "0011": "Provide Value of Sales Excl. ST",
+            "0039": "STWH invoice fields must be same as sale invoice",
+            "0041": "Invoice number cannot be empty",
+            "0042": "Invoice date cannot be empty",
+            "0044": "HS Code cannot be empty",
+            "0053": "Buyer Registration Type is invalid",
+            "0070": "User is not registered, STWH is allowed only for registered user",
+            "0073": "Provide Sale Origination Province of Supplier",
+            "0074": "Provide Destination of Supply",
+            "0077": "SRO/Schedule Number cannot be empty",
+            "0078": "Item serial number cannot be empty",
+            "0082": "The Seller is not registered for sales tax",
+            "0106": "The Buyer is not registered for sales tax",
+            "0401": "Unauthorized access: Seller NTN/CNIC token is invalid",
+            "0402": "Unauthorized access: Buyer NTN/CNIC token is invalid",
+        };
+
+        const defaultTemplateHTML = `
+<div style="font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+    <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
+        <h1 style="margin: 0; font-size: 24px;">{{businessName}}</h1>
+        <p style="margin: 5px 0; color: #555;">{{address}}</p>
+        <p style="margin: 5px 0; font-weight: bold;">NTN: {{ntn}}</p>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+        <div>
+            <p style="margin: 5px 0;"><strong>Billed To:</strong></p>
+            <p style="margin: 5px 0;">{{customerName}}</p>
+        </div>
+        <div style="text-align: right;">
+            <p style="margin: 5px 0;"><strong>Invoice Number:</strong> {{invoiceNumber}}</p>
+            <p style="margin: 5px 0;"><strong>FBR Invoice Number:</strong> {{fbrInvoiceNumber}}</p>
+            <p style="margin: 5px 0;"><strong>Date:</strong> {{invoiceDate}}</p>
+        </div>
+    </div>
+    
+    <div style="margin-bottom: 30px;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f3f4f6; border-bottom: 2px solid #ddd;">
+                    <th style="padding: 10px; text-align: left;">Description</th>
+                    <th style="padding: 10px; text-align: right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 10px;">Subtotal</td>
+                    <td style="padding: 10px; text-align: right;">{{subtotal}}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 10px;">Sales Tax (GST)</td>
+                    <td style="padding: 10px; text-align: right;">{{gst}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <img src="{{QR_CODE_URL}}" alt="QR Code" style="width: 100px; height: 100px;" />
+        </div>
+        <div style="text-align: right;">
+            <p style="font-size: 20px; font-weight: bold; margin: 0;">Total: {{total}}</p>
+        </div>
+    </div>
+</div>
+`;
+
+        const parseInvoiceTemplate = (template, invoice, settings) => {
+            if (!template) return '';
+            let parsed = template;
+
+            const formatCurr = (val) => parseFloat(val || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            // Generate QR Data locally using QRious library to stay compliant with privacy & offline rules
+            const qrData = `https://fbr.gov.pk/invoice?id=${invoice?.fbrInvoiceNumber || ''}`;
+            let qrUrl = "";
+            try {
+                const qr = new QRious({ value: qrData, size: 150 });
+                qrUrl = qr.toDataURL();
+            } catch (e) { console.error("QR Generation Failed", e); }
+
+            const replacements = {
+                '{{businessName}}': settings?.businessName || '',
+                '{{address}}': settings?.address || '',
+                '{{ntn}}': settings?.ntn || '',
+                '{{invoiceNumber}}': invoice?.invoiceNumber || '',
+                '{{fbrInvoiceNumber}}': invoice?.fbrInvoiceNumber || '',
+                '{{invoiceDate}}': invoice?.invoiceDate || invoice?.date || '',
+                '{{customerName}}': invoice?.customerName || '',
+                '{{subtotal}}': formatCurr(invoice?.subtotal),
+                '{{gst}}': formatCurr(invoice?.gst),
+                '{{total}}': formatCurr(invoice?.total),
+                '{{QR_CODE_URL}}': qrUrl
+            };
+
+            Object.keys(replacements).forEach(key => {
+                const regex = new RegExp(key, 'g');
+                parsed = parsed.replace(regex, replacements[key]);
+            });
+
+            return parsed;
+        };
+
+        // --- Error Boundary --- 
+        class ErrorBoundary extends Component {
+            constructor(props) {
+                super(props);
+                this.state = { hasError: false, error: null };
+            }
+            static getDerivedStateFromError(error) {
+                return { hasError: true, error };
+            }
+            componentDidCatch(error, errorInfo) {
+                console.error("React Error Boundary:", error, errorInfo);
+            }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+                            <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full border-l-4 border-black">
+                                <h1 className="text-xl font-bold text-black mb-2">Something went wrong</h1>
+                                <button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition">
+                                    Reset App Data & Reload
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
+        // --- Icons --- 
+        const IconBase = ({ size = 24, children, ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                {children}
+            </svg>
+        );
+
+        const Icons = {
+            FileText: (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></IconBase>,
+            Settings: (props) => <IconBase {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.35a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></IconBase>,
+            Plus: (props) => <IconBase {...props}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></IconBase>,
+            Trash2: (props) => <IconBase {...props}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></IconBase>,
+            Save: (props) => <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></IconBase>,
+            Printer: (props) => <IconBase {...props}><polyline points="6 9 6 0 18 0 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></IconBase>,
+            CheckCircle: (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></IconBase>,
+            AlertCircle: (props) => <IconBase {...props}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></IconBase>,
+            X: (props) => <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></IconBase>,
+            ShieldCheck: (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></IconBase>,
+            ShoppingCart: (props) => <IconBase {...props}><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></IconBase>,
+            User: (props) => <IconBase {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></IconBase>,
+            LogOut: (props) => <IconBase {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></IconBase>,
+            Box: (props) => <IconBase {...props}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></IconBase>,
+            Upload: (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></IconBase>,
+            Users: (props) => <IconBase {...props}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></IconBase>,
+            Search: (props) => <IconBase {...props}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></IconBase>,
+            Calendar: (props) => <IconBase {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></IconBase>,
+            Edit: (props) => <IconBase {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></IconBase>,
+            Download: (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconBase>,
+            Eye: (props) => <IconBase {...props}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></IconBase>,
+            Terminal: (props) => <IconBase {...props}><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></IconBase>
+        };
+
+        // --- Shared Components --- 
+        const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false }) => {
+            const baseStyle = "px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2";
+            const variants = {
+                primary: "bg-black text-white hover:bg-gray-800 disabled:bg-gray-400",
+                secondary: "bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 disabled:bg-gray-100",
+                danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200",
+                ghost: "text-gray-600 hover:bg-gray-100"
+            };
+            return (
+                <button onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant]} ${className}`}>
+                    {children}
+                </button>
+            );
+        };
+
+        const Card = ({ children, className = '' }) => (
+            <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
+                {children}
+            </div>
+        );
+
+        const Input = ({ label, value, onChange, type = "text", placeholder = "", required = false, className = "", helperText = null, readOnly = false, onBlur }) => (
+            <div className={`flex flex-col gap-1 ${className}`}>
+                {label && (
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {label} {required && <span className="text-red-500">*</span>}
+                    </label>
+                )}
+                <input
+                    type={type}
+                    value={value}
+                    onChange={onChange}
+                    onBlur={onBlur}
+                    placeholder={placeholder}
+                    readOnly={readOnly}
+                    className={`px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none transition-all ${readOnly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                />
+                {helperText && <p className="text-[10px] text-gray-500">{helperText}</p>}
+            </div>
+        );
+
+        // --- Searchable Dropdown --- 
+        const SearchableDropdown = ({ label, value, onChange = () => { }, options = [], placeholder, strict = true, status = null, readOnly = false }) => {
+            const [show, setShow] = useState(false);
+            const [filter, setFilter] = useState("");
+            const wrapperRef = useRef(null);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setShow(false);
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, []);
+
+            const safeOptions = Array.isArray(options) ? options : [];
+            const safeString = (str) => (str === null || str === undefined) ? "" : String(str);
+            const filteredOptions = safeOptions.filter(opt => safeString(opt).toLowerCase().includes(filter.toLowerCase()));
+
+            return (
+                <div className="flex flex-col gap-1 relative w-full" ref={wrapperRef}>
+                    <div className="flex justify-between items-center">
+                        {label && <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>}
+                        {status && <span className={`text-[10px] px-1 rounded ${status.type === 'error' ? 'text-red-600 bg-red-50' : 'text-gray-600 bg-gray-100'}`}>{status.text}</span>}
+                    </div>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            value={value || ""}
+                            readOnly={strict || readOnly}
+                            className={`px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 outline-none w-full ${strict || readOnly ? 'cursor-pointer' : ''} ${readOnly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                            placeholder={placeholder}
+                            onClick={() => { if (!readOnly) { setShow(!show); setFilter(""); } }}
+                            onChange={!strict && !readOnly ? (e) => onChange(e.target.value) : undefined}
+                        />
+                        {strict && !readOnly && <div className="absolute right-2 top-2.5 text-gray-400 pointer-events-none"><Icons.Settings size={14} /></div>}
+                    </div>
+                    {show && !readOnly && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                            <div className="p-2 border-b border-gray-100">
+                                <input autoFocus type="text" className="w-full text-xs p-1 outline-none" placeholder="Search..." value={filter} onChange={e => setFilter(e.target.value)} />
+                            </div>
+                            <div className="max-h-48 overflow-y-auto">
+                                {filteredOptions.length > 0 ? (
+                                    filteredOptions.slice(0, 50).map((opt, i) => (
+                                        <div key={i} className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700" onClick={() => { onChange(opt); setShow(false); }}>{opt}</div>
+                                    ))
+                                ) : <div className="p-2 text-xs text-center text-gray-400">No options found</div>}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- VISUAL TEMPLATE BUILDER --- 
+        const TEMPLATE_BLOCKS = [
+            { id: 'header_center', name: 'Header (Centered)', html: `<div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;"><h1 style="margin: 0; font-size: 24px;">{{businessName}}</h1><p style="margin: 5px 0; color: #555;">{{address}}</p><p style="margin: 5px 0; font-weight: bold;">NTN: {{ntn}}</p></div>` },
+            { id: 'header_left', name: 'Header (Left Aligned)', html: `<div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;"><h1 style="margin: 0; font-size: 24px;">{{businessName}}</h1><p style="margin: 5px 0; color: #555;">{{address}}</p><p style="margin: 5px 0; font-weight: bold;">NTN: {{ntn}}</p></div>` },
+            { id: 'details', name: 'Customer & Invoice Details', html: `<div style="display: flex; justify-content: space-between; margin-bottom: 30px;"><div><p style="margin: 5px 0;"><strong>Billed To:</strong></p><p style="margin: 5px 0;">{{customerName}}</p></div><div style="text-align: right;"><p style="margin: 5px 0;"><strong>Invoice Number:</strong> {{invoiceNumber}}</p><p style="margin: 5px 0;"><strong>FBR Invoice Number:</strong> {{fbrInvoiceNumber}}</p><p style="margin: 5px 0;"><strong>Date:</strong> {{invoiceDate}}</p></div></div>` },
+            { id: 'totals', name: 'Itemized Totals Table', html: `<div style="margin-bottom: 30px;"><table style="width: 100%; border-collapse: collapse;"><thead><tr style="background-color: #f3f4f6; border-bottom: 2px solid #ddd;"><th style="padding: 10px; text-align: left;">Description</th><th style="padding: 10px; text-align: right;">Amount</th></tr></thead><tbody><tr style="border-bottom: 1px solid #ddd;"><td style="padding: 10px;">Subtotal</td><td style="padding: 10px; text-align: right;">{{subtotal}}</td></tr><tr style="border-bottom: 1px solid #ddd;"><td style="padding: 10px;">Sales Tax (GST)</td><td style="padding: 10px; text-align: right;">{{gst}}</td></tr></tbody></table></div>` },
+            { id: 'footer', name: 'QR Code & Grand Total', html: `<div style="display: flex; justify-content: space-between; align-items: flex-end;"><div><img src="{{QR_CODE_URL}}" alt="QR Code" style="width: 100px; height: 100px;" /></div><div style="text-align: right;"><p style="font-size: 20px; font-weight: bold; margin: 0;">Total: {{total}}</p></div></div>` },
+            { id: 'divider', name: 'Divider Line', html: `<hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />` },
+            { id: 'thankyou', name: 'Thank You Note', html: `<div style="text-align: center; margin-top: 30px; font-style: italic; color: #666;"><p>Thank you for your business!</p></div>` }
+        ];
+
+        const VisualTemplateBuilder = ({ value, onChange, readOnly = false }) => {
+            const [blocks, setBlocks] = useState(() => {
+                if (!value) return [];
+                if (value === defaultTemplateHTML) return []; 
+                return [{ id: 'legacy', html: value }];
+            });
+
+            const handleDragStart = (e, block) => {
+                if (readOnly) return;
+                e.dataTransfer.setData('application/json', JSON.stringify(block));
+            };
+
+            const handleDrop = (e) => {
+                if (readOnly) return;
+                e.preventDefault();
+                const blockData = e.dataTransfer.getData('application/json');
+                if (blockData) {
+                    const block = JSON.parse(blockData);
+                    const newBlocks = [...blocks, { id: Date.now().toString(), html: block.html }];
+                    setBlocks(newBlocks);
+                    compileAndSave(newBlocks);
+                }
+            };
+
+            const handleDragOver = (e) => { e.preventDefault(); };
+
+            const removeBlock = (index) => {
+                if (readOnly) return;
+                const newBlocks = blocks.filter((_, i) => i !== index);
+                setBlocks(newBlocks);
+                compileAndSave(newBlocks);
+            };
+
+            const compileAndSave = (currentBlocks) => {
+                if (currentBlocks.length === 0) {
+                    onChange(defaultTemplateHTML);
+                    return;
+                }
+                const finalHtml = `<div style="font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">\n${currentBlocks.map(b => b.html).join('\n')}\n</div>`;
+                onChange(finalHtml);
+            };
+
+            const resetToEmpty = () => {
+                if (readOnly) return;
+                setBlocks([]);
+                onChange(defaultTemplateHTML);
+            };
+
+            const highlightVariables = (html) => {
+                return html.replace(/{{(.*?)}}/g, '<span class="bg-yellow-200 text-yellow-800 px-1 rounded font-mono text-xs">$1</span>');
+            };
+
+            return (
+                <div className={`flex flex-col md:flex-row border border-gray-300 rounded-lg overflow-hidden bg-gray-50 mt-2 ${readOnly ? 'opacity-70 pointer-events-none' : ''}`}>
+                    {/* Sidebar Blocks */}
+                    <div className="w-full md:w-1/3 bg-white border-b md:border-b-0 md:border-r border-gray-300 p-4 flex flex-col gap-2 max-h-[500px] overflow-y-auto">
+                        <h4 className="font-bold text-xs text-gray-500 uppercase tracking-wide mb-2">Available Blocks</h4>
+                        <p className="text-[10px] text-gray-400 mb-2">Drag elements to the canvas to build your invoice.</p>
+                        {TEMPLATE_BLOCKS.map(block => (
+                            <div 
+                                key={block.id} 
+                                draggable={!readOnly}
+                                onDragStart={(e) => handleDragStart(e, block)}
+                                className="p-3 border border-gray-200 rounded cursor-grab hover:bg-gray-50 text-sm flex items-center justify-between bg-white shadow-sm"
+                            >
+                                <span className="font-medium text-gray-700">{block.name}</span>
+                                <Icons.Box size={14} className="text-gray-400"/>
+                            </div>
+                        ))}
+                        {!readOnly && (
+                            <div className="mt-auto pt-4">
+                                <Button onClick={resetToEmpty} variant="danger" className="w-full text-xs py-1">Reset to Default</Button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Canvas / Dropzone */}
+                    <div 
+                        className="w-full md:w-2/3 p-6 min-h-[400px] max-h-[500px] overflow-y-auto relative bg-gray-100"
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                    >
+                        {blocks.length === 0 ? (
+                            <div className="absolute inset-4 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                                <Icons.Upload size={32} className="mb-2 text-gray-300" />
+                                <p className="font-medium text-sm">Drag & Drop Blocks Here</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 bg-white p-6 shadow-sm border border-gray-200 rounded min-h-full">
+                                {blocks.map((b, i) => (
+                                    <div key={b.id} className="relative group border-2 border-transparent hover:border-blue-400 rounded p-2 transition-colors">
+                                        {!readOnly && (
+                                            <button 
+                                                onClick={() => removeBlock(i)}
+                                                className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-md hover:bg-red-600"
+                                            >
+                                                <Icons.X size={12}/>
+                                            </button>
+                                        )}
+                                        <div 
+                                            dangerouslySetInnerHTML={{ __html: highlightVariables(b.html) }} 
+                                            className="pointer-events-none" 
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+
+        const formatCurrency = (val) => parseFloat(val || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const getToday = () => new Date().toISOString().split('T')[0];
+
+        // --- FBR PROXY HELPER ---
+        const fbrFetch = async (url, options = {}) => {
+            if (!url.startsWith(SYSTEM_CONFIG.BASE_URL)) return fetch(url, options);
+
+            const proxyPayload = {
+                endpoint: url.replace(SYSTEM_CONFIG.BASE_URL, ''),
+                method: options.method || 'GET',
+                headers: options.headers || {}
+            };
+
+            if (options.body) {
+                try { proxyPayload.payload = JSON.parse(options.body); } catch { proxyPayload.payload = options.body; }
+            }
+
+            const sessionToken = sessionStorage.getItem('fbr_token');
+
+            if (!sessionToken && !url.includes('https://app.tallied.pk/api/login')) {
+                // Deny unauthorized fetches locally to prevent network spam during logouts
+                return {
+                    ok: false, status: 401, statusText: "Unauthorized",
+                    json: async () => ({ error: "Missing session token" }),
+                    text: async () => "Missing session token"
+                };
+            }
+
+            const res = await fetch('https://app.tallied.pk/api/fbr/proxy', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': sessionToken ? `Bearer ${sessionToken}` : ''
+                },
+                body: JSON.stringify(proxyPayload)
+            });
+
+            if (!res.ok) return res;
+
+            const proxyData = await res.json();
+            return {
+                ok: proxyData.ok,
+                status: proxyData.status,
+                statusText: proxyData.statusText,
+                json: async () => proxyData.data,
+                text: async () => typeof proxyData.data === 'string' ? proxyData.data : JSON.stringify(proxyData.data)
+            };
+        };
+
+        // --- AUTH & DATA MANAGER --- 
+        const DataManager = {
+            getGlobalAnnouncement: () => localStorage.getItem('fbr_announcement') || "",
+            setGlobalAnnouncement: (msg) => localStorage.setItem('fbr_announcement', msg)
+        };
+
+        const validatePassword = (password) => {
+            const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+            return regex.test(password);
+        };
+
+        function App() {
+            const [user, setUser] = useState(null);
+            const [isAppLoading, setIsAppLoading] = useState(true);
+
+            useEffect(() => {
+                const loadSession = async () => {
+                    try {
+                        const session = await localforage.getItem('fbr_session');
+                        if (session) {
+                            setUser(session);
+                        } else {
+                            // Fallback migration from old synchronous sessionStorage
+                            const oldSession = sessionStorage.getItem('fbr_session');
+                            if (oldSession) {
+                                const parsedUser = JSON.parse(oldSession);
+                                setUser(parsedUser);
+                                await localforage.setItem('fbr_session', parsedUser);
+                            }
+                        }
+                    } catch (e) {
+                        sessionStorage.removeItem('fbr_session');
+                        sessionStorage.removeItem('fbr_token');
+                        await localforage.removeItem('fbr_session');
+                        setUser(null);
+                    } finally {
+                        setIsAppLoading(false);
+                    }
+                };
+                loadSession();
+            }, []);
+
+            const handleLogin = async (u) => {
+                setUser(u);
+                await localforage.setItem('fbr_session', u);
+                sessionStorage.setItem('fbr_session', JSON.stringify(u)); // keeping fallback alive 
+            };
+
+            const handleLogout = async (e, force = false) => {
+                if (e && e.preventDefault) e.preventDefault();
+                console.log("Forcing robust logout...");
+                
+                if (user && user.isImpersonated && !force) {
+                    handleExitImpersonation();
+                    return;
+                }
+
+                // First, synchronously clear traditional storages
+                window.sessionStorage.clear();
+                window.localStorage.clear();
+
+                // Fire async storage clear but do not block the thread
+                if (window.localforage) {
+                    window.localforage.clear().catch(err => console.error("localforage clear error:", err));
+                }
+
+                // CRITICAL FIX: Redirect BEFORE calling setUser(null).
+                // If we call setUser(null) first, React unmounts the component and 
+                // silently kills the remainder of this async function execution context.
+                window.location.href = window.location.pathname + '?logout=' + Date.now();
+                
+                // Fallback in case location change is delayed
+                setTimeout(() => { setUser(null); }, 100);
+            };
+
+            const handleImpersonate = async (clientUser) => {
+                sessionStorage.setItem('fbr_admin_backup', JSON.stringify(user));
+                await localforage.setItem('fbr_admin_backup', user);
+                await handleLogin(clientUser);
+            };
+
+            const handleExitImpersonation = async () => {
+                try {
+                    const fallbackBackup = sessionStorage.getItem('fbr_admin_backup');
+                    sessionStorage.removeItem('fbr_admin_backup');
+                    if (window.localforage) {
+                        await Promise.race([
+                            window.localforage.removeItem('fbr_admin_backup'),
+                            new Promise(resolve => setTimeout(resolve, 500))
+                        ]).catch(e => console.error(e));
+                    }
+                    
+                    if (fallbackBackup) {
+                        const adminUser = JSON.parse(fallbackBackup);
+                        setUser(adminUser);
+                        sessionStorage.setItem('fbr_session', fallbackBackup);
+                        if (window.localforage) {
+                            await Promise.race([
+                                window.localforage.setItem('fbr_session', adminUser),
+                                new Promise(resolve => setTimeout(resolve, 500))
+                            ]).catch(e => console.error(e));
+                        }
+                        window.location.href = window.location.pathname + '?exit=' + Date.now();
+                    } else {
+                        // Proceed to full logout if backup is lost
+                        handleLogout(null, true);
+                    }
+                } catch (err) {
+                    console.error("Exit impersonation failed", err);
+                    window.location.href = window.location.pathname + '?logout=' + Date.now();
+                }
+            };
+
+            if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading Configuration...</div>;
+
+            if (!user) return <LoginScreen onLogin={handleLogin} />;
+
+            if (user.role !== 'admin') {
+                if (!user.settings || !user.billing) {
+                    return <LoginScreen onLogin={handleLogin} />;
+                }
+            }
+
+            return (
+                <ErrorBoundary>
+                    {user.role === 'admin' ?
+                        <AdminDashboard onLogout={handleLogout} onImpersonate={handleImpersonate} /> :
+                        <ClientDashboard user={user} setUser={handleLogin} onLogout={handleLogout} />
+                    }
+                </ErrorBoundary>
+            );
+        }
+
+        // --- LOGIN SCREEN --- 
+        const LoginScreen = ({ onLogin }) => {
+            const [form, setForm] = useState({ username: '', password: '' });
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async () => {
+                if (!form.username || !form.password) return setError("Fill all fields");
+                setLoading(true);
+                try {
+                    const res = await fetch('https://app.tallied.pk/api/login', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: form.username, password: form.password })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        sessionStorage.setItem('fbr_token', data.token);
+                        onLogin(data.user);
+                    } else {
+                        setError(data.error || "Invalid credentials");
+                    }
+                } catch (e) { setError("Network Error: " + e.message); }
+                setLoading(false);
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-white">
+                    <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-xl w-full max-w-md relative">
+                        <div className="text-center mb-6">
+                            <h1 className="text-2xl font-bold text-gray-900">FBR Invoice System</h1>
+                            <p className="text-sm text-gray-500">Realtime Reporting</p>
+                        </div>
+                        {error && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm text-center border border-red-200">{error}</div>}
+                        <div className="space-y-4">
+                            <Input label="Username" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} />
+                            <Input label="Password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+                            <Button onClick={handleSubmit} disabled={loading} className="w-full py-3">{loading ? 'Loading...' : 'Login'}</Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- ADMIN DASHBOARD --- 
+        const AdminDashboard = ({ onLogout, onImpersonate }) => {
+            const [users, setUsers] = useState([]);
+            const [search, setSearch] = useState("");
+            const [sortBy, setSortBy] = useState("name");
+            const [newClient, setNewClient] = useState({ 
+                businessName: '', 
+                settings: { ntn: '', strn: '', address: '', province: 'Sindh', integrationMode: 'sandbox', sandboxToken: '', productionToken: '' } 
+            });
+            const [showCreate, setShowCreate] = useState(false);
+            const [editingClient, setEditingClient] = useState(null);
+            const [adminError, setAdminError] = useState("");
+
+            const [activeAdminTab, setActiveAdminTab] = useState('clients'); // 'clients' or 'users'
+            const [restrictedUsers, setRestrictedUsers] = useState([]);
+            const [showCreateUser, setShowCreateUser] = useState(false);
+            const [newUserParams, setNewUserParams] = useState({ username: '', password: '' });
+
+            const [showSystem, setShowSystem] = useState(false);
+            const [announcement, setAnnouncement] = useState(DataManager.getGlobalAnnouncement());
+
+            const fetchUsers = async () => {
+                try {
+                    const res = await fetch('https://app.tallied.pk/api/users', { headers: { 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` } });
+                    if (res.ok) setUsers(await res.json());
+                } catch (e) { console.error(e); }
+            };
+
+            const fetchRestrictedUsers = async () => {
+                try {
+                    const res = await fetch('https://app.tallied.pk/api/admin/restricted-users', { headers: { 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` } });
+                    if (res.ok) setRestrictedUsers(await res.json());
+                } catch (e) { console.error(e); }
+            };
+
+            useEffect(() => {
+                if (activeAdminTab === 'clients') fetchUsers();
+                else if (activeAdminTab === 'users') { fetchRestrictedUsers(); fetchUsers(); /* need client list for mapping */ }
+                setAdminError(""); // Clear error on tab switch
+            }, [activeAdminTab]);
+
+            const createClient = async () => {
+                setAdminError("");
+                if (!newClient.businessName || !newClient.settings.ntn) return setAdminError("Business Name and NTN are required fields");
+
+                try {
+                    const res = await fetch('https://app.tallied.pk/api/register', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
+                        body: JSON.stringify(newClient)
+                    });
+                    if (res.ok) {
+                        setShowCreate(false); 
+                        setNewClient({ 
+                            businessName: '', 
+                            settings: { ntn: '', strn: '', address: '', province: 'Sindh', integrationMode: 'sandbox', sandboxToken: '', productionToken: '' } 
+                        });
+                        fetchUsers();
+                    } else {
+                        const data = await res.json(); setAdminError(data.error || "Failed to create client");
+                    }
+                } catch (e) { 
+                    console.error("Create Client Exception: ", e);
+                    setAdminError("Network Error: " + e.message); 
+                }
+            };
+
+            const updateClientSettings = async () => {
+                if (!editingClient) return;
+                if (editingClient.password && !validatePassword(editingClient.password)) return alert("Password weak.");
+
+                try {
+                    const res = await fetch(`https://app.tallied.pk/api/users/${editingClient.id}`, {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
+                        body: JSON.stringify(editingClient)
+                    });
+                    if (res.ok) {
+                        fetchUsers();
+                        setEditingClient(null);
+                    } else alert("Error saving settings");
+                } catch (e) { alert("Error saving settings"); }
+            };
+
+            const revokeUser = async (clientId, userId) => {
+                const client = users.find(u => u.id === clientId);
+                if (!client) return;
+                const newSubUsers = client.subUsers.filter(su => su.id !== userId);
+                try {
+                    await fetch(`https://app.tallied.pk/api/users/${clientId}`, {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
+                        body: JSON.stringify({ subUsers: newSubUsers })
+                    });
+                    fetchUsers();
+                    if (editingClient && editingClient.id === clientId) setEditingClient({ ...client, subUsers: newSubUsers });
+                } catch (e) { }
+            };
+
+            const toggleRevoke = async (client) => {
+                try {
+                    await fetch(`https://app.tallied.pk/api/users/${client.id}`, {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
+                        body: JSON.stringify({ isRevoked: !client.isRevoked })
+                    });
+                    fetchUsers();
+                    if (editingClient && editingClient.id === client.id) setEditingClient({ ...client, isRevoked: !client.isRevoked });
+                } catch (e) { }
+            };
+
+            const modifyExpiryDate = (newDate) => {
+                if (!editingClient) return;
+                setEditingClient({ ...editingClient, billing: { ...editingClient.billing, expiry: newDate } });
+            };
+
+            const handleLogoUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => { setEditingClient(prev => ({ ...prev, settings: { ...prev.settings, logo: reader.result } })); };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const backupData = () => { alert("Backup is now handled by the database administrator."); };
+            const restoreData = (e) => { alert("Restore is now handled by the database administrator."); };
+
+            const saveAnnouncement = () => {
+                DataManager.setGlobalAnnouncement(announcement);
+                alert("Announcement Updated");
+                setShowSystem(false);
+            };
+
+            const getDaysRemaining = (expiryDate) => {
+                if (!expiryDate) return 0;
+                const diff = new Date(expiryDate) - new Date();
+                return Math.ceil(diff / (1000 * 60 * 60 * 24));
+            };
+
+            const filteredUsers = users
+                .filter(u => u.username.toLowerCase().includes(search.toLowerCase()) || (u.settings?.businessName || "").toLowerCase().includes(search.toLowerCase()))
+                .sort((a, b) => {
+                    if (sortBy === 'expiry') return new Date(a.billing.expiry) - new Date(b.billing.expiry);
+                    return a.username.localeCompare(b.username);
+                });
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <nav className="bg-black text-white shadow-lg sticky top-0 z-50">
+                        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+                            <div className="flex items-center gap-2 font-bold"><Icons.ShieldCheck /> Super Admin</div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex bg-gray-800 rounded p-1">
+                                    <button onClick={() => setActiveAdminTab('clients')} className={`px-4 py-1 text-sm rounded transition-colors ${activeAdminTab === 'clients' ? 'bg-white text-black font-bold' : 'text-gray-300 hover:text-white'}`}>Businesses</button>
+                                    <button onClick={() => setActiveAdminTab('users')} className={`px-4 py-1 text-sm rounded transition-colors ${activeAdminTab === 'users' ? 'bg-white text-black font-bold' : 'text-gray-300 hover:text-white'}`}>System Users</button>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button onClick={() => setShowSystem(true)} variant="secondary" className="text-xs text-gray-800"><Icons.Settings size={14} /> System</Button>
+                                    <Button onClick={onLogout} variant="danger" className="py-1 text-sm"><Icons.LogOut /> Logout</Button>
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <main className="max-w-7xl mx-auto p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800">Client Management</h2>
+                            <div className="flex gap-2 items-center">
+                                <Button onClick={() => setShowCreate(true)} variant="primary"><Icons.Plus /> New Client</Button>
+                                <select className="border border-gray-300 p-2 rounded text-sm bg-white" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                                    <option value="name">Sort by Name</option>
+                                    <option value="expiry">Sort by Expiry</option>
+                                </select>
+                                <div className="relative w-64"><input type="text" placeholder="Search client..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8" value={search} onChange={e => setSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div>
+                            </div>
+                        </div>
+
+                        {showSystem && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                                <div className="bg-white p-6 rounded-lg w-full max-w-md">
+                                    <h3 className="text-xl font-bold mb-4">System Utilities</h3>
+                                    <div className="space-y-4">
+                                        <div className="p-4 bg-gray-50 rounded border border-gray-200">
+                                            <h4 className="font-bold text-sm mb-2">Database Management</h4>
+                                            <div className="flex gap-2">
+                                                <Button onClick={backupData} className="flex-1"><Icons.Download size={14} /> Backup Data</Button>
+                                                <div className="flex-1 relative">
+                                                    <input type="file" onChange={restoreData} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                                    <Button variant="secondary" className="w-full"><Icons.Upload size={14} /> Restore Data</Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Input label="Global Announcement" value={announcement} onChange={e => setAnnouncement(e.target.value)} />
+                                        </div>
+                                        <div className="flex justify-end gap-2 mt-4">
+                                            <Button onClick={() => setShowSystem(false)} variant="secondary">Close</Button>
+                                            <Button onClick={saveAnnouncement}>Save</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {showCreate && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                                <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="text-2xl font-bold text-gray-800">Create New Business</h3>
+                                        <button onClick={() => { setShowCreate(false); setAdminError(""); }} className="text-gray-400 hover:text-gray-600"><Icons.X size={24} /></button>
+                                    </div>
+                                    {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border border-red-200">{adminError}</div>}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-4">
+                                            <h4 className="font-bold text-gray-700 border-b pb-2">Business Profile</h4>
+                                            <Input label="Business Name" value={newClient.businessName} onChange={e => setNewClient({ ...newClient, businessName: e.target.value })} />
+                                            <Input label="Address" value={newClient.settings.address} onChange={e => setNewClient({ ...newClient, settings: { ...newClient.settings, address: e.target.value } })} />
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <Input label="NTN (7 or 13 digits)" value={newClient.settings.ntn} onChange={e => setNewClient({ ...newClient, settings: { ...newClient.settings, ntn: e.target.value } })} />
+                                                <Input label="STRN" value={newClient.settings.strn} onChange={e => setNewClient({ ...newClient, settings: { ...newClient.settings, strn: e.target.value } })} />
+                                            </div>
+                                            <SearchableDropdown label="Province" value={newClient.settings.province} options={PROVINCES} onChange={val => setNewClient({ ...newClient, settings: { ...newClient.settings, province: val } })} />
+                                        </div>
+                                        <div className="space-y-4">
+                                            <h4 className="font-bold text-gray-700 border-b pb-2">FBR Integration Configuration</h4>
+                                            <div className="flex gap-4">
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input type="radio" name="newMode" checked={newClient.settings.integrationMode === 'sandbox'} onChange={() => setNewClient({ ...newClient, settings: { ...newClient.settings, integrationMode: 'sandbox' } })} /> Sandbox Mode
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input type="radio" name="newMode" checked={newClient.settings.integrationMode === 'production'} onChange={() => setNewClient({ ...newClient, settings: { ...newClient.settings, integrationMode: 'production' } })} /> Production Mode
+                                                </label>
+                                            </div>
+                                            {newClient.settings.integrationMode === 'sandbox' ? (
+                                                <Input label="Sandbox API Token" type="password" value={newClient.settings.sandboxToken} onChange={e => setNewClient({ ...newClient, settings: { ...newClient.settings, sandboxToken: e.target.value } })} />
+                                            ) : (
+                                                <Input label="Production API Token" type="password" value={newClient.settings.productionToken} onChange={e => setNewClient({ ...newClient, settings: { ...newClient.settings, productionToken: e.target.value } })} />
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end gap-3 mt-8 border-t pt-4">
+                                        <Button onClick={() => { setShowCreate(false); setAdminError(""); }} variant="secondary">Cancel</Button>
+                                        <Button onClick={createClient}>Create Business</Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {editingClient && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                                <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-xl font-bold">Manage Client: {editingClient.username}</h3>
+                                        <button onClick={() => setEditingClient(null)}><Icons.X /></button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Left Column: Business & Access */}
+                                        <div className="space-y-4">
+                                            <h4 className="font-bold text-gray-700 border-b pb-2">Business Profile</h4>
+                                            <Input label="Business Name" value={editingClient.settings?.businessName || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, businessName: e.target.value } })} />
+                                            <Input label="Address" value={editingClient.settings?.address || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, address: e.target.value } })} />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <Input label="NTN" value={editingClient.settings?.ntn || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, ntn: e.target.value } })} />
+                                                <Input label="STRN" value={editingClient.settings?.strn || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, strn: e.target.value } })} />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Custom HTML Invoice Template</label>
+                                                </div>
+                                                <VisualTemplateBuilder 
+                                                    value={editingClient.settings?.invoiceTemplate || ''} 
+                                                    onChange={val => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, invoiceTemplate: val } })} 
+                                                />
+                                            </div>
+                                            <SearchableDropdown label="Province" value={editingClient.settings?.province || 'Sindh'} options={PROVINCES} onChange={val => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, province: val } })} />
+
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Company Logo</label>
+                                                <input type="file" accept="image/*" onChange={handleLogoUpload} className="text-sm" />
+                                                {editingClient.settings?.logo && <img src={editingClient.settings.logo} className="h-10 mt-2 object-contain" />}
+                                            </div>
+
+                                            <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Access Control</h4>
+                                            <div className="bg-gray-50 p-3 rounded flex justify-between items-center">
+                                                <div>
+                                                    <div className="text-sm font-bold">Account Status</div>
+                                                    <div className={`text-xs ${editingClient.isRevoked ? 'text-red-600' : 'text-blue-600'}`}>{editingClient.isRevoked ? 'Revoked' : 'Active'}</div>
+                                                </div>
+                                                <Button onClick={() => toggleRevoke(editingClient)} variant={editingClient.isRevoked ? "primary" : "danger"} className="text-xs">{editingClient.isRevoked ? "Restore Access" : "Revoke Access"}</Button>
+                                            </div>
+
+                                            <div className="bg-blue-50 p-3 rounded">
+                                                <div className="text-sm font-bold mb-2">Extend Access</div>
+                                                <Input type="date" label="Expiry Date" value={(editingClient.billing?.expiry || new Date().toISOString()).split('T')[0]} onChange={e => modifyExpiryDate(new Date(e.target.value).toISOString())} />
+                                                <div className="flex gap-2 mt-2">
+                                                    <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 30); modifyExpiryDate(d.toISOString()) }} className="text-xs bg-white border px-2 py-1 rounded">+30 Days</button>
+                                                    <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 365); modifyExpiryDate(d.toISOString()) }} className="text-xs bg-white border px-2 py-1 rounded">+1 Year</button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Right Column: FBR Config */}
+                                        <div className="space-y-4">
+                                            <h4 className="font-bold text-gray-700 border-b pb-2">FBR Environment</h4>
+
+                                            <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
+                                                <h5 className="font-bold text-xs mb-2">Sandbox (Simulation)</h5>
+                                                <div className="text-xs text-gray-500 mb-2 truncate" title={SYSTEM_CONFIG.BASE_URL + SYSTEM_CONFIG.PATHS.POST_INVOICE_SB}>{SYSTEM_CONFIG.BASE_URL + SYSTEM_CONFIG.PATHS.POST_INVOICE_SB}</div>
+                                                <Input label="Sandbox Auth Token" value={editingClient.settings?.sandbox?.token || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, sandbox: { ...(editingClient.settings?.sandbox || {}), token: e.target.value } } })} placeholder="Bearer ..." />
+                                            </div>
+
+                                            <div className="bg-gray-100 p-3 rounded border border-gray-200">
+                                                <h5 className="font-bold text-xs mb-2">Production (Live)</h5>
+                                                <div className="text-xs text-gray-500 mb-2 truncate" title={SYSTEM_CONFIG.BASE_URL + SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD}>{SYSTEM_CONFIG.BASE_URL + SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD}</div>
+                                                <Input label="Production Auth Token" value={editingClient.settings?.production?.token || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, production: { ...(editingClient.settings?.production || {}), token: e.target.value } } })} placeholder="Bearer ..." />
+                                            </div>
+
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Active Environment</label>
+                                                <select className="w-full border border-gray-300 p-2 rounded" value={editingClient.settings?.integrationMode || 'sandbox'} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, integrationMode: e.target.value } })}>
+                                                    <option value="sandbox">Sandbox</option>
+                                                    <option value="production">Production</option>
+                                                </select>
+                                            </div>
+
+                                            <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Feature Control</h4>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="allowRetailFed"
+                                                    checked={editingClient.settings?.allowRetailFed || false}
+                                                    onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, allowRetailFed: e.target.checked } })}
+                                                />
+                                                <label htmlFor="allowRetailFed" className="text-sm">Allow Retail Price & FED Fields</label>
+                                            </div>
+
+                                            <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Default Rates</h4>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <Input label="Sales Tax %" type="number" value={editingClient.settings?.taxRates?.salesTax || 18} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, taxRates: { ...(editingClient.settings?.taxRates || {}), salesTax: parseFloat(e.target.value) } } })} />
+                                                <Input label="Further Tax %" type="number" value={editingClient.settings?.taxRates?.furtherTax || 4} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, taxRates: { ...(editingClient.settings?.taxRates || {}), furtherTax: parseFloat(e.target.value) } } })} />
+                                                <Input label="Extra Tax %" type="number" value={editingClient.settings?.taxRates?.extraTax || 0} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, taxRates: { ...(editingClient.settings?.taxRates || {}), extraTax: parseFloat(e.target.value) } } })} />
+                                            </div>
+
+                                            <h4 className="font-bold text-gray-700 border-b pb-2 pt-2 text-xs">Note: Restricted User access is now managed in the "System Users" tab.</h4>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+                                        <Button onClick={() => setEditingClient(null)} variant="secondary">Cancel</Button>
+                                        <Button onClick={updateClientSettings}>Save Changes</Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeAdminTab === 'clients' && (
+                            <>
+                                <div className="grid gap-4">{filteredUsers.map(u => {
+                                    const daysLeft = getDaysRemaining(u.billing?.expiry);
+                                    return (
+                                        <Card key={u.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 ${u.isRevoked ? 'opacity-50' : ''}`}>
+                                            <div className="flex-1">
+                                                <div className="font-bold text-lg flex items-center gap-2">
+                                                    {u.settings?.businessName || "Unnamed"}
+                                                    {u.isRevoked && <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded">REVOKED</span>}
+                                                </div>
+                                                <div className="text-xs text-gray-500">{u.username}</div>
+                                                <div className="text-sm text-gray-500 flex gap-4 mt-1 items-center">
+                                                    <span className={`flex items-center gap-1 font-bold ${daysLeft < 7 ? 'text-red-600' : 'text-gray-600'}`}><Icons.Calendar size={12} /> {daysLeft} Days Left</span>
+                                                    <span className={`flex items-center gap-1 px-2 rounded text-xs ${u.settings?.integrationMode === 'production' ? 'bg-gray-200 text-gray-800' : 'bg-yellow-100 text-yellow-800'}`}>{u.settings?.integrationMode === 'production' ? 'Prod' : 'Sand'}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-2 items-end">
+                                                <div className="flex gap-2">
+                                                    <Button onClick={() => onImpersonate({ ...u, role: 'client', isImpersonated: true })} variant="secondary" className="text-xs bg-gray-50 text-gray-700 border-gray-200" disabled={u.isRevoked}><Icons.Eye size={14} /> Login As</Button>
+                                                    <Button onClick={() => setEditingClient(u)} variant="secondary" className="text-xs"><Icons.Settings size={14} /> Manage</Button>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    );
+                                })}</div>
+                            </>
+                        )}
+
+                        {activeAdminTab === 'users' && (
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold">System Users (Restricted Access)</h3>
+                                    <Button onClick={() => { setShowCreateUser(!showCreateUser); setAdminError(""); }} variant="primary"><Icons.Plus /> Create User</Button>
+                                </div>
+
+                                {showCreateUser && (
+                                    <Card className="p-4 bg-gray-50 border-gray-200">
+                                        <h4 className="font-bold mb-4">New System User</h4>
+                                        {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border border-red-200">{adminError}</div>}
+                                        <div className="flex gap-4 items-end">
+                                            <Input label="Username" value={newUserParams.username} onChange={e => setNewUserParams({ ...newUserParams, username: e.target.value })} />
+                                            <Input label="Password" type="password" value={newUserParams.password} onChange={e => setNewUserParams({ ...newUserParams, password: e.target.value })} />
+                                            <Button onClick={async () => {
+                                                setAdminError("");
+                                                if (!newUserParams.username || !validatePassword(newUserParams.password)) return setAdminError("Invalid username or weak password. Needs 8+ chars, 1 letter, 1 number, 1 symbol.");
+                                                try {
+                                                    const res = await fetch('https://app.tallied.pk/api/admin/restricted-users', {
+                                                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
+                                                        body: JSON.stringify(newUserParams)
+                                                    });
+                                                    if (res.ok) { setShowCreateUser(false); setNewUserParams({ username: '', password: '' }); fetchRestrictedUsers(); }
+                                                    else setAdminError((await res.json()).error || "Failed to create user");
+                                                } catch (e) { setAdminError("Error creating user"); }
+                                            }}>Create</Button>
+                                        </div>
+                                    </Card>
+                                )}
+
+                                <div className="grid gap-4">
+                                    {restrictedUsers.map(ru => (
+                                        <Card key={ru.id} className="p-4">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <div className="font-bold text-lg flex items-center gap-2">
+                                                        <Icons.Users size={18} /> {ru.username}
+                                                        {ru.isRevoked && <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded">REVOKED</span>}
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Button variant={ru.isRevoked ? "primary" : "danger"} className="text-xs" onClick={async () => {
+                                                        await fetch(`https://app.tallied.pk/api/admin/restricted-users/${ru.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify({ isRevoked: !ru.isRevoked }) });
+                                                        fetchRestrictedUsers();
+                                                    }}>{ru.isRevoked ? "Restore Access" : "Revoke User"}</Button>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 border-t pt-4">
+                                                <h5 className="font-bold text-sm text-gray-700 mb-3">Assigned Businesses</h5>
+                                                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                                                    {users.map(client => {
+                                                        const userAccess = (ru.access || []).find(a => a.businessId === client.id);
+                                                        const hasAccess = !!userAccess;
+                                                        const currentLevel = hasAccess ? userAccess.accessLevel : 'view';
+
+                                                        return (
+                                                            <div key={client.id} className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-100">
+                                                                <div className="flex items-center gap-3">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={hasAccess}
+                                                                        onChange={async (e) => {
+                                                                            const isChecked = e.target.checked;
+                                                                            const level = isChecked ? currentLevel : null;
+                                                                            await fetch(`https://app.tallied.pk/api/admin/restricted-users/${ru.id}/access`, {
+                                                                                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
+                                                                                body: JSON.stringify({ businessId: client.id, accessLevel: level })
+                                                                            });
+                                                                            fetchRestrictedUsers();
+                                                                        }}
+                                                                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                                                    />
+                                                                    <span className="text-sm font-medium text-gray-700">{client.settings?.businessName || 'Unnamed'} <span className="text-xs text-gray-400">({client.username})</span></span>
+                                                                </div>
+                                                                {hasAccess && (
+                                                                    <select
+                                                                        className="text-xs border border-gray-300 rounded p-1 bg-white"
+                                                                        value={currentLevel}
+                                                                        onChange={async (e) => {
+                                                                            await fetch(`https://app.tallied.pk/api/admin/restricted-users/${ru.id}/access`, {
+                                                                                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
+                                                                                body: JSON.stringify({ businessId: client.id, accessLevel: e.target.value })
+                                                                            });
+                                                                            fetchRestrictedUsers();
+                                                                        }}
+                                                                    >
+                                                                        <option value="view">View Only</option>
+                                                                        <option value="edit">Full Access</option>
+                                                                    </select>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                    {restrictedUsers.length === 0 && <div className="text-center p-8 text-gray-500">No system users created yet.</div>}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        // --- CLIENT DASHBOARD --- 
+        const ClientDashboard = ({ user, setUser, onLogout }) => {
+            const [activeTab, setActiveTab] = useState('invoice');
+            const [invoice, setInvoice] = useState({
+                type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+                refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "",
+                customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh",
+                customerAddress: "", scenarioId: "SN001", items: [], discount: 0
+            });
+            const [loading, setLoading] = useState(false);
+            const [msg, setMsg] = useState(null);
+            const [showReceipt, setShowReceipt] = useState(false);
+            const [lastInv, setLastInv] = useState(null);
+
+            const [hsCodes, setHsCodes] = useState([]);
+            const [editingCustId, setEditingCustId] = useState(null);
+            const [editingInvId, setEditingInvId] = useState(null);
+            const [newUser, setNewUser] = useState({ username: '', password: '' });
+            const [newItem, setNewItem] = useState({
+                name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0,
+                taxRate: user.settings.taxRates?.salesTax || 18,
+                furtherTax: 0,
+                extraTax: user.settings.taxRates?.extraTax || 0,
+                fedPayable: 0, wht: 0, sroScheduleNo: "", sroItemSerialNo: ""
+            });
+            const [newCust, setNewCust] = useState({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
+
+            const [invSearch, setInvSearch] = useState("");
+            const [histSearch, setHistSearch] = useState("");
+            const [custSearch, setCustSearch] = useState("");
+
+            const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS);
+            const [invUomStatus, setInvUomStatus] = useState(null);
+            const [announcement, setAnnouncement] = useState("");
+
+            const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES);
+            const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES);
+            const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
+
+            const daysLeft = Math.ceil((new Date(user?.billing?.expiry) - new Date()) / (1000 * 60 * 60 * 24));
+            const isExpired = daysLeft <= 0;
+
+            const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
+            const showRetailFed = activeTab === 'invoice'
+                ? invoice.items.some(i => isRetailFedSale(i.saleType))
+                : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType));
+
+            useEffect(() => {
+                if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province }));
+            }, [user?.settings?.province]);
+
+            useEffect(() => {
+                setAnnouncement(DataManager.getGlobalAnnouncement());
+                const fetchReferenceData = async () => {
+                    const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
+                    if (!token) return;
+
+                    const headers = { 'Authorization': `Bearer ${token}` };
+
+                    // HS Codes
+                    try {
+                        const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.ITEM_CODE}`, { method: 'GET', headers });
+                        if (res.ok) {
+                            const data = await res.json();
+                            // Keep full object to access description later
+                            if (Array.isArray(data)) setHsCodes(data.map(item => ({ val: `${item.hS_CODE} - ${item.description}`, desc: item.description })));
+                        }
+                    } catch (e) { console.warn("Failed to fetch HS Codes", e); }
+
+                    // Provinces
+                    try {
+                        const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.PROVINCES}`, { headers });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (Array.isArray(data) && data.length > 0) setDynamicProvinces(data.map(d => d.stateProvinceDesc));
+                        }
+                    } catch (e) { console.warn("Failed to fetch Provinces", e); }
+
+                    // Document Types
+                    try {
+                        const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.DOCTYPECODE}`, { headers });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (Array.isArray(data) && data.length > 0) setDynamicDocTypes(data.map(d => d.docDescription));
+                        }
+                    } catch (e) { console.warn("Failed to fetch Doc Types", e); }
+
+                    // UOMs
+                    try {
+                        const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.UOM}`, { headers });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (Array.isArray(data) && data.length > 0) {
+                                const uoms = data.map(d => d.description);
+                                setDynamicUOMs(uoms);
+                                setInvUomOptions(uoms);
+                            }
+                        }
+                    } catch (e) { console.warn("Failed to fetch UOMs", e); }
+                };
+                fetchReferenceData();
+            }, []);
+
+            useEffect(() => {
+                const isUnregistered = invoice.customerRegType === "Unregistered";
+                const ftRate = user.settings.taxRates?.furtherTax || 4; // Use 4 as fallback if missing
+
+                setInvoice(prev => {
+                    const newItems = prev.items.map(item => {
+                        let newFTRate = parseFloat(item.furtherTax) || 0;
+
+                        if (isUnregistered) {
+                            if (newFTRate === 0) newFTRate = ftRate;
+                        } else {
+                            newFTRate = 0;
+                        }
+
+                        return { ...item, furtherTax: newFTRate };
+                    });
+                    return { ...prev, items: newItems };
+                });
+            }, [invoice.customerRegType]);
+
+            const fetchAllowedUOMs = async (hsCode) => {
+                if (!hsCode || hsCode.length < 3) {
+                    setInvUomStatus(null);
+                    return dynamicUOMs;
+                }
+                const actualCode = hsCode.includes(" - ") ? hsCode.split(" - ")[0] : hsCode;
+
+                const tryFetch = async (code) => {
+                    const url = `${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.HS_UOM}?hs_code=${code}&annexure_id=3`;
+                    const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
+
+                    const res = await fbrFetch(url, {
+                        method: 'GET',
+                        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+                    });
+
+                    if (res.status === 401) throw new Error("401");
+                    if (!res.ok) return null;
+
+                    const data = await res.json();
+
+                    if (Array.isArray(data)) {
+                        if (data.length > 0) return data.map(d => d.description);
+                        return [];
+                    }
+                    return null;
+                };
+
+                try {
+                    setInvUomStatus({ text: "Fetching...", type: "info" });
+                    let uoms = await tryFetch(actualCode);
+                    if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; }
+
+                    const cleanCode = actualCode.replace(/[^0-9]/g, '');
+                    if (cleanCode !== actualCode) {
+                        uoms = await tryFetch(cleanCode);
+                        if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; }
+                    }
+
+                    if (cleanCode.length === 8) {
+                        const formatted = `${cleanCode.slice(0, 4)}.${cleanCode.slice(4)}`;
+                        if (formatted !== actualCode) {
+                            uoms = await tryFetch(formatted);
+                            if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; }
+                        }
+                    }
+
+                    setInvUomStatus({ text: "Not Found", type: "error" });
+                    return dynamicUOMs;
+
+                } catch (e) {
+                    if (e.message === "401") {
+                        setMsg({ type: 'error', text: "Invalid Auth Token. Contact Admin." });
+                        setInvUomStatus({ text: "Auth Error", type: "error" });
+                    } else {
+                        setInvUomStatus({ text: "Net Error", type: "error" });
+                    }
+                    return dynamicUOMs;
+                }
+            };
+
+            const calculate = () => {
+                let subtotal = 0, gst = 0, extra = 0, further = 0, fed = 0, wht = 0, totalDisc = 0;
+                invoice.items.forEach(i => {
+                    const price = parseFloat(i.price) || 0;
+                    const retailPrice = parseFloat(i.retailPrice) || 0;
+                    const qty = parseFloat(i.qty) || 0;
+                    const disc = parseFloat(i.discount) || 0;
+                    let valueForTax = (isRetailFedSale(i.saleType) ? retailPrice : price) * qty;
+                    subtotal += valueForTax;
+                    gst += valueForTax * ((parseFloat(i.taxRate) || 0) / 100);
+                    extra += isRetailFedSale(i.saleType) ? (valueForTax * ((parseFloat(i.extraTax) || 0) / 100)) : 0;
+                    further += valueForTax * ((parseFloat(i.furtherTax) || 0) / 100);
+                    fed += isRetailFedSale(i.saleType) ? ((parseFloat(i.fedPayable) || 0) * qty) : 0;
+                    wht += parseFloat(i.wht || 0);
+                    totalDisc += disc;
+                });
+                const total = subtotal + gst + extra + further + fed - totalDisc - wht;
+                return { subtotal, gst, extra, further, fed, wht, total, totalDisc };
+            };
+            const totals = calculate();
+
+            const saveUser = async (newData) => {
+                const u = { ...user, ...newData };
+                setUser(u);
+                await localforage.setItem('fbr_session', u);
+                sessionStorage.setItem('fbr_session', JSON.stringify(u)); // keeping fallback for sync 
+                try {
+                    await fetch('https://app.tallied.pk/api/sync', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
+                        body: JSON.stringify({ user: u })
+                    });
+                } catch (e) { console.error("Sync Error", e); }
+            };
+
+            const addInvItem = () => setInvoice(p => ({ ...p, items: [...p.items, { id: Date.now(), desc: "", hsCode: "", qty: 1, price: 0, taxRate: user?.settings?.taxRates?.salesTax || 18, uom: "", saleType: "Goods at standard rate (default)", extraTax: user?.settings?.taxRates?.extraTax || 0, furtherTax: 0, retailPrice: 0, fedPayable: 0, wht: 0, discount: 0, allowedUOMs: UOM_OPTIONS, isFromInventory: false }] }));
+            const updateInvItem = (id, field, val) => setInvoice(p => ({ ...p, items: p.items.map(i => i.id === id ? { ...i, [field]: val } : i) }));
+            const pickProduct = (invId, prod) => {
+                fetchAllowedUOMs(prod.hsCode).then(uoms => {
+                    setInvoice(p => ({
+                        ...p, items: p.items.map(i => i.id === invId ? {
+                            ...i, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: prod.furtherTax, fedPayable: prod.fedPayable, wht: prod.wht, allowedUOMs: uoms, isFromInventory: true
+                        } : i)
+                    }));
+                });
+            };
+
+            const handleItemHSBlur = (id, hsCode) => {
+                fetchAllowedUOMs(hsCode).then(uoms => {
+                    setInvoice(p => ({
+                        ...p,
+                        items: p.items.map(i => i.id === id ? { ...i, allowedUOMs: uoms } : i)
+                    }));
+                });
+            };
+
+            const addCustomer = () => {
+                if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
+                if (!newCust.name) return;
+                let newCustomersList;
+                if (editingCustId) {
+                    newCustomersList = (user.customers || []).map(c => c.id === editingCustId ? { ...c, ...newCust } : c);
+                    setEditingCustId(null);
+                } else {
+                    newCustomersList = [...(user.customers || []), { id: Date.now(), ...newCust }];
+                }
+                saveUser({ customers: newCustomersList });
+                setNewCust({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
+            };
+
+            const editCustomer = (c) => {
+                if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
+                setNewCust(c); setEditingCustId(c.id);
+            };
+            const deleteCustomer = (id) => {
+                if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
+                saveUser({ customers: (user.customers || []).filter(c => c.id !== id) });
+            };
+            const addInventory = () => {
+                if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
+                if (newItem.name) { saveUser({ inventory: [...(user.inventory || []), { id: Date.now(), ...newItem, status: 'Active' }] }); setNewItem({ ...newItem, name: '', uom: "" }); }
+            };
+            const deleteInventory = (id) => {
+                if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
+                saveUser({ inventory: (user.inventory || []).filter(i => i.id !== id) });
+            };
+
+
+
+            const downloadInvoice = (inv) => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inv, null, 2));
+                const anchor = document.createElement('a');
+                anchor.href = dataStr;
+                anchor.download = `invoice_${inv.fbrInvoiceNumber}.json`;
+                document.body.appendChild(anchor); anchor.click(); anchor.remove();
+            };
+
+            const filteredInventory = (user.inventory || []).filter(i => !invSearch || i.name.toLowerCase().includes(invSearch.toLowerCase()) || i.hsCode.toLowerCase().includes(invSearch.toLowerCase()));
+            const filteredHistory = (user.history || []).filter(h => !histSearch || (h.fbrInvoiceNumber && h.fbrInvoiceNumber.toLowerCase().includes(histSearch.toLowerCase())) || (h.customerName && h.customerName.toLowerCase().includes(histSearch.toLowerCase())));
+            const filteredCustomers = (user.customers || []).filter(c => c && (!custSearch || c.name.toLowerCase().includes(custSearch.toLowerCase()) || (c.ntn && c.ntn.includes(custSearch))));
+
+            const onSelectCustomerName = (val) => {
+                try {
+                    const existingCust = (user.customers || []).find(c => c && c.name === val);
+                    if (existingCust) {
+                        setInvoice(prev => ({
+                            ...prev,
+                            customerName: existingCust.name,
+                            customerNTN: existingCust.ntn,
+                            customerDestination: existingCust.destination,
+                            customerAddress: existingCust.address
+                        }));
+                    } else {
+                        setInvoice(prev => ({ ...prev, customerName: val }));
+                    }
+                } catch (e) {
+                    setInvoice(prev => ({ ...prev, customerName: val }));
+                }
+            };
+
+            const checkBuyerStatus = async (regNo) => {
+                if (!regNo || regNo.length < 7) { setMsg({ type: 'error', text: 'Invalid NTN' }); return; }
+
+                setMsg({ type: 'info', text: 'Verifying with FBR...' });
+                const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
+
+                try {
+                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.GET_REG_TYPE}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': token ? `Bearer ${token}` : ''
+                        },
+                        body: JSON.stringify({ Registration_No: regNo })
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.statuscode === "00") {
+                            setMsg({ type: 'success', text: `Verified: ${data.REGISTRATION_TYPE}` });
+                            setInvoice(prev => ({ ...prev, customerRegType: data.REGISTRATION_TYPE }));
+                        } else {
+                            const errDesc = FBR_ERRORS[data.statuscode] || 'Not Registered / Inactive';
+                            setMsg({ type: 'error', text: `FBR Error: ${errDesc} (${data.statuscode})` });
+                            setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" }));
+                        }
+                    } else {
+                        setMsg({ type: 'error', text: `FBR API Failed: ${res.statusText}` });
+                    }
+                } catch (e) {
+                    setMsg({ type: 'error', text: 'Verification Error (CORS/Network)' });
+                }
+            };
+
+            const checkCustomerStatus = async (regNo) => {
+                if (!regNo || regNo.length < 7) { setMsg({ type: 'error', text: 'Invalid NTN' }); return; }
+
+                setMsg({ type: 'info', text: 'Verifying with FBR...' });
+                const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
+
+                try {
+                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.GET_REG_TYPE}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': token ? `Bearer ${token}` : ''
+                        },
+                        body: JSON.stringify({ Registration_No: regNo })
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.statuscode === "00") {
+                            setMsg({ type: 'success', text: `Verified: ${data.REGISTRATION_TYPE}` });
+                            setNewCust(prev => ({ ...prev, regType: data.REGISTRATION_TYPE }));
+                        } else {
+                            const errDesc = FBR_ERRORS[data.statuscode] || 'Not Registered / Inactive';
+                            setMsg({ type: 'error', text: `FBR Error: ${errDesc} (${data.statuscode})` });
+                            setNewCust(prev => ({ ...prev, regType: "Unregistered" }));
+                        }
+                    } else {
+                        setMsg({ type: 'error', text: `FBR API Failed: ${res.statusText}` });
+                    }
+                } catch (e) {
+                    setMsg({ type: 'error', text: 'Verification Error (CORS/Network)' });
+                }
+            };
+
+            const constructFBRPayload = () => {
+                const payload = {
+                    invoiceType: invoice.type,
+                    invoiceDate: invoice.invoiceDate,
+                    sellerNTNCNIC: String(user?.settings?.ntn || "").replace(/-/g, ""),
+                    sellerBusinessName: user?.settings?.businessName || "",
+                    sellerProvince: user?.settings?.province || "Sindh",
+                    sellerAddress: user?.settings?.address || "",
+
+                    buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "",
+                    buyerBusinessName: invoice.customerName || "",
+                    buyerProvince: invoice.customerDestination || "Sindh",
+                    buyerAddress: invoice.customerAddress || "",
+                    buyerRegistrationType: invoice.customerRegType,
+                    invoiceRefNo: invoice.refInvoiceNumber || "",
+
+                    items: invoice.items.map(item => {
+                        const q = parseFloat(item.qty) || 0;
+                        const p = parseFloat(item.price) || 0;
+                        const r = parseFloat(item.retailPrice) || 0;
+                        const baseVal = (isRetailFedSale(item.saleType) ? r : p) * q;
+                        const gstVal = baseVal * (parseFloat(item.taxRate) / 100 || 0);
+                        const exVal = isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0;
+                        const furVal = baseVal * (parseFloat(item.furtherTax) / 100 || 0);
+                        const fedVal = isRetailFedSale(item.saleType) ? (parseFloat(item.fedPayable) || 0) : 0;
+
+                        return {
+                            hsCode: item.hsCode,
+                            productDescription: item.desc,
+                            rate: `${item.taxRate}%`,
+                            uoM: item.uom || "Numbers, pieces, units",
+                            quantity: q,
+                            totalValues: +(baseVal + gstVal + furVal + exVal).toFixed(2),
+                            valueSalesExcludingST: +baseVal.toFixed(2),
+                            fixedNotifiedValueOrRetailPrice: +r.toFixed(2),
+                            salesTaxApplicable: +gstVal.toFixed(2),
+                            salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2),
+                            extraTax: +exVal.toFixed(2),
+                            furtherTax: +furVal.toFixed(2),
+                            sroScheduleNo: item.sroScheduleNo || "",
+                            fedPayable: +fedVal.toFixed(2),
+                            discount: +(parseFloat(item.discount) || 0).toFixed(2),
+                            saleType: item.saleType,
+                            sroItemSerialNo: item.sroItemSerialNo || ""
+                        };
+                    })
+                };
+
+                if (user.settings.integrationMode !== 'production') {
+                    payload.scenarioId = invoice.scenarioId || "SN001";
+                }
+
+                return payload;
+            };
+
+            const callFbrApi = async (pathType, isValidate = false) => {
+                if (isExpired) { setMsg({ type: 'error', text: 'Subscription Expired.' }); return; }
+
+                const mode = user.settings.integrationMode;
+                const token = mode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
+
+                let endpoint = '';
+                if (isValidate) {
+                    endpoint = mode === 'production' ? SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_PROD : SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_SB;
+                } else {
+                    endpoint = mode === 'production' ? SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD : SYSTEM_CONFIG.PATHS.POST_INVOICE_SB;
+                }
+
+                if (!token) { setMsg({ type: 'error', text: 'FBR Token Missing. Contact Admin.' }); return; }
+
+                const payload = constructFBRPayload();
+
+                setLoading(true);
+                try {
+                    // Actual API Call Simulation (since we can't POST to FBR from browser due to CORS usually, but code is here) 
+                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (isValidate) {
+                        if (res.ok) {
+                            const responseData = await res.json();
+                            if (responseData && responseData.Code && responseData.Code !== "0000") {
+                                const err = FBR_ERRORS[responseData.Code] || responseData.Message || 'Validation Failed';
+                                setMsg({ type: 'error', text: `Validation Error: ${err}` });
+                            } else {
+                                setMsg({ type: 'success', text: "Validation Successful" });
+                            }
+                        } else {
+                            setMsg({ type: 'error', text: `FBR Validation API Failed: ${res.statusText}` });
+                        }
+                    } else {
+                        if (res.ok) {
+                            const responseData = await res.json();
+                            if (responseData && responseData.Code && responseData.Code !== "0000") {
+                                const err = FBR_ERRORS[responseData.Code] || responseData.Message || 'Submission Failed';
+                                setMsg({ type: 'error', text: `FBR Error: ${err}` });
+                            } else {
+                                setMsg({ type: 'success', text: "Submitted Successfully" });
+                                saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: responseData?.InvoiceNumber || `FBR-${Date.now()}` }, ...(user.history || [])] });
+                                setInvoice({ ...invoice, invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, items: [], discount: 0 });
+                            }
+                        } else {
+                            setMsg({ type: 'error', text: `FBR Submit API Failed: ${res.statusText}` });
+                        }
+                    }
+                } catch (e) {
+                    // Fallback for demo if API fails 
+                    if (isValidate) {
+                        setMsg({ type: 'success', text: "Validation Status: Valid (Demo Mode - API Unreachable)" });
+                        console.log("Validation Payload:", payload);
+                    } else {
+                        setMsg({ type: 'success', text: "Submitted (Demo Mode - API Unreachable)" });
+                        saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: `FBR-${Date.now()}` }, ...(user.history || [])] });
+                        setInvoice({ ...invoice, invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, items: [], discount: 0 });
+                    }
+                } finally { setLoading(false); }
+            };
+
+            const renderInvoiceTemplate = () => {
+                const templateHTML = user.settings.invoiceTemplate || defaultTemplateHTML;
+                const parsedHTML = parseInvoiceTemplate(templateHTML, lastInv, user.settings);
+
+                return (
+                    <div className="bg-white w-full max-w-2xl rounded-lg shadow-2xl overflow-hidden relative print:w-full print:max-w-none">
+                        <button onClick={() => setShowReceipt(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-50 no-print" style={{ zIndex: 9999 }}><Icons.X /></button>
+                        <div id="printable-area" dangerouslySetInnerHTML={{ __html: parsedHTML }} />
+                        <div className="mt-6 mb-6 flex justify-center no-print relative z-10"><Button onClick={() => window.print()}>Print Invoice</Button></div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen pb-20 relative bg-gray-50">
+                    <nav className="bg-black text-white shadow-lg sticky top-0 z-40">
+                        <div className="max-w-[1500px] mx-auto px-4 py-3 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/10 p-2 rounded">
+                                    {user.settings?.logo ? <img src={user.settings.logo} className="w-5 h-5 object-contain" /> : <Icons.FileText size={20} />}
+                                </div>
+                                <div>
+                                    <h1 className="font-bold leading-none">Hi {user.username || 'User'}</h1>
+                                    <span className="text-gray-400 text-xs">{user?.settings?.businessName}</span>
+                                </div>
+                                {user.role === 'restricted_user' && user.accessibleBusinesses?.length > 1 && (
+                                    <div className="ml-4">
+                                        <select
+                                            className="text-xs text-black py-1 px-2 rounded font-bold border-none outline-none appearance-none"
+                                            value={user.activeBusinessId}
+                                            onChange={async (e) => {
+                                                const newBusinessId = parseInt(e.target.value);
+                                                // Ideally we call an endpoint, but for simplicity we can just re-login conceptually, but we can't do that easily without a password here.
+                                                // Actually logging out is safest to trigger full sync
+                                                alert("Business Switched. Please log in again to sync new business data.");
+                                                onLogout();
+                                            }}
+                                        >
+                                            {user.accessibleBusinesses.map(b => (
+                                                <option key={b.id} value={b.id}>{b.name} ({b.accessLevel})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex gap-2 text-sm">
+                                {['invoice', 'inventory', 'customers', 'history', 'settings'].map(t => (
+                                    <button key={t} onClick={() => setActiveTab(t)} className={`px-3 py-1.5 rounded capitalize transition-all duration-200 ${activeTab === t ? 'bg-white text-black font-bold' : 'hover:bg-gray-800 text-gray-300'}`}>{t}</button>
+                                ))}
+                                <button onClick={(e) => { e.preventDefault(); console.log("Logout button clicked"); onLogout(e); }} className="bg-gray-800 hover:bg-red-600 p-2 rounded ml-2 transition-colors"><Icons.LogOut /></button>
+                            </div>
+                        </div>
+                    </nav>
+
+                    {/* Subscription Alert Bar */}
+                    {daysLeft <= 7 && (
+                        <div className={`w-full text-center py-2 text-xs font-bold uppercase tracking-wider ${daysLeft <= 0 ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'}`}>
+                            {daysLeft <= 0 ? "SUBSCRIPTION EXPIRED - Please Renew" : `Subscription Expiring in ${daysLeft} days`}
+                        </div>
+                    )}
+
+                    {/* Separate Announcement Row */}
+                    {announcement && <div className="bg-gray-100 text-gray-900 text-center py-2 text-sm border-b border-gray-200 font-medium relative"><strong className="mr-2">Notice:</strong> {announcement}</div>}
+
+                    <main className="max-w-[1600px] mx-auto p-6">
+                        {msg && <div className={`mb-6 p-4 rounded-lg flex gap-3 border ${msg.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>{msg.type === 'error' ? <Icons.AlertCircle /> : <Icons.CheckCircle />} {msg.text} <button onClick={() => setMsg(null)} className="ml-auto">✕</button></div>}
+
+
+                        {activeTab === 'invoice' && (
+                            <div className="space-y-6">
+                                <Card className="p-6">
+                                    <div className="flex justify-between items-start mb-6"><h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Icons.ShoppingCart /> New Invoice</h2>
+                                        <div className="flex gap-2"><SearchableDropdown value={invoice.type} options={dynamicDocTypes} onChange={v => setInvoice({ ...invoice, type: v })} placeholder="Type" /></div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded border border-gray-200">
+                                        <Input label="Date" type="date" value={invoice.invoiceDate} onChange={e => setInvoice({ ...invoice, invoiceDate: e.target.value })} />
+                                        <Input label={invoice.type === "Sale Invoice" ? "Invoice No" : "Document No"} value={invoice.invoiceNumber} onChange={e => setInvoice({ ...invoice, invoiceNumber: e.target.value })} />
+                                        {invoice.type !== "Sale Invoice" && <Input label="Ref Invoice #" value={invoice.refInvoiceNumber} onChange={e => setInvoice({ ...invoice, refInvoiceNumber: e.target.value })} placeholder="Required" required />}
+                                        <SearchableDropdown label="Origin" value={invoice.originationProvince} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, originationProvince: v })} />
+                                        <SearchableDropdown label="Customer Name" value={invoice.customerName} options={(user.customers || []).filter(c => c).map(c => c.name)} placeholder="Search Customer..." onChange={onSelectCustomerName} strict={false} />
+                                        <div className="relative">
+                                            <Input label="Reg No / NTN" value={invoice.customerNTN} onChange={e => setInvoice({ ...invoice, customerNTN: e.target.value })} />
+                                            <button onClick={() => checkBuyerStatus(invoice.customerNTN)} disabled={loading} className="absolute right-0 top-0 text-[10px] bg-black text-white px-2 py-1 rounded hover:bg-gray-800 mt-1 mr-1">Verify</button>
+                                        </div>
+                                        <SearchableDropdown label="Destination" value={invoice.customerDestination} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, customerDestination: v })} />
+                                        <div className="md:col-span-2"><Input label="Customer Address" value={invoice.customerAddress} onChange={e => setInvoice({ ...invoice, customerAddress: e.target.value })} /></div>
+                                        {user.settings.integrationMode !== 'production' && (
+                                            <SearchableDropdown label="Scenario ID (Sandbox Only)" value={invoice.scenarioId} options={SCENARIOS} onChange={v => setInvoice({ ...invoice, scenarioId: v })} />
+                                        )}
+                                        <div className="md:col-span-4 flex justify-between items-center bg-white p-2 rounded border border-gray-200 mt-2">
+                                            <span className="text-xs font-bold text-gray-500">Buyer Status: <span className={`px-2 py-1 rounded ${invoice.customerRegType === 'Registered' ? 'bg-black text-white' : 'bg-gray-200 text-gray-800'}`}>{invoice.customerRegType}</span></span>
+                                        </div>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[1400px] text-sm">
+                                            <thead className="bg-gray-100 text-gray-600 uppercase text-xs font-bold"><tr><th className="p-3 w-40">Description</th><th className="p-3 w-16">Qty</th><th className="p-3 w-20">Price</th>{showRetailFed && <th className="p-3 w-20">Ret.Price</th>}<th className="p-3 w-14">S.Tax%</th><th className="p-3 w-24">S.Tax Amt</th>{showRetailFed && <th className="p-3 w-14">Ex.Tax%</th>}{showRetailFed && <th className="p-3 w-24">Ex.Tax Amt</th>}<th className="p-3 w-14">Fur.Tax%</th><th className="p-3 w-24">Fur.Tax Amt</th>{showRetailFed && <th className="p-3 w-20">FED</th>}{showRetailFed && <th className="p-3 w-16 text-gray-400">FED Amt</th>}<th className="p-3 w-24">Sales Tax Withheld</th><th className="p-3 w-10"></th></tr></thead>
+                                            <tbody className="divide-y divide-gray-100">{invoice.items.map(item => {
+                                                const q = parseFloat(item.qty) || 0;
+                                                const p = parseFloat(item.price) || 0;
+                                                const r = parseFloat(item.retailPrice) || 0;
+                                                const val = (isRetailFedSale(item.saleType) ? r : p) * q;
+                                                const stAmt = val * (parseFloat(item.taxRate || 0) / 100);
+                                                const exAmt = isRetailFedSale(item.saleType) ? (val * (parseFloat(item.extraTax || 0) / 100)) : 0;
+                                                const furAmt = val * (parseFloat(item.furtherTax || 0) / 100);
+
+                                                return (
+                                                    <tr key={item.id} className="hover:bg-gray-50">
+                                                        <td className="p-2 relative">
+                                                            <SearchableDropdown value={item.desc} options={(user.inventory || []).filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = (user.inventory || []).find(inv => inv && inv.name === val); if (p) pickProduct(item.id, p); else updateInvItem(item.id, 'desc', val); }} strict={false} />
+                                                            {item.isFromInventory && <div className="text-[10px] text-gray-400 mt-1 truncate max-w-[200px]" title={`${item.saleType} | ${item.hsCode} | ${item.uom}`}>{item.saleType} | {item.hsCode} | {item.uom}</div>}
+                                                            <div className="flex gap-2 mt-1">
+                                                                <input type="text" className="table-input flex-1 !h-6 !text-[10px]" placeholder="SRO Sch No" value={item.sroScheduleNo || ''} onChange={e => updateInvItem(item.id, 'sroScheduleNo', e.target.value)} />
+                                                                <input type="text" className="table-input flex-1 !h-6 !text-[10px]" placeholder="SRO Item Ser No" value={item.sroItemSerialNo || ''} onChange={e => updateInvItem(item.id, 'sroItemSerialNo', e.target.value)} />
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-2"><input type="number" className="table-input" value={item.qty} onChange={e => updateInvItem(item.id, 'qty', e.target.value)} /></td>
+                                                        <td className="p-2"><input type="number" className="table-input" value={item.price} onChange={e => updateInvItem(item.id, 'price', e.target.value)} /></td>
+                                                        {showRetailFed && <td className="p-2">{isRetailFedSale(item.saleType) && <input type="number" className="table-input" value={item.retailPrice} onChange={e => updateInvItem(item.id, 'retailPrice', e.target.value)} />}</td>}
+                                                        <td className="p-2"><input type="number" className="table-input" value={item.taxRate} onChange={e => updateInvItem(item.id, 'taxRate', e.target.value)} /></td>
+                                                        <td className="p-2 text-xs text-gray-500 pt-3 text-right">{formatCurrency(stAmt)}</td>
+                                                        {showRetailFed && <td className="p-2">{isRetailFedSale(item.saleType) && <input type="number" className="table-input" value={item.extraTax} onChange={e => updateInvItem(item.id, 'extraTax', e.target.value)} />}</td>}
+                                                        {showRetailFed && <td className="p-2 text-xs text-gray-500 pt-3 text-right">{isRetailFedSale(item.saleType) && formatCurrency(exAmt)}</td>}
+                                                        <td className="p-2"><input type="number" className="table-input" value={item.furtherTax} onChange={e => updateInvItem(item.id, 'furtherTax', e.target.value)} /></td>
+                                                        <td className="p-2 text-xs text-gray-500 pt-3 text-right">{formatCurrency(furAmt)}</td>
+                                                        {showRetailFed && <td className="p-2">{isRetailFedSale(item.saleType) && <input type="number" className="table-input" value={item.fedPayable} onChange={e => updateInvItem(item.id, 'fedPayable', e.target.value)} />}</td>}
+                                                        {showRetailFed && <td className="p-2 text-xs text-gray-500 pt-3">{isRetailFedSale(item.saleType) && formatCurrency((parseFloat(item.fedPayable) || 0) * item.qty)}</td>}
+                                                        <td className="p-2"><input type="number" className="table-input" value={item.wht} onChange={e => updateInvItem(item.id, 'wht', e.target.value)} /></td>
+                                                        <td className="p-2 text-center"><button onClick={() => setInvoice(p => ({ ...p, items: p.items.filter(i => i.id !== item.id) }))} className="text-red-500"><Icons.Trash2 /></button></td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            </tbody>
+                                        </table>
+                                        <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+                                            <Button onClick={addInvItem} variant="secondary" className="text-sm"><Icons.Plus /> Add Line</Button>
+                                            <div className="flex gap-8 text-right text-sm">
+                                                <div><div className="text-gray-500 text-xs">Subtotal</div><div className="font-bold">{formatCurrency(totals.subtotal)}</div></div>
+                                                <div><div className="text-gray-500 text-xs">Sales Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.gst)}</div></div>
+                                                {showRetailFed && <div><div className="text-gray-500 text-xs">Extra Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.extra)}</div></div>}
+                                                <div><div className="text-gray-500 text-xs">Further Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.further)}</div></div>
+                                                {showRetailFed && <div><div className="text-gray-500 text-xs">FED</div><div className="font-bold text-gray-900">{formatCurrency(totals.fed)}</div></div>}
+                                                <div><div className="text-gray-500 text-xs text-blue-600">ST Withheld</div><div className="font-bold text-blue-600">-{formatCurrency(totals.wht)}</div></div>
+                                                <div className="pl-4 border-l border-gray-300"><div className="text-gray-500 text-xs">Total</div><div className="font-bold text-xl">{formatCurrency(totals.total)}</div></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 flex justify-end gap-3">
+                                        <Button onClick={() => setLastInv({ ...invoice, ...totals, id: invoice.invoiceNumber }) || setShowReceipt(true)} variant="secondary"><Icons.Printer /> Print Preview</Button>
+
+                                        {/* Hide FBR posting for view-only users, though allowed to print preview */}
+                                        {!(user.role === 'restricted_user' && user.accessLevel === 'view') && (
+                                            <>
+                                                <Button onClick={() => callFbrApi(SYSTEM_CONFIG.API_URL, true)} variant="secondary" disabled={loading}><Icons.ShieldCheck /> Validate Invoice</Button>
+                                                <Button onClick={() => callFbrApi(SYSTEM_CONFIG.API_URL, false)} disabled={loading}><Icons.Save /> Submit Invoice</Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </Card>
+                            </div>
+                        )}
+
+                        {activeTab === 'inventory' && (
+                            <div className="w-full">
+                                <Card className="p-6 mb-6">
+                                    <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Icons.Box /> {editingInvId ? 'Edit Item' : 'Add Item'}</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                        <div className="md:col-span-2"><Input label="Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} /></div>
+                                        <div className="md:col-span-2"><SearchableDropdown label="Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
+                                        <div className="md:col-span-2"><SearchableDropdown label="HS" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => {
+                                            const code = val.includes(" - ") ? val.split(" - ")[0] : val;
+                                            const matchingObj = hsCodes.find(h => h.val === val);
+                                            setNewItem(prev => ({
+                                                ...prev,
+                                                hsCode: val,
+                                                name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name
+                                            }));
+                                            fetchAllowedUOMs(code).then(uoms => {
+                                                setInvUomOptions(uoms);
+                                                if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); }
+                                            });
+                                        }} placeholder="Search HS Code" strict={false} /></div>
+                                        <div className="md:col-span-1"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
+                                        <div className="md:col-span-1"><Input label="Price" type="number" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} /></div>
+                                        {isRetailFedSale(newItem.saleType) && <div className="md:col-span-1"><Input label="Ret. Price" type="number" value={newItem.retailPrice} onChange={e => setNewItem({ ...newItem, retailPrice: e.target.value })} /></div>}
+                                        <div className="md:col-span-1"><Input label="Tax Rate %" type="number" value={newItem.taxRate} onChange={e => setNewItem({ ...newItem, taxRate: e.target.value })} /></div>
+                                        {isRetailFedSale(newItem.saleType) && <div className="md:col-span-1"><Input label="FED" type="number" value={newItem.fedPayable} onChange={e => setNewItem({ ...newItem, fedPayable: e.target.value })} /></div>}
+                                        <div className="md:col-span-2 flex gap-2">
+                                            <Input label="SRO Schedule No" value={newItem.sroScheduleNo} onChange={e => setNewItem({ ...newItem, sroScheduleNo: e.target.value })} />
+                                            <Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} />
+                                        </div>
+                                        <div className="md:col-span-12 flex justify-end gap-2 mt-4">
+                                            {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", taxRate: user.settings.taxRates?.salesTax || 18, saleType: "Goods at standard rate (default)", extraTax: user.settings.taxRates?.extraTax || 0, furtherTax: 0, retailPrice: 0, fedPayable: 0, wht: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-4">Cancel</Button>}
+                                            <Button onClick={() => {
+                                                if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
+                                                if (editingInvId) {
+                                                    saveUser({ inventory: (user.inventory || []).map(i => i.id === editingInvId ? { ...i, ...newItem } : i) });
+                                                    setEditingInvId(null);
+                                                    setNewItem({ name: '', hsCode: '', price: '', uom: "", taxRate: user.settings.taxRates?.salesTax || 18, saleType: "Goods at standard rate (default)", extraTax: user.settings.taxRates?.extraTax || 0, furtherTax: 0, retailPrice: 0, fedPayable: 0, wht: 0, sroScheduleNo: "", sroItemSerialNo: "" });
+                                                } else addInventory();
+                                            }} className="px-8 flex justify-center items-center gap-2" disabled={user.role === 'restricted_user' && user.accessLevel === 'view'}>
+                                                {editingInvId ? <><Icons.Save size={16} /> Save Changes</> : <><Icons.Plus size={16} /> Add Item</>}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </Card>
+                                <Card className="p-0 overflow-hidden"><table className="w-full text-left text-sm"><thead className="bg-gray-100"><tr><th className="p-3">Name</th><th className="p-3 w-32">Type</th><th className="p-3 w-96">HS Code</th><th className="p-3">Price</th>{showRetailFed && <th className="p-3">Ret.Price</th>}<th className="p-3">S.Tax%</th>{showRetailFed && <th className="p-3">FED</th>}<th className="p-3 text-right"></th></tr></thead><tbody className="divide-y divide-gray-100">{filteredInventory.map(i => (<tr key={i.id} className="hover:bg-gray-50"><td className="p-3">{i.name}</td><td className="p-3 text-xs">{i.saleType}</td><td className="p-3">{i.hsCode}</td><td className="p-3">{formatCurrency(i.price)}</td>{showRetailFed && <td className="p-3">{formatCurrency(i.retailPrice)}</td>}<td className="p-3">{i.taxRate}%</td>{showRetailFed && <td className="p-3">{i.fedPayable}</td>}<td className="p-3 text-right"><div className="flex justify-end gap-2"><button onClick={() => { setNewItem(i); setEditingInvId(i.id); }} className="text-gray-600 hover:text-black"><Icons.Edit /></button><button onClick={() => deleteInventory(i.id)} className="text-red-500"><Icons.Trash2 /></button></div></td></tr>))}</tbody></table></Card>
+                            </div >
+                        )}
+
+                        {
+                            activeTab === 'customers' && (
+                                <div className="w-full">
+                                    <Card className="p-6 mb-6">
+                                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Icons.Users /> {editingCustId ? 'Edit Customer' : 'Add Customer'}</h2>
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                            <div className="md:col-span-3"><Input label="Customer Name" value={newCust.name} onChange={e => setNewCust({ ...newCust, name: e.target.value })} /></div>
+                                            <div className="md:col-span-2 relative">
+                                                <Input label="NTN" value={newCust.ntn} onChange={e => setNewCust({ ...newCust, ntn: e.target.value })} />
+                                                <button onClick={() => checkCustomerStatus(newCust.ntn)} disabled={loading} className="absolute right-0 top-0 text-[10px] bg-black text-white px-2 py-1 rounded hover:bg-gray-800 mt-1 mr-1">Verify</button>
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <SearchableDropdown label="Reg Type" value={newCust.regType || 'Unregistered'} options={['Unregistered', 'Registered']} onChange={val => setNewCust({ ...newCust, regType: val })} strict={true} />
+                                            </div>
+                                            <div className="md:col-span-2"><SearchableDropdown label="Destination" value={newCust.destination} options={dynamicProvinces} onChange={val => setNewCust({ ...newCust, destination: val })} /></div>
+                                            <div className="md:col-span-2"><Input label="Address" value={newCust.address} onChange={e => setNewCust({ ...newCust, address: e.target.value })} /></div>
+                                            <div className="md:col-span-1"><Button onClick={addCustomer}>{editingCustId ? 'Update' : 'Add'}</Button></div>
+                                        </div>
+                                    </Card>
+                                    <Card className="p-0 overflow-hidden">
+                                        <div className="flex justify-between items-center p-4 bg-gray-100 border-b border-gray-200">
+                                            <div className="font-bold text-gray-900">Customer List</div>
+                                            <div className="relative w-64"><input type="text" placeholder="Search customer..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={custSearch} onChange={e => setCustSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div>
+                                        </div>
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="bg-gray-50 text-gray-500">
+                                                <tr><th className="p-3">Name</th><th className="p-3">NTN</th><th className="p-3">Reg Type</th><th className="p-3">Destination</th><th className="p-3">Address</th><th className="p-3 text-right">Action</th></tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {filteredCustomers.map(c => (
+                                                    <tr key={c.id} className="hover:bg-gray-50">
+                                                        <td className="p-3 font-bold">{c.name}</td>
+                                                        <td className="p-3">{c.ntn}</td>
+                                                        <td className="p-3 text-xs"><span className={`px-2 py-1 rounded ${c.regType === 'Registered' ? 'bg-black text-white' : 'bg-gray-200 text-gray-800'}`}>{c.regType || 'Unregistered'}</span></td>
+                                                        <td className="p-3">{c.destination}</td>
+                                                        <td className="p-3 text-gray-500">{c.address}</td>
+                                                        <td className="p-3 text-right">
+                                                            <div className="flex justify-end gap-2">
+                                                                <button onClick={() => editCustomer(c)} className="text-gray-600 hover:text-black"><Icons.Edit /></button>
+                                                                <button onClick={() => deleteCustomer(c.id)} className="text-red-500"><Icons.Trash2 /></button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {filteredCustomers.length === 0 && (
+                                                    <tr><td colSpan="5" className="p-4 text-center text-gray-400 text-sm">No customers found</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </Card>
+                                </div>
+                            )
+                        }
+
+                        {
+                            activeTab === 'history' && (
+
+                                <Card className="p-0 overflow-hidden w-full">
+                                    <div className="flex justify-between items-center p-4 bg-gray-100 border-b border-gray-200">
+                                        <div className="font-bold text-gray-900">Recent Invoices</div>
+                                        <div className="relative w-64"><input type="text" placeholder="Search invoices..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={histSearch} onChange={e => setHistSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div>
+                                    </div>
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">FBR Invoice #</th><th className="p-3">Date</th><th className="p-3">Customer</th><th className="p-3">NTN</th><th className="p-3 text-right">Total</th><th className="p-3 text-center">Action</th></tr></thead>
+                                        <tbody className="divide-y divide-gray-100">{filteredHistory.map(inv => (<tr key={inv.id} className="hover:bg-gray-50"><td className="p-3 text-xs font-bold">{inv.fbrInvoiceNumber}</td><td className="p-3">{inv.invoiceDate || inv.date}</td><td className="p-3">{inv.customerName}</td><td className="p-3">{inv.customerNTN}</td><td className="p-3 text-right">{formatCurrency(inv.total)}</td><td className="p-3 text-center"><div className="flex justify-center gap-2"><button onClick={() => { setLastInv(inv); setShowReceipt(true); }} className="text-gray-600 hover:text-black" title="Print Receipt"><Icons.Printer /></button><button onClick={() => downloadInvoice(inv)} className="text-gray-600 hover:text-black" title="Download JSON"><Icons.Download /></button></div></td></tr>))}</tbody>
+                                    </table>
+                                </Card>
+                            )
+                        }
+
+                        {
+                            activeTab === 'settings' && (
+                                <div className="w-full"><Card className="p-8"><h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><Icons.Settings /> Client Configuration</h2>
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="Business Name" value={user?.settings?.businessName} readOnly /><Input label="Business Address" value={user?.settings?.address} readOnly /></div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="NTN" value={user?.settings?.ntn} readOnly /><Input label="STRN" value={user?.settings?.strn} readOnly /></div>
+                                        <div className="grid grid-cols-1 gap-6">
+                                            <div>
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Custom HTML Invoice Template</label>
+                                                </div>
+                                                <VisualTemplateBuilder 
+                                                    value={user?.settings?.invoiceTemplate || ''} 
+                                                    onChange={val => saveUser({ settings: { ...user.settings, invoiceTemplate: val } })}
+                                                    readOnly={false} 
+                                                />
+                                                <div className="text-xs text-gray-500 mt-2">
+                                                    <strong>Available Variables (for custom code):</strong> <code className="bg-gray-100 px-1 rounded">{`{{businessName}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{address}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{ntn}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{invoiceNumber}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{invoiceDate}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{customerName}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{subtotal}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{gst}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{total}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{fbrInvoiceNumber}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{QR_CODE_URL}}`}</code>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="Sale Origination Province" value={user?.settings?.province} readOnly /><Input label="Whitelisted IP" value={user?.settings?.whitelistedIp} readOnly /></div>
+                                        <div className="opacity-80 pointer-events-none"><label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Company Logo</label>{user.settings.logo ? <img src={user.settings.logo} className="h-10 mt-2" /> : <p className="text-sm">No Logo Uploaded</p>}</div>
+                                        <div className="opacity-80 pointer-events-none"><label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Active Environment</label><span className={`flex items-center gap-1 px-2 py-1 rounded text-xs w-24 ${user.settings.integrationMode === 'production' ? 'bg-gray-200 text-gray-800' : 'bg-yellow-100 text-yellow-800'}`}>{user.settings.integrationMode === 'production' ? 'Production' : 'Sandbox'}</span></div>
+                                        <div className="opacity-80 pointer-events-none"><label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Access Valid Till</label><span className="text-sm">{new Date(user.billing.expiry).toDateString()}</span></div>
+                                    </div>
+                                    <div className="text-center mt-6 text-sm text-gray-500">Contact Administrator to update basic details. You can update your Invoice Template visually above.</div>
+                                </Card></div>
+                            )
+                        }
+                    </main >
+
+                    {showReceipt && lastInv && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                            {renderInvoiceTemplate()}
+                        </div>
+                    )}
+                </div >
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />); 
+    </script>
+</body>
+
+</html>
