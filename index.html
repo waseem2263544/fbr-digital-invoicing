@@ -71,7 +71,7 @@
                         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
                             <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full border-l-4 border-black">
                                 <h1 className="text-xl font-bold text-black mb-2">Something went wrong</h1>
-                                <p className="text-sm text-gray-600 mb-6">A rendering error occurred in the component tree.</p>
+                                <p className="text-sm text-gray-600 mb-6">A rendering error occurred.</p>
                                 <button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition">
                                     Reset App Data & Reload
                                 </button>
@@ -230,6 +230,7 @@
                     const data = await response.json();
                     if (response.ok && data.token) {
                         sessionStorage.setItem('fbr_admin_backup', JSON.stringify(user));
+                        sessionStorage.setItem('fbr_admin_token', sessionStorage.getItem('fbr_token')); // SECURE ADMIN TOKEN BACKUP
                         if (window.localforage) await window.localforage.setItem('fbr_admin_backup', user);
                         
                         const clientUser = { ...data.user, isImpersonated: true };
@@ -245,11 +246,15 @@
             const handleExitImpersonation = async () => {
                 try {
                     const fallbackBackup = sessionStorage.getItem('fbr_admin_backup');
+                    const fallbackToken = sessionStorage.getItem('fbr_admin_token'); // SECURE ADMIN TOKEN RESTORE
+                    
                     sessionStorage.removeItem('fbr_admin_backup');
+                    sessionStorage.removeItem('fbr_admin_token');
                     if (window.localforage) await window.localforage.removeItem('fbr_admin_backup').catch(()=>{});
                     
-                    if (fallbackBackup) {
+                    if (fallbackBackup && fallbackToken) {
                         const adminUser = JSON.parse(fallbackBackup);
+                        sessionStorage.setItem('fbr_token', fallbackToken);
                         sessionStorage.setItem('fbr_session', fallbackBackup);
                         if (window.localforage) await window.localforage.setItem('fbr_session', adminUser).catch(()=>{});
                         window.location.reload();
@@ -260,7 +265,6 @@
             if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading System...</div>;
             if (!user) return <LoginScreen onLogin={handleLogin} />;
 
-            // Safe Render Check
             if (user.role !== 'admin' && (!user.settings || !user.businessStatus)) {
                 return <LoginScreen onLogin={handleLogin} />;
             }
@@ -319,10 +323,18 @@
             const [businesses, setBusinesses] = useState([]);
             const [users, setUsers] = useState([]);
             const [activeTab, setActiveTab] = useState('businesses'); 
+            
             const [showBizModal, setShowBizModal] = useState(false);
             const [editingBiz, setEditingBiz] = useState(null); 
+            
             const [showUserModal, setShowUserModal] = useState(false);
-            const [newUser, setNewUser] = useState({ username: '', password: '', role: 'client' });
+            const [newUser, setNewUser] = useState({ username: '', password: '' });
+            
+            // NEW: Searchable Assignment Modal State
+            const [accessModalUser, setAccessModalUser] = useState(null);
+            const [bizToAssign, setBizToAssign] = useState("");
+            const [levelToAssign, setLevelToAssign] = useState("admin");
+
             const [adminError, setAdminError] = useState("");
             const [bizSearch, setBizSearch] = useState("");
             const [userSearch, setUserSearch] = useState("");
@@ -356,14 +368,31 @@
                 if (!newUser.username || newUser.password.length < 6) return setAdminError("Invalid username or password (min 6 chars).");
                 try {
                     const res = await fetch('https://app.tallied.pk/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify(newUser) });
-                    if (res.ok) { setShowUserModal(false); setNewUser({ username: '', password: '', role: 'client' }); fetchData(); }
+                    if (res.ok) { setShowUserModal(false); setNewUser({ username: '', password: '' }); fetchData(); }
                     else setAdminError((await res.json()).error || "Error creating user");
                 } catch (e) { setAdminError("Network Error"); }
             };
 
-            const handleAccessChange = async (userId, businessId, accessLevel) => {
-                await fetch(`https://app.tallied.pk/api/admin/users/${userId}/access`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify({ businessId, accessLevel }) });
+            const toggleUserRevoke = async (u) => {
+                await fetch(`https://app.tallied.pk/api/admin/users/${u.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify({ isRevoked: !u.isRevoked }) });
                 fetchData();
+            };
+
+            const assignBusinessToUser = async () => {
+                const targetBiz = businesses.find(b => b.businessName === bizToAssign);
+                if(!targetBiz) return alert("Please select a valid business");
+                await fetch(`https://app.tallied.pk/api/admin/users/${accessModalUser.id}/access`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify({ businessId: targetBiz.id, accessLevel: levelToAssign }) });
+                setBizToAssign("");
+                fetchData();
+                // update local modal state
+                setAccessModalUser(prev => ({ ...prev, access: [...prev.access.filter(a=>a.businessId !== targetBiz.id), {businessId: targetBiz.id, businessName: targetBiz.businessName, accessLevel: levelToAssign}] }));
+            };
+
+            const revokeBusinessFromUser = async (businessId) => {
+                await fetch(`https://app.tallied.pk/api/admin/users/${accessModalUser.id}/access`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify({ businessId, accessLevel: null }) });
+                fetchData();
+                // update local modal state
+                setAccessModalUser(prev => ({ ...prev, access: prev.access.filter(a => a.businessId !== businessId) }));
             };
 
             const filteredBiz = businesses.filter(b => (b.businessName || "").toLowerCase().includes(bizSearch.toLowerCase()) || (b.ntn || "").includes(bizSearch));
@@ -396,6 +425,7 @@
                             </div>
                         </div>
 
+                        {/* --- BUSINESS CREATION / EDIT MODAL --- */}
                         {showBizModal && editingBiz && (
                             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                                 <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -427,11 +457,6 @@
                                             <div className="grid grid-cols-2 gap-2"><Input label="NTN" value={editingBiz.ntn} onChange={e => setEditingBiz({ ...editingBiz, ntn: e.target.value })} /><Input label="STRN" value={editingBiz.strn} onChange={e => setEditingBiz({ ...editingBiz, strn: e.target.value })} /></div>
                                             <Input label="Address" value={editingBiz.address} onChange={e => setEditingBiz({ ...editingBiz, address: e.target.value })} />
                                             <SearchableDropdown label="Province" value={editingBiz.province} options={PROVINCES} onChange={val => setEditingBiz({ ...editingBiz, province: val })} />
-                                            <div>
-                                                <label className="text-xs font-semibold text-gray-500 uppercase block mb-1">Company Logo</label>
-                                                <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => { setEditingBiz({ ...editingBiz, logo: reader.result }); }; reader.readAsDataURL(file); } }} className="text-sm" />
-                                                {editingBiz.logo && <img src={editingBiz.logo} className="h-10 mt-2 object-contain" />}
-                                            </div>
                                         </div>
                                         <div className="space-y-4">
                                             <h4 className="font-bold text-gray-700 border-b pb-2">FBR Configuration</h4>
@@ -456,6 +481,7 @@
                             </div>
                         )}
 
+                        {/* --- USER CREATION MODAL --- */}
                         {showUserModal && (
                             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                                 <Card className="p-6 w-full max-w-md">
@@ -467,19 +493,67 @@
                                     <div className="space-y-4">
                                         <Input label="Username" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} required />
                                         <Input label="Password" type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} required />
-                                        <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase block mb-1">User Role</label>
-                                            <select className="w-full border p-2 rounded text-sm" value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
-                                                <option value="client">Client (Full Dashboard Access)</option>
-                                                <option value="restricted_user">Staff (View/Edit Specifics)</option>
-                                            </select>
-                                        </div>
+                                        <div className="text-xs text-gray-500 mt-2">After creating the user, you can assign them to specific businesses from the Users list.</div>
                                         <Button onClick={createUser} className="w-full mt-4">Create User</Button>
                                     </div>
                                 </Card>
                             </div>
                         )}
 
+                        {/* --- NEW: USER ACCESS ASSIGNMENT MODAL --- */}
+                        {accessModalUser && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                                <Card className="p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                                    <div className="flex justify-between items-center mb-6 border-b pb-4">
+                                        <h3 className="text-xl font-bold flex items-center gap-2"><Icons.User /> Manage Access: {accessModalUser.username}</h3>
+                                        <button onClick={() => setAccessModalUser(null)}><Icons.X /></button>
+                                    </div>
+                                    
+                                    <div className="bg-gray-50 p-4 rounded-lg border mb-6">
+                                        <h4 className="font-bold text-sm mb-3">Grant New Business Access</h4>
+                                        <div className="flex items-end gap-2">
+                                            <div className="flex-1">
+                                                <SearchableDropdown 
+                                                    label="Select Business" 
+                                                    value={bizToAssign} 
+                                                    options={businesses.filter(b => !accessModalUser.access.find(a => a.businessId === b.id)).map(b => b.businessName)} 
+                                                    onChange={setBizToAssign} 
+                                                    strict={false} 
+                                                    placeholder="Type to search businesses..."
+                                                />
+                                            </div>
+                                            <div className="w-40">
+                                                <label className="text-xs font-semibold text-gray-500 uppercase block mb-1">Access Role</label>
+                                                <select className="w-full border py-2 px-3 rounded-lg outline-none text-sm" value={levelToAssign} onChange={e => setLevelToAssign(e.target.value)}>
+                                                    <option value="admin">Full Admin</option>
+                                                    <option value="edit">Edit Invoices</option>
+                                                    <option value="view">View Only</option>
+                                                </select>
+                                            </div>
+                                            <Button onClick={assignBusinessToUser} disabled={!bizToAssign}>Grant</Button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-bold text-sm mb-3">Currently Assigned Businesses</h4>
+                                        <div className="space-y-2">
+                                            {accessModalUser.access.length === 0 ? <div className="text-sm text-gray-500 italic">No businesses assigned to this user.</div> : 
+                                            accessModalUser.access.map(a => (
+                                                <div key={a.businessId} className="flex justify-between items-center p-3 border rounded hover:bg-gray-50">
+                                                    <div>
+                                                        <div className="font-bold">{a.businessName}</div>
+                                                        <div className="text-xs text-gray-500 uppercase font-semibold mt-1">Role: <span className="text-blue-600">{a.accessLevel}</span></div>
+                                                    </div>
+                                                    <Button variant="danger" onClick={() => revokeBusinessFromUser(a.businessId)} className="text-xs"><Icons.Trash2 size={14}/> Revoke Access</Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                        )}
+
+                        {/* --- BUSINESSES TAB --- */}
                         {activeTab === 'businesses' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {filteredBiz.length > 0 ? filteredBiz.map(biz => {
@@ -503,43 +577,29 @@
                             </div>
                         )}
 
+                        {/* --- USERS TAB --- */}
                         {activeTab === 'users' && (
-                            <div className="grid gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {filteredUsers.length > 0 ? filteredUsers.map(u => (
-                                    <Card key={u.id} className="p-5">
-                                        <div className="flex justify-between items-center mb-4 pb-4 border-b">
+                                    <Card key={u.id} className={`p-5 ${u.isRevoked ? 'opacity-60' : ''}`}>
+                                        <div className="flex justify-between items-start mb-4 pb-4 border-b">
                                             <div>
-                                                <div className="font-bold text-xl flex items-center gap-2"><Icons.User /> {u.username}</div>
-                                                <span className={`text-xs px-2 py-1 rounded mt-2 inline-block font-bold uppercase ${u.role === 'client' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>{u.role.replace('_', ' ')}</span>
+                                                <div className="font-bold text-lg flex items-center gap-2"><Icons.User /> {u.username}</div>
+                                                {u.isRevoked && <div className="text-xs text-red-600 font-bold mt-1 uppercase">Login Disabled</div>}
                                             </div>
-                                            <Button onClick={() => onImpersonate(u.id)} variant="primary"><Icons.Eye /> Login As User</Button>
+                                            <Button onClick={() => toggleUserRevoke(u)} variant="ghost" className="text-xs p-1" title={u.isRevoked ? "Enable Login" : "Disable Login"}><Icons.ShieldCheck size={16} className={u.isRevoked ? 'text-green-600' : 'text-red-600'}/></Button>
                                         </div>
-                                        <div>
-                                            <h4 className="text-sm font-bold text-gray-700 mb-3">Assign Business Access</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                                                {businesses.map(biz => {
-                                                    const userAccess = (u.access || []).find(a => a.businessId === biz.id);
-                                                    const hasAccess = !!userAccess;
-                                                    const currentLevel = hasAccess ? userAccess.accessLevel : (u.role === 'client' ? 'admin' : 'view');
+                                        
+                                        <div className="mb-4">
+                                            <div className="text-sm text-gray-500">Assigned to <span className="font-bold text-black">{u.access?.length || 0}</span> businesses.</div>
+                                        </div>
 
-                                                    return (
-                                                        <div key={biz.id} className={`flex items-center justify-between p-2 rounded border ${hasAccess ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
-                                                            <div className="flex items-center gap-3">
-                                                                <input type="checkbox" checked={hasAccess} onChange={(e) => handleAccessChange(u.id, biz.id, e.target.checked ? currentLevel : null)} className="w-4 h-4 text-blue-600 rounded" />
-                                                                <span className="text-sm font-medium">{biz.businessName}</span>
-                                                            </div>
-                                                            {hasAccess && (
-                                                                <select className="text-xs border p-1 rounded bg-white" value={currentLevel} onChange={(e) => handleAccessChange(u.id, biz.id, e.target.value)}>
-                                                                    {u.role === 'client' ? <option value="admin">Full Admin</option> : <><option value="view">View Only</option><option value="edit">Edit Access</option></>}
-                                                                </select>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
+                                        <div className="grid grid-cols-2 gap-2 mt-auto">
+                                            <Button onClick={() => onImpersonate(u.id)} variant="secondary" className="text-xs bg-gray-50 border-gray-200"><Icons.Eye size={14}/> Login As</Button>
+                                            <Button onClick={() => setAccessModalUser(u)} variant="primary" className="text-xs bg-blue-600 hover:bg-blue-700">Manage Access</Button>
                                         </div>
                                     </Card>
-                                )) : <div className="text-center py-8 text-gray-400">No users match your search.</div>}
+                                )) : <div className="col-span-3 text-center py-8 text-gray-400">No users match your search.</div>}
                             </div>
                         )}
                     </main>
@@ -752,6 +812,24 @@
                 } finally { setLoading(false); }
             };
 
+            const handleBusinessSwitch = async (e) => {
+                const newBizId = e.target.value;
+                const res = await fetch('https://app.tallied.pk/api/switch-business', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
+                    body: JSON.stringify({ businessId: newBizId })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    sessionStorage.setItem('fbr_token', data.token);
+                    setUser(data.user);
+                    if (window.localforage) await window.localforage.setItem('fbr_session', data.user);
+                    sessionStorage.setItem('fbr_session', JSON.stringify(data.user));
+                    window.location.reload();
+                } else {
+                    alert("Failed to switch business context.");
+                }
+            };
+
             const renderInvoiceTemplate = () => {
                 let qrUrl = "";
                 try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 150 }).toDataURL(); } catch (e) {}
@@ -806,6 +884,8 @@
                 );
             };
 
+            const userCanEdit = user.accessLevel !== 'view';
+
             return (
                 <div className="min-h-screen pb-20 relative bg-gray-50">
                     <nav className="bg-black text-white shadow-lg sticky top-0 z-40">
@@ -813,11 +893,13 @@
                             <div className="flex items-center gap-3">
                                 <div className="bg-white/10 p-2 rounded">{user.settings?.logo ? <img src={user.settings.logo} className="w-5 h-5 object-contain" /> : <Icons.FileText size={20} />}</div>
                                 <div><h1 className="font-bold leading-none">Hi {user.username || 'User'}</h1><span className="text-gray-400 text-xs">{user.settings?.businessName}</span></div>
-                                {user.role === 'restricted_user' && user.accessibleBusinesses?.length > 1 && (
-                                    <select className="ml-4 text-xs text-black py-1 px-2 rounded font-bold border-none outline-none appearance-none" value={user.activeBusinessId} onChange={() => { alert("Business Switched. Log in again to sync."); onLogout(); }}>
+                                
+                                {user.accessibleBusinesses?.length > 1 && (
+                                    <select className="ml-4 text-xs text-black py-1 px-2 rounded font-bold border-none outline-none cursor-pointer hover:bg-gray-100 transition-colors" value={user.activeBusinessId} onChange={handleBusinessSwitch}>
                                         {user.accessibleBusinesses.map(b => (<option key={b.id} value={b.id}>{b.name}</option>))}
                                     </select>
                                 )}
+
                             </div>
                             <div className="flex gap-2 text-sm">
                                 {['invoice', 'inventory', 'customers', 'history', 'settings'].map(t => (<button key={t} onClick={() => setActiveTab(t)} className={`px-3 py-1.5 rounded capitalize transition-all duration-200 ${activeTab === t ? 'bg-white text-black font-bold' : 'hover:bg-gray-800 text-gray-300'}`}>{t}</button>))}
@@ -895,8 +977,12 @@
                                     </div>
                                     <div className="mt-6 flex justify-end gap-3">
                                         <Button onClick={() => setLastInv({ ...invoice, ...totals, id: invoice.invoiceNumber }) || setShowReceipt(true)} variant="secondary"><Icons.Printer /> Print Preview</Button>
-                                        <Button onClick={() => callFbrApi(true)} variant="secondary" disabled={loading}><Icons.ShieldCheck /> Validate Invoice</Button>
-                                        <Button onClick={() => callFbrApi(false)} disabled={loading}><Icons.Save /> Submit Invoice</Button>
+                                        {userCanEdit && (
+                                            <>
+                                                <Button onClick={() => callFbrApi(true)} variant="secondary" disabled={loading}><Icons.ShieldCheck /> Validate Invoice</Button>
+                                                <Button onClick={() => callFbrApi(false)} disabled={loading}><Icons.Save /> Submit Invoice</Button>
+                                            </>
+                                        )}
                                     </div>
                                 </Card>
                             </div>
@@ -904,44 +990,48 @@
 
                         {activeTab === 'inventory' && (
                             <div className="w-full">
-                                <Card className="p-6 mb-6">
-                                    <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Icons.Box /> {editingInvId ? 'Edit Item' : 'Add Item'}</h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                                        <div className="md:col-span-2"><Input label="Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} /></div>
-                                        <div className="md:col-span-2"><SearchableDropdown label="Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
-                                        <div className="md:col-span-2"><SearchableDropdown label="HS" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
-                                        <div className="md:col-span-1"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
-                                        <div className="md:col-span-1"><Input label="Price" type="number" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} /></div>
-                                        {isRetailFedSale(newItem.saleType) && <div className="md:col-span-1"><Input label="Ret. Price" type="number" value={newItem.retailPrice} onChange={e => setNewItem({ ...newItem, retailPrice: e.target.value })} /></div>}
-                                        <div className="md:col-span-1"><Input label="Tax Rate %" type="number" value={newItem.taxRate} onChange={e => setNewItem({ ...newItem, taxRate: e.target.value })} /></div>
-                                        {isRetailFedSale(newItem.saleType) && <div className="md:col-span-1"><Input label="FED" type="number" value={newItem.fedPayable} onChange={e => setNewItem({ ...newItem, fedPayable: e.target.value })} /></div>}
-                                        <div className="md:col-span-2 flex gap-2"><Input label="SRO Schedule No" value={newItem.sroScheduleNo} onChange={e => setNewItem({ ...newItem, sroScheduleNo: e.target.value })} /><Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
-                                        <div className="md:col-span-12 flex justify-end gap-2 mt-4">
-                                            {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", taxRate: user.settings.taxRates?.salesTax || 18, saleType: "Goods at standard rate (default)", extraTax: user.settings.taxRates?.extraTax || 0, furtherTax: 0, retailPrice: 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-4">Cancel</Button>}
-                                            <Button onClick={() => { if (editingInvId) { saveUser({ inventory: (user.inventory || []).map(i => i.id === editingInvId ? { ...i, ...newItem } : i) }); setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", taxRate: user.settings.taxRates?.salesTax || 18, saleType: "Goods at standard rate (default)", extraTax: user.settings.taxRates?.extraTax || 0, furtherTax: 0, retailPrice: 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } else addInventory(); }} className="px-8"><Icons.Save size={16} /> Save</Button>
+                                {userCanEdit && (
+                                    <Card className="p-6 mb-6">
+                                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Icons.Box /> {editingInvId ? 'Edit Item' : 'Add Item'}</h2>
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                            <div className="md:col-span-2"><Input label="Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} /></div>
+                                            <div className="md:col-span-2"><SearchableDropdown label="Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
+                                            <div className="md:col-span-2"><SearchableDropdown label="HS" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
+                                            <div className="md:col-span-1"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
+                                            <div className="md:col-span-1"><Input label="Price" type="number" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} /></div>
+                                            {isRetailFedSale(newItem.saleType) && <div className="md:col-span-1"><Input label="Ret. Price" type="number" value={newItem.retailPrice} onChange={e => setNewItem({ ...newItem, retailPrice: e.target.value })} /></div>}
+                                            <div className="md:col-span-1"><Input label="Tax Rate %" type="number" value={newItem.taxRate} onChange={e => setNewItem({ ...newItem, taxRate: e.target.value })} /></div>
+                                            {isRetailFedSale(newItem.saleType) && <div className="md:col-span-1"><Input label="FED" type="number" value={newItem.fedPayable} onChange={e => setNewItem({ ...newItem, fedPayable: e.target.value })} /></div>}
+                                            <div className="md:col-span-2 flex gap-2"><Input label="SRO Schedule No" value={newItem.sroScheduleNo} onChange={e => setNewItem({ ...newItem, sroScheduleNo: e.target.value })} /><Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
+                                            <div className="md:col-span-12 flex justify-end gap-2 mt-4">
+                                                {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", taxRate: user.settings.taxRates?.salesTax || 18, saleType: "Goods at standard rate (default)", extraTax: user.settings.taxRates?.extraTax || 0, furtherTax: 0, retailPrice: 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-4">Cancel</Button>}
+                                                <Button onClick={() => { if (editingInvId) { saveUser({ inventory: (user.inventory || []).map(i => i.id === editingInvId ? { ...i, ...newItem } : i) }); setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", taxRate: user.settings.taxRates?.salesTax || 18, saleType: "Goods at standard rate (default)", extraTax: user.settings.taxRates?.extraTax || 0, furtherTax: 0, retailPrice: 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } else addInventory(); }} className="px-8"><Icons.Save size={16} /> Save</Button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </Card>
-                                <Card className="p-0 overflow-hidden"><table className="w-full text-left text-sm"><thead className="bg-gray-100"><tr><th className="p-3">Name</th><th className="p-3 w-32">Type</th><th className="p-3 w-96">HS Code</th><th className="p-3">Price</th>{showRetailFed && <th className="p-3">Ret.Price</th>}<th className="p-3">S.Tax%</th>{showRetailFed && <th className="p-3">FED</th>}<th className="p-3 text-right"></th></tr></thead><tbody className="divide-y divide-gray-100">{filteredInventory.map(i => (<tr key={i.id} className="hover:bg-gray-50"><td className="p-3">{i.name}</td><td className="p-3 text-xs">{i.saleType}</td><td className="p-3">{i.hsCode}</td><td className="p-3">{formatCurrency(i.price)}</td>{showRetailFed && <td className="p-3">{formatCurrency(i.retailPrice)}</td>}<td className="p-3">{i.taxRate}%</td>{showRetailFed && <td className="p-3">{i.fedPayable}</td>}<td className="p-3 text-right"><div className="flex justify-end gap-2"><button onClick={() => { setNewItem(i); setEditingInvId(i.id); }} className="text-gray-600 hover:text-black"><Icons.Edit /></button><button onClick={() => deleteInventory(i.id)} className="text-red-500"><Icons.Trash2 /></button></div></td></tr>))}</tbody></table></Card>
+                                    </Card>
+                                )}
+                                <Card className="p-0 overflow-hidden"><table className="w-full text-left text-sm"><thead className="bg-gray-100"><tr><th className="p-3">Name</th><th className="p-3 w-32">Type</th><th className="p-3 w-96">HS Code</th><th className="p-3">Price</th>{showRetailFed && <th className="p-3">Ret.Price</th>}<th className="p-3">S.Tax%</th>{showRetailFed && <th className="p-3">FED</th>}{userCanEdit && <th className="p-3 text-right"></th>}</tr></thead><tbody className="divide-y divide-gray-100">{filteredInventory.map(i => (<tr key={i.id} className="hover:bg-gray-50"><td className="p-3">{i.name}</td><td className="p-3 text-xs">{i.saleType}</td><td className="p-3">{i.hsCode}</td><td className="p-3">{formatCurrency(i.price)}</td>{showRetailFed && <td className="p-3">{formatCurrency(i.retailPrice)}</td>}<td className="p-3">{i.taxRate}%</td>{showRetailFed && <td className="p-3">{i.fedPayable}</td>}{userCanEdit && <td className="p-3 text-right"><div className="flex justify-end gap-2"><button onClick={() => { setNewItem(i); setEditingInvId(i.id); }} className="text-gray-600 hover:text-black"><Icons.Edit /></button><button onClick={() => deleteInventory(i.id)} className="text-red-500"><Icons.Trash2 /></button></div></td>}</tr>))}</tbody></table></Card>
                             </div >
                         )}
 
                         {activeTab === 'customers' && (
                             <div className="w-full">
-                                <Card className="p-6 mb-6">
-                                    <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Icons.Users /> {editingCustId ? 'Edit Customer' : 'Add Customer'}</h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                                        <div className="md:col-span-3"><Input label="Customer Name" value={newCust.name} onChange={e => setNewCust({ ...newCust, name: e.target.value })} /></div>
-                                        <div className="md:col-span-2 relative"><Input label="NTN" value={newCust.ntn} onChange={e => setNewCust({ ...newCust, ntn: e.target.value })} /><button onClick={() => checkCustomerStatus(newCust.ntn)} className="absolute right-0 top-0 text-[10px] bg-black text-white px-2 py-1 rounded hover:bg-gray-800 mt-1 mr-1">Verify</button></div>
-                                        <div className="md:col-span-2"><SearchableDropdown label="Reg Type" value={newCust.regType || 'Unregistered'} options={['Unregistered', 'Registered']} onChange={val => setNewCust({ ...newCust, regType: val })} strict={true} /></div>
-                                        <div className="md:col-span-2"><SearchableDropdown label="Destination" value={newCust.destination} options={dynamicProvinces} onChange={val => setNewCust({ ...newCust, destination: val })} /></div>
-                                        <div className="md:col-span-2"><Input label="Address" value={newCust.address} onChange={e => setNewCust({ ...newCust, address: e.target.value })} /></div>
-                                        <div className="md:col-span-1"><Button onClick={addCustomer}>{editingCustId ? 'Update' : 'Add'}</Button></div>
-                                    </div>
-                                </Card>
+                                {userCanEdit && (
+                                    <Card className="p-6 mb-6">
+                                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Icons.Users /> {editingCustId ? 'Edit Customer' : 'Add Customer'}</h2>
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                            <div className="md:col-span-3"><Input label="Customer Name" value={newCust.name} onChange={e => setNewCust({ ...newCust, name: e.target.value })} /></div>
+                                            <div className="md:col-span-2 relative"><Input label="NTN" value={newCust.ntn} onChange={e => setNewCust({ ...newCust, ntn: e.target.value })} /><button onClick={() => checkCustomerStatus(newCust.ntn)} className="absolute right-0 top-0 text-[10px] bg-black text-white px-2 py-1 rounded hover:bg-gray-800 mt-1 mr-1">Verify</button></div>
+                                            <div className="md:col-span-2"><SearchableDropdown label="Reg Type" value={newCust.regType || 'Unregistered'} options={['Unregistered', 'Registered']} onChange={val => setNewCust({ ...newCust, regType: val })} strict={true} /></div>
+                                            <div className="md:col-span-2"><SearchableDropdown label="Destination" value={newCust.destination} options={dynamicProvinces} onChange={val => setNewCust({ ...newCust, destination: val })} /></div>
+                                            <div className="md:col-span-2"><Input label="Address" value={newCust.address} onChange={e => setNewCust({ ...newCust, address: e.target.value })} /></div>
+                                            <div className="md:col-span-1"><Button onClick={addCustomer}>{editingCustId ? 'Update' : 'Add'}</Button></div>
+                                        </div>
+                                    </Card>
+                                )}
                                 <Card className="p-0 overflow-hidden">
                                     <div className="flex justify-between items-center p-4 bg-gray-100 border-b border-gray-200"><div className="font-bold text-gray-900">Customer List</div><div className="relative w-64"><input type="text" placeholder="Search..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={custSearch} onChange={e => setCustSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div></div>
-                                    <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Name</th><th className="p-3">NTN</th><th className="p-3">Reg Type</th><th className="p-3">Destination</th><th className="p-3">Address</th><th className="p-3 text-right">Action</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredCustomers.map(c => (<tr key={c.id} className="hover:bg-gray-50"><td className="p-3 font-bold">{c.name}</td><td className="p-3">{c.ntn}</td><td className="p-3 text-xs"><span className={`px-2 py-1 rounded ${c.regType === 'Registered' ? 'bg-black text-white' : 'bg-gray-200 text-gray-800'}`}>{c.regType || 'Unregistered'}</span></td><td className="p-3">{c.destination}</td><td className="p-3 text-gray-500">{c.address}</td><td className="p-3 text-right"><div className="flex justify-end gap-2"><button onClick={() => editCustomer(c)} className="text-gray-600 hover:text-black"><Icons.Edit /></button><button onClick={() => deleteCustomer(c.id)} className="text-red-500"><Icons.Trash2 /></button></div></td></tr>))}</tbody></table>
+                                    <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Name</th><th className="p-3">NTN</th><th className="p-3">Reg Type</th><th className="p-3">Destination</th><th className="p-3">Address</th>{userCanEdit && <th className="p-3 text-right">Action</th>}</tr></thead><tbody className="divide-y divide-gray-100">{filteredCustomers.map(c => (<tr key={c.id} className="hover:bg-gray-50"><td className="p-3 font-bold">{c.name}</td><td className="p-3">{c.ntn}</td><td className="p-3 text-xs"><span className={`px-2 py-1 rounded ${c.regType === 'Registered' ? 'bg-black text-white' : 'bg-gray-200 text-gray-800'}`}>{c.regType || 'Unregistered'}</span></td><td className="p-3">{c.destination}</td><td className="p-3 text-gray-500">{c.address}</td>{userCanEdit && <td className="p-3 text-right"><div className="flex justify-end gap-2"><button onClick={() => editCustomer(c)} className="text-gray-600 hover:text-black"><Icons.Edit /></button><button onClick={() => deleteCustomer(c.id)} className="text-red-500"><Icons.Trash2 /></button></div></td>}</tr>))}</tbody></table>
                                 </Card>
                             </div>
                         )}
@@ -959,6 +1049,7 @@
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="Business Name" value={user?.settings?.businessName} readOnly /><Input label="Business Address" value={user?.settings?.address} readOnly /></div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="NTN" value={user?.settings?.ntn} readOnly /><Input label="STRN" value={user?.settings?.strn} readOnly /></div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="Sale Origination Province" value={user?.settings?.province} readOnly /><Input label="Active Environment" value={user?.settings?.integrationMode === 'production' ? 'Production' : 'Sandbox'} readOnly /></div>
+                                    <div className="opacity-80 pointer-events-none"><label className="text-xs font-semibold text-gray-500 uppercase block mb-1">Company Logo</label>{user.settings?.logo ? <img src={user.settings.logo} className="h-10 mt-2 object-contain" /> : <p className="text-sm">No Logo Uploaded</p>}</div>
                                 </div>
                                 <div className="text-center mt-8 text-sm text-gray-500 border-t pt-4">Contact Administrator to update details. Invoices are locked to the FBR Standard format.</div>
                             </Card></div>
@@ -973,5 +1064,4 @@
         root.render(<App />); 
     </script>
 </body>
-
 </html>
