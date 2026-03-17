@@ -414,7 +414,7 @@
                     } catch (e) {
                         sessionStorage.removeItem('fbr_session');
                         sessionStorage.removeItem('fbr_token');
-                        await localforage.removeItem('fbr_session');
+                        if (window.localforage) await window.localforage.removeItem('fbr_session');
                         setUser(null);
                     } finally {
                         setIsAppLoading(false);
@@ -425,8 +425,10 @@
 
             const handleLogin = async (u) => {
                 setUser(u);
-                await localforage.setItem('fbr_session', u);
-                sessionStorage.setItem('fbr_session', JSON.stringify(u)); 
+                try {
+                    if (window.localforage) await window.localforage.setItem('fbr_session', u);
+                    sessionStorage.setItem('fbr_session', JSON.stringify(u)); 
+                } catch(e) { console.error("Storage error", e); }
             };
 
             const handleLogout = async (e, force = false) => {
@@ -444,10 +446,9 @@
                 }
 
                 window.location.href = window.location.pathname + '?logout=' + Date.now();
-                setTimeout(() => { setUser(null); }, 100);
             };
 
-            // NEW IMPERSONATION LOGIC FOR API 
+            // NEW IMPERSONATION LOGIC (Bulletproof Transition)
             const handleImpersonate = async (userId) => {
                 try {
                     const response = await fetch('https://app.tallied.pk/api/admin/impersonate', {
@@ -456,7 +457,7 @@
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` 
                         },
-                        body: JSON.stringify({ userId }) // <-- Fixed: Now sends userId instead of businessId
+                        body: JSON.stringify({ userId })
                     });
                     
                     const data = await response.json();
@@ -466,8 +467,13 @@
                         if (window.localforage) await window.localforage.setItem('fbr_admin_backup', user);
                         
                         // Apply temporary client identity
+                        const clientUser = { ...data.user, isImpersonated: true };
                         sessionStorage.setItem('fbr_token', data.token);
-                        await handleLogin({ ...data.user, isImpersonated: true });
+                        sessionStorage.setItem('fbr_session', JSON.stringify(clientUser));
+                        if (window.localforage) await window.localforage.setItem('fbr_session', clientUser);
+                        
+                        // Force a clean page refresh to perfectly swap the identity slate
+                        window.location.reload();
                     } else {
                         alert(data.error || "Failed to impersonate");
                     }
@@ -482,23 +488,16 @@
                     const fallbackBackup = sessionStorage.getItem('fbr_admin_backup');
                     sessionStorage.removeItem('fbr_admin_backup');
                     if (window.localforage) {
-                        await Promise.race([
-                            window.localforage.removeItem('fbr_admin_backup'),
-                            new Promise(resolve => setTimeout(resolve, 500))
-                        ]).catch(e => console.error(e));
+                        await window.localforage.removeItem('fbr_admin_backup').catch(e=>console.log(e));
                     }
                     
                     if (fallbackBackup) {
                         const adminUser = JSON.parse(fallbackBackup);
-                        setUser(adminUser);
                         sessionStorage.setItem('fbr_session', fallbackBackup);
                         if (window.localforage) {
-                            await Promise.race([
-                                window.localforage.setItem('fbr_session', adminUser),
-                                new Promise(resolve => setTimeout(resolve, 500))
-                            ]).catch(e => console.error(e));
+                            await window.localforage.setItem('fbr_session', adminUser).catch(e=>console.log(e));
                         }
-                        window.location.href = window.location.pathname + '?exit=' + Date.now();
+                        window.location.reload();
                     } else {
                         handleLogout(null, true);
                     }
@@ -512,8 +511,12 @@
 
             if (!user) return <LoginScreen onLogin={handleLogin} />;
 
+            // Relaxed security check to prevent false "logouts"
             if (user.role !== 'admin') {
-                if (!user.settings || !user.billing) {
+                const hasSettings = !!user.settings;
+                const hasStatus = !!(user.businessStatus || user.billing);
+                if (!hasSettings || !hasStatus) {
+                    console.warn("Safety Check Failed: Incomplete user object", user);
                     return <LoginScreen onLogin={handleLogin} />;
                 }
             }
