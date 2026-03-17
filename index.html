@@ -63,7 +63,6 @@
         /* Table Input Alignment - Clean Look (No Box) */
         .table-input {
             height: 2.5rem;
-            /* h-10 */
             width: 100%;
             border: none;
             border-bottom: 1px solid #e2e8f0;
@@ -101,13 +100,10 @@
         const SYSTEM_CONFIG = {
             BASE_URL: "https://gw.fbr.gov.pk",
             PATHS: {
-                // DI Data Service 
                 POST_INVOICE_SB: "/di_data/v1/di/postinvoicedata_sb",
                 POST_INVOICE_PROD: "/di_data/v1/di/postinvoicedata",
                 VALIDATE_INVOICE_SB: "/di_data/v1/di/validateinvoicedata_sb",
                 VALIDATE_INVOICE_PROD: "/di_data/v1/di/validateinvoicedata",
-
-                // Reference Data Service (PDI) 
                 PROVINCES: "/pdi/v1/provinces",
                 DOCTYPECODE: "/pdi/v1/doctypecode",
                 SROITEMCODE: "/pdi/v1/sroitemcode",
@@ -117,15 +113,12 @@
                 SALETYPETORATE: "/pdi/v2/SaleTypeToRate",
                 HS_UOM: "/pdi/v2/HS_UOM",
                 ITEM_CODE: "/pdi/v1/itemdesccode",
-
-                // Distribution Service (DIST) 
                 GET_REG_TYPE: "/dist/v1/Get_Reg_Type"
             }
         };
 
-        const FURTHER_TAX_RATE = 4; // 4% standard further tax 
+        const FURTHER_TAX_RATE = 4; 
 
-        // --- DATA CONSTANTS --- 
         const SALE_TYPES = [
             "Goods at standard rate (default)", "Goods at reduced rate", "Goods at zero-rate",
             "Petroleum Products", "Electricity Supply to Retailers", "SIM", "Gas to CNG stations",
@@ -137,9 +130,7 @@
             "Toll Manufacturing", "Non-Adjustable Supplies"
         ];
 
-        const DOCUMENT_TYPES = [
-            "Sale Invoice", "Debit Note"
-        ];
+        const DOCUMENT_TYPES = [ "Sale Invoice", "Debit Note" ];
 
         const UOM_OPTIONS = [
             "Numbers, pieces, units", "MT", "Bill of lading", "SET", "KWH", "40KG", "Liter",
@@ -183,94 +174,6 @@
             "0106": "The Buyer is not registered for sales tax",
             "0401": "Unauthorized access: Seller NTN/CNIC token is invalid",
             "0402": "Unauthorized access: Buyer NTN/CNIC token is invalid",
-        };
-
-        const defaultTemplateHTML = `
-<div style="font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
-    <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
-        <h1 style="margin: 0; font-size: 24px;">{{businessName}}</h1>
-        <p style="margin: 5px 0; color: #555;">{{address}}</p>
-        <p style="margin: 5px 0; font-weight: bold;">NTN: {{ntn}}</p>
-    </div>
-    
-    <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
-        <div>
-            <p style="margin: 5px 0;"><strong>Billed To:</strong></p>
-            <p style="margin: 5px 0;">{{customerName}}</p>
-        </div>
-        <div style="text-align: right;">
-            <p style="margin: 5px 0;"><strong>Invoice Number:</strong> {{invoiceNumber}}</p>
-            <p style="margin: 5px 0;"><strong>FBR Invoice Number:</strong> {{fbrInvoiceNumber}}</p>
-            <p style="margin: 5px 0;"><strong>Date:</strong> {{invoiceDate}}</p>
-        </div>
-    </div>
-    
-    <div style="margin-bottom: 30px;">
-        <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr style="background-color: #f3f4f6; border-bottom: 2px solid #ddd;">
-                    <th style="padding: 10px; text-align: left;">Description</th>
-                    <th style="padding: 10px; text-align: right;">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr style="border-bottom: 1px solid #ddd;">
-                    <td style="padding: 10px;">Subtotal</td>
-                    <td style="padding: 10px; text-align: right;">{{subtotal}}</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #ddd;">
-                    <td style="padding: 10px;">Sales Tax (GST)</td>
-                    <td style="padding: 10px; text-align: right;">{{gst}}</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    
-    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-        <div>
-            <img src="{{QR_CODE_URL}}" alt="QR Code" style="width: 100px; height: 100px;" />
-        </div>
-        <div style="text-align: right;">
-            <p style="font-size: 20px; font-weight: bold; margin: 0;">Total: {{total}}</p>
-        </div>
-    </div>
-</div>
-`;
-
-        const parseInvoiceTemplate = (template, invoice, settings) => {
-            if (!template) return '';
-            let parsed = template;
-
-            const formatCurr = (val) => parseFloat(val || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-            // Generate QR Data locally using QRious library to stay compliant with privacy & offline rules
-            const qrData = `https://fbr.gov.pk/invoice?id=${invoice?.fbrInvoiceNumber || ''}`;
-            let qrUrl = "";
-            try {
-                const qr = new QRious({ value: qrData, size: 150 });
-                qrUrl = qr.toDataURL();
-            } catch (e) { console.error("QR Generation Failed", e); }
-
-            const replacements = {
-                '{{businessName}}': settings?.businessName || '',
-                '{{address}}': settings?.address || '',
-                '{{ntn}}': settings?.ntn || '',
-                '{{invoiceNumber}}': invoice?.invoiceNumber || '',
-                '{{fbrInvoiceNumber}}': invoice?.fbrInvoiceNumber || '',
-                '{{invoiceDate}}': invoice?.invoiceDate || invoice?.date || '',
-                '{{customerName}}': invoice?.customerName || '',
-                '{{subtotal}}': formatCurr(invoice?.subtotal),
-                '{{gst}}': formatCurr(invoice?.gst),
-                '{{total}}': formatCurr(invoice?.total),
-                '{{QR_CODE_URL}}': qrUrl
-            };
-
-            Object.keys(replacements).forEach(key => {
-                const regex = new RegExp(key, 'g');
-                parsed = parsed.replace(regex, replacements[key]);
-            });
-
-            return parsed;
         };
 
         // --- Error Boundary --- 
@@ -430,129 +333,6 @@
             );
         };
 
-        // --- VISUAL TEMPLATE BUILDER --- 
-        const TEMPLATE_BLOCKS = [
-            { id: 'header_center', name: 'Header (Centered)', html: `<div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;"><h1 style="margin: 0; font-size: 24px;">{{businessName}}</h1><p style="margin: 5px 0; color: #555;">{{address}}</p><p style="margin: 5px 0; font-weight: bold;">NTN: {{ntn}}</p></div>` },
-            { id: 'header_left', name: 'Header (Left Aligned)', html: `<div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;"><h1 style="margin: 0; font-size: 24px;">{{businessName}}</h1><p style="margin: 5px 0; color: #555;">{{address}}</p><p style="margin: 5px 0; font-weight: bold;">NTN: {{ntn}}</p></div>` },
-            { id: 'details', name: 'Customer & Invoice Details', html: `<div style="display: flex; justify-content: space-between; margin-bottom: 30px;"><div><p style="margin: 5px 0;"><strong>Billed To:</strong></p><p style="margin: 5px 0;">{{customerName}}</p></div><div style="text-align: right;"><p style="margin: 5px 0;"><strong>Invoice Number:</strong> {{invoiceNumber}}</p><p style="margin: 5px 0;"><strong>FBR Invoice Number:</strong> {{fbrInvoiceNumber}}</p><p style="margin: 5px 0;"><strong>Date:</strong> {{invoiceDate}}</p></div></div>` },
-            { id: 'totals', name: 'Itemized Totals Table', html: `<div style="margin-bottom: 30px;"><table style="width: 100%; border-collapse: collapse;"><thead><tr style="background-color: #f3f4f6; border-bottom: 2px solid #ddd;"><th style="padding: 10px; text-align: left;">Description</th><th style="padding: 10px; text-align: right;">Amount</th></tr></thead><tbody><tr style="border-bottom: 1px solid #ddd;"><td style="padding: 10px;">Subtotal</td><td style="padding: 10px; text-align: right;">{{subtotal}}</td></tr><tr style="border-bottom: 1px solid #ddd;"><td style="padding: 10px;">Sales Tax (GST)</td><td style="padding: 10px; text-align: right;">{{gst}}</td></tr></tbody></table></div>` },
-            { id: 'footer', name: 'QR Code & Grand Total', html: `<div style="display: flex; justify-content: space-between; align-items: flex-end;"><div><img src="{{QR_CODE_URL}}" alt="QR Code" style="width: 100px; height: 100px;" /></div><div style="text-align: right;"><p style="font-size: 20px; font-weight: bold; margin: 0;">Total: {{total}}</p></div></div>` },
-            { id: 'divider', name: 'Divider Line', html: `<hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />` },
-            { id: 'thankyou', name: 'Thank You Note', html: `<div style="text-align: center; margin-top: 30px; font-style: italic; color: #666;"><p>Thank you for your business!</p></div>` }
-        ];
-
-        const VisualTemplateBuilder = ({ value, onChange, readOnly = false }) => {
-            const [blocks, setBlocks] = useState(() => {
-                if (!value) return [];
-                if (value === defaultTemplateHTML) return []; 
-                return [{ id: 'legacy', html: value }];
-            });
-
-            const handleDragStart = (e, block) => {
-                if (readOnly) return;
-                e.dataTransfer.setData('application/json', JSON.stringify(block));
-            };
-
-            const handleDrop = (e) => {
-                if (readOnly) return;
-                e.preventDefault();
-                const blockData = e.dataTransfer.getData('application/json');
-                if (blockData) {
-                    const block = JSON.parse(blockData);
-                    const newBlocks = [...blocks, { id: Date.now().toString(), html: block.html }];
-                    setBlocks(newBlocks);
-                    compileAndSave(newBlocks);
-                }
-            };
-
-            const handleDragOver = (e) => { e.preventDefault(); };
-
-            const removeBlock = (index) => {
-                if (readOnly) return;
-                const newBlocks = blocks.filter((_, i) => i !== index);
-                setBlocks(newBlocks);
-                compileAndSave(newBlocks);
-            };
-
-            const compileAndSave = (currentBlocks) => {
-                if (currentBlocks.length === 0) {
-                    onChange(defaultTemplateHTML);
-                    return;
-                }
-                const finalHtml = `<div style="font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">\n${currentBlocks.map(b => b.html).join('\n')}\n</div>`;
-                onChange(finalHtml);
-            };
-
-            const resetToEmpty = () => {
-                if (readOnly) return;
-                setBlocks([]);
-                onChange(defaultTemplateHTML);
-            };
-
-            const highlightVariables = (html) => {
-                return html.replace(/{{(.*?)}}/g, '<span class="bg-yellow-200 text-yellow-800 px-1 rounded font-mono text-xs">$1</span>');
-            };
-
-            return (
-                <div className={`flex flex-col md:flex-row border border-gray-300 rounded-lg overflow-hidden bg-gray-50 mt-2 ${readOnly ? 'opacity-70 pointer-events-none' : ''}`}>
-                    {/* Sidebar Blocks */}
-                    <div className="w-full md:w-1/3 bg-white border-b md:border-b-0 md:border-r border-gray-300 p-4 flex flex-col gap-2 max-h-[500px] overflow-y-auto">
-                        <h4 className="font-bold text-xs text-gray-500 uppercase tracking-wide mb-2">Available Blocks</h4>
-                        <p className="text-[10px] text-gray-400 mb-2">Drag elements to the canvas to build your invoice.</p>
-                        {TEMPLATE_BLOCKS.map(block => (
-                            <div 
-                                key={block.id} 
-                                draggable={!readOnly}
-                                onDragStart={(e) => handleDragStart(e, block)}
-                                className="p-3 border border-gray-200 rounded cursor-grab hover:bg-gray-50 text-sm flex items-center justify-between bg-white shadow-sm"
-                            >
-                                <span className="font-medium text-gray-700">{block.name}</span>
-                                <Icons.Box size={14} className="text-gray-400"/>
-                            </div>
-                        ))}
-                        {!readOnly && (
-                            <div className="mt-auto pt-4">
-                                <Button onClick={resetToEmpty} variant="danger" className="w-full text-xs py-1">Reset to Default</Button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Canvas / Dropzone */}
-                    <div 
-                        className="w-full md:w-2/3 p-6 min-h-[400px] max-h-[500px] overflow-y-auto relative bg-gray-100"
-                        onDrop={handleDrop}
-                        onDragOver={handleDragOver}
-                    >
-                        {blocks.length === 0 ? (
-                            <div className="absolute inset-4 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-                                <Icons.Upload size={32} className="mb-2 text-gray-300" />
-                                <p className="font-medium text-sm">Drag & Drop Blocks Here</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4 bg-white p-6 shadow-sm border border-gray-200 rounded min-h-full">
-                                {blocks.map((b, i) => (
-                                    <div key={b.id} className="relative group border-2 border-transparent hover:border-blue-400 rounded p-2 transition-colors">
-                                        {!readOnly && (
-                                            <button 
-                                                onClick={() => removeBlock(i)}
-                                                className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-md hover:bg-red-600"
-                                            >
-                                                <Icons.X size={12}/>
-                                            </button>
-                                        )}
-                                        <div 
-                                            dangerouslySetInnerHTML={{ __html: highlightVariables(b.html) }} 
-                                            className="pointer-events-none" 
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        };
-
 
         const formatCurrency = (val) => parseFloat(val || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const getToday = () => new Date().toISOString().split('T')[0];
@@ -574,7 +354,6 @@
             const sessionToken = sessionStorage.getItem('fbr_token');
 
             if (!sessionToken && !url.includes('https://app.tallied.pk/api/login')) {
-                // Deny unauthorized fetches locally to prevent network spam during logouts
                 return {
                     ok: false, status: 401, statusText: "Unauthorized",
                     json: async () => ({ error: "Missing session token" }),
@@ -625,7 +404,6 @@
                         if (session) {
                             setUser(session);
                         } else {
-                            // Fallback migration from old synchronous sessionStorage
                             const oldSession = sessionStorage.getItem('fbr_session');
                             if (oldSession) {
                                 const parsedUser = JSON.parse(oldSession);
@@ -648,40 +426,55 @@
             const handleLogin = async (u) => {
                 setUser(u);
                 await localforage.setItem('fbr_session', u);
-                sessionStorage.setItem('fbr_session', JSON.stringify(u)); // keeping fallback alive 
+                sessionStorage.setItem('fbr_session', JSON.stringify(u)); 
             };
 
             const handleLogout = async (e, force = false) => {
                 if (e && e.preventDefault) e.preventDefault();
-                console.log("Forcing robust logout...");
                 
                 if (user && user.isImpersonated && !force) {
                     handleExitImpersonation();
                     return;
                 }
 
-                // First, synchronously clear traditional storages
                 window.sessionStorage.clear();
                 window.localStorage.clear();
-
-                // Fire async storage clear but do not block the thread
                 if (window.localforage) {
                     window.localforage.clear().catch(err => console.error("localforage clear error:", err));
                 }
 
-                // CRITICAL FIX: Redirect BEFORE calling setUser(null).
-                // If we call setUser(null) first, React unmounts the component and 
-                // silently kills the remainder of this async function execution context.
                 window.location.href = window.location.pathname + '?logout=' + Date.now();
-                
-                // Fallback in case location change is delayed
                 setTimeout(() => { setUser(null); }, 100);
             };
 
-            const handleImpersonate = async (clientUser) => {
-                sessionStorage.setItem('fbr_admin_backup', JSON.stringify(user));
-                await localforage.setItem('fbr_admin_backup', user);
-                await handleLogin(clientUser);
+            // NEW IMPERSONATION LOGIC FOR API 
+            const handleImpersonate = async (businessId) => {
+                try {
+                    const response = await fetch('https://app.tallied.pk/api/admin/impersonate', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` 
+                        },
+                        body: JSON.stringify({ businessId })
+                    });
+                    
+                    const data = await response.json();
+                    if (response.ok && data.token) {
+                        // Securely back up Admin identity
+                        sessionStorage.setItem('fbr_admin_backup', JSON.stringify(user));
+                        await localforage.setItem('fbr_admin_backup', user);
+                        
+                        // Apply temporary client identity
+                        sessionStorage.setItem('fbr_token', data.token);
+                        await handleLogin({ ...data.user, isImpersonated: true });
+                    } else {
+                        alert(data.error || "Failed to impersonate");
+                    }
+                } catch (err) {
+                    console.error("Impersonation error:", err);
+                    alert("Network error connecting to Business.");
+                }
             };
 
             const handleExitImpersonation = async () => {
@@ -707,7 +500,6 @@
                         }
                         window.location.href = window.location.pathname + '?exit=' + Date.now();
                     } else {
-                        // Proceed to full logout if backup is lost
                         handleLogout(null, true);
                     }
                 } catch (err) {
@@ -792,7 +584,7 @@
             const [editingClient, setEditingClient] = useState(null);
             const [adminError, setAdminError] = useState("");
 
-            const [activeAdminTab, setActiveAdminTab] = useState('clients'); // 'clients' or 'users'
+            const [activeAdminTab, setActiveAdminTab] = useState('clients'); 
             const [restrictedUsers, setRestrictedUsers] = useState([]);
             const [showCreateUser, setShowCreateUser] = useState(false);
             const [newUserParams, setNewUserParams] = useState({ username: '', password: '' });
@@ -816,8 +608,8 @@
 
             useEffect(() => {
                 if (activeAdminTab === 'clients') fetchUsers();
-                else if (activeAdminTab === 'users') { fetchRestrictedUsers(); fetchUsers(); /* need client list for mapping */ }
-                setAdminError(""); // Clear error on tab switch
+                else if (activeAdminTab === 'users') { fetchRestrictedUsers(); fetchUsers(); }
+                setAdminError(""); 
             }, [activeAdminTab]);
 
             const createClient = async () => {
@@ -840,7 +632,6 @@
                         const data = await res.json(); setAdminError(data.error || "Failed to create client");
                     }
                 } catch (e) { 
-                    console.error("Create Client Exception: ", e);
                     setAdminError("Network Error: " + e.message); 
                 }
             };
@@ -859,20 +650,6 @@
                         setEditingClient(null);
                     } else alert("Error saving settings");
                 } catch (e) { alert("Error saving settings"); }
-            };
-
-            const revokeUser = async (clientId, userId) => {
-                const client = users.find(u => u.id === clientId);
-                if (!client) return;
-                const newSubUsers = client.subUsers.filter(su => su.id !== userId);
-                try {
-                    await fetch(`https://app.tallied.pk/api/users/${clientId}`, {
-                        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                        body: JSON.stringify({ subUsers: newSubUsers })
-                    });
-                    fetchUsers();
-                    if (editingClient && editingClient.id === clientId) setEditingClient({ ...client, subUsers: newSubUsers });
-                } catch (e) { }
             };
 
             const toggleRevoke = async (client) => {
@@ -900,9 +677,6 @@
                 }
             };
 
-            const backupData = () => { alert("Backup is now handled by the database administrator."); };
-            const restoreData = (e) => { alert("Restore is now handled by the database administrator."); };
-
             const saveAnnouncement = () => {
                 DataManager.setGlobalAnnouncement(announcement);
                 alert("Announcement Updated");
@@ -918,7 +692,7 @@
             const filteredUsers = users
                 .filter(u => u.username.toLowerCase().includes(search.toLowerCase()) || (u.settings?.businessName || "").toLowerCase().includes(search.toLowerCase()))
                 .sort((a, b) => {
-                    if (sortBy === 'expiry') return new Date(a.billing.expiry) - new Date(b.billing.expiry);
+                    if (sortBy === 'expiry') return new Date(a.billing?.expiry || 0) - new Date(b.billing?.expiry || 0);
                     return a.username.localeCompare(b.username);
                 });
 
@@ -958,16 +732,6 @@
                                 <div className="bg-white p-6 rounded-lg w-full max-w-md">
                                     <h3 className="text-xl font-bold mb-4">System Utilities</h3>
                                     <div className="space-y-4">
-                                        <div className="p-4 bg-gray-50 rounded border border-gray-200">
-                                            <h4 className="font-bold text-sm mb-2">Database Management</h4>
-                                            <div className="flex gap-2">
-                                                <Button onClick={backupData} className="flex-1"><Icons.Download size={14} /> Backup Data</Button>
-                                                <div className="flex-1 relative">
-                                                    <input type="file" onChange={restoreData} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                                    <Button variant="secondary" className="w-full"><Icons.Upload size={14} /> Restore Data</Button>
-                                                </div>
-                                            </div>
-                                        </div>
                                         <div>
                                             <Input label="Global Announcement" value={announcement} onChange={e => setAnnouncement(e.target.value)} />
                                         </div>
@@ -1033,7 +797,6 @@
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* Left Column: Business & Access */}
                                         <div className="space-y-4">
                                             <h4 className="font-bold text-gray-700 border-b pb-2">Business Profile</h4>
                                             <Input label="Business Name" value={editingClient.settings?.businessName || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, businessName: e.target.value } })} />
@@ -1041,15 +804,6 @@
                                             <div className="grid grid-cols-2 gap-2">
                                                 <Input label="NTN" value={editingClient.settings?.ntn || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, ntn: e.target.value } })} />
                                                 <Input label="STRN" value={editingClient.settings?.strn || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, strn: e.target.value } })} />
-                                            </div>
-                                            <div className="md:col-span-2">
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Custom HTML Invoice Template</label>
-                                                </div>
-                                                <VisualTemplateBuilder 
-                                                    value={editingClient.settings?.invoiceTemplate || ''} 
-                                                    onChange={val => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, invoiceTemplate: val } })} 
-                                                />
                                             </div>
                                             <SearchableDropdown label="Province" value={editingClient.settings?.province || 'Sindh'} options={PROVINCES} onChange={val => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, province: val } })} />
 
@@ -1078,7 +832,6 @@
                                             </div>
                                         </div>
 
-                                        {/* Right Column: FBR Config */}
                                         <div className="space-y-4">
                                             <h4 className="font-bold text-gray-700 border-b pb-2">FBR Environment</h4>
 
@@ -1119,8 +872,6 @@
                                                 <Input label="Further Tax %" type="number" value={editingClient.settings?.taxRates?.furtherTax || 4} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, taxRates: { ...(editingClient.settings?.taxRates || {}), furtherTax: parseFloat(e.target.value) } } })} />
                                                 <Input label="Extra Tax %" type="number" value={editingClient.settings?.taxRates?.extraTax || 0} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, taxRates: { ...(editingClient.settings?.taxRates || {}), extraTax: parseFloat(e.target.value) } } })} />
                                             </div>
-
-                                            <h4 className="font-bold text-gray-700 border-b pb-2 pt-2 text-xs">Note: Restricted User access is now managed in the "System Users" tab.</h4>
                                         </div>
                                     </div>
 
@@ -1151,7 +902,7 @@
                                             </div>
                                             <div className="flex flex-col gap-2 items-end">
                                                 <div className="flex gap-2">
-                                                    <Button onClick={() => onImpersonate({ ...u, role: 'client', isImpersonated: true })} variant="secondary" className="text-xs bg-gray-50 text-gray-700 border-gray-200" disabled={u.isRevoked}><Icons.Eye size={14} /> Login As</Button>
+                                                    <Button onClick={() => onImpersonate(u.id)} variant="secondary" className="text-xs bg-gray-50 text-gray-700 border-gray-200" disabled={u.isRevoked}><Icons.Eye size={14} /> Login As</Button>
                                                     <Button onClick={() => setEditingClient(u)} variant="secondary" className="text-xs"><Icons.Settings size={14} /> Manage</Button>
                                                 </div>
                                             </div>
@@ -1285,13 +1036,12 @@
             const [hsCodes, setHsCodes] = useState([]);
             const [editingCustId, setEditingCustId] = useState(null);
             const [editingInvId, setEditingInvId] = useState(null);
-            const [newUser, setNewUser] = useState({ username: '', password: '' });
             const [newItem, setNewItem] = useState({
                 name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0,
                 taxRate: user.settings.taxRates?.salesTax || 18,
                 furtherTax: 0,
                 extraTax: user.settings.taxRates?.extraTax || 0,
-                fedPayable: 0, wht: 0, sroScheduleNo: "", sroItemSerialNo: ""
+                fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: ""
             });
             const [newCust, setNewCust] = useState({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
 
@@ -1327,17 +1077,14 @@
 
                     const headers = { 'Authorization': `Bearer ${token}` };
 
-                    // HS Codes
                     try {
                         const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.ITEM_CODE}`, { method: 'GET', headers });
                         if (res.ok) {
                             const data = await res.json();
-                            // Keep full object to access description later
                             if (Array.isArray(data)) setHsCodes(data.map(item => ({ val: `${item.hS_CODE} - ${item.description}`, desc: item.description })));
                         }
                     } catch (e) { console.warn("Failed to fetch HS Codes", e); }
 
-                    // Provinces
                     try {
                         const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.PROVINCES}`, { headers });
                         if (res.ok) {
@@ -1346,7 +1093,6 @@
                         }
                     } catch (e) { console.warn("Failed to fetch Provinces", e); }
 
-                    // Document Types
                     try {
                         const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.DOCTYPECODE}`, { headers });
                         if (res.ok) {
@@ -1355,7 +1101,6 @@
                         }
                     } catch (e) { console.warn("Failed to fetch Doc Types", e); }
 
-                    // UOMs
                     try {
                         const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.UOM}`, { headers });
                         if (res.ok) {
@@ -1373,18 +1118,16 @@
 
             useEffect(() => {
                 const isUnregistered = invoice.customerRegType === "Unregistered";
-                const ftRate = user.settings.taxRates?.furtherTax || 4; // Use 4 as fallback if missing
+                const ftRate = user.settings.taxRates?.furtherTax || 4;
 
                 setInvoice(prev => {
                     const newItems = prev.items.map(item => {
                         let newFTRate = parseFloat(item.furtherTax) || 0;
-
                         if (isUnregistered) {
                             if (newFTRate === 0) newFTRate = ftRate;
                         } else {
                             newFTRate = 0;
                         }
-
                         return { ...item, furtherTax: newFTRate };
                     });
                     return { ...prev, items: newItems };
@@ -1411,7 +1154,6 @@
                     if (!res.ok) return null;
 
                     const data = await res.json();
-
                     if (Array.isArray(data)) {
                         if (data.length > 0) return data.map(d => d.description);
                         return [];
@@ -1477,7 +1219,7 @@
                 const u = { ...user, ...newData };
                 setUser(u);
                 await localforage.setItem('fbr_session', u);
-                sessionStorage.setItem('fbr_session', JSON.stringify(u)); // keeping fallback for sync 
+                sessionStorage.setItem('fbr_session', JSON.stringify(u)); 
                 try {
                     await fetch('https://app.tallied.pk/api/sync', {
                         method: 'POST',
@@ -1493,7 +1235,7 @@
                 fetchAllowedUOMs(prod.hsCode).then(uoms => {
                     setInvoice(p => ({
                         ...p, items: p.items.map(i => i.id === invId ? {
-                            ...i, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: prod.furtherTax, fedPayable: prod.fedPayable, wht: prod.wht, allowedUOMs: uoms, isFromInventory: true
+                            ...i, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: prod.furtherTax, fedPayable: prod.fedPayable, wht: prod.wht, discount: prod.discount || 0, allowedUOMs: uoms, isFromInventory: true
                         } : i)
                     }));
                 });
@@ -1538,8 +1280,6 @@
                 if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
                 saveUser({ inventory: (user.inventory || []).filter(i => i.id !== id) });
             };
-
-
 
             const downloadInvoice = (inv) => {
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inv, null, 2));
@@ -1714,7 +1454,6 @@
 
                 setLoading(true);
                 try {
-                    // Actual API Call Simulation (since we can't POST to FBR from browser due to CORS usually, but code is here) 
                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, {
                         method: 'POST',
                         headers: {
@@ -1752,7 +1491,6 @@
                         }
                     }
                 } catch (e) {
-                    // Fallback for demo if API fails 
                     if (isValidate) {
                         setMsg({ type: 'success', text: "Validation Status: Valid (Demo Mode - API Unreachable)" });
                         console.log("Validation Payload:", payload);
@@ -1764,15 +1502,142 @@
                 } finally { setLoading(false); }
             };
 
+            // NEW FBR STANDARDIZED TEMPLATE LAYOUT
             const renderInvoiceTemplate = () => {
-                const templateHTML = user.settings.invoiceTemplate || defaultTemplateHTML;
-                const parsedHTML = parseInvoiceTemplate(templateHTML, lastInv, user.settings);
+                const qrData = `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`;
+                let qrUrl = "";
+                try {
+                    const qr = new QRious({ value: qrData, size: 150 });
+                    qrUrl = qr.toDataURL();
+                } catch (e) { console.error("QR Generation Failed", e); }
+
+                const taxPeriod = (lastInv?.invoiceDate || lastInv?.date || '').replace(/-/g, '').substring(0, 6);
 
                 return (
-                    <div className="bg-white w-full max-w-2xl rounded-lg shadow-2xl overflow-hidden relative print:w-full print:max-w-none">
+                    <div className="bg-white w-full max-w-5xl rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] relative print:w-full print:max-w-none print:max-h-none print:shadow-none">
                         <button onClick={() => setShowReceipt(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-50 no-print" style={{ zIndex: 9999 }}><Icons.X /></button>
-                        <div id="printable-area" dangerouslySetInnerHTML={{ __html: parsedHTML }} />
-                        <div className="mt-6 mb-6 flex justify-center no-print relative z-10"><Button onClick={() => window.print()}>Print Invoice</Button></div>
+                        
+                        <div id="printable-area" className="p-8 text-black bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
+                            <h1 className="text-center font-bold text-xl mb-6 tracking-widest">FBR DIGITAL INVOICING SYSTEM</h1>
+
+                            <div className="grid grid-cols-2 gap-8 mb-6 text-sm">
+                                <div>
+                                    <h2 className="font-bold border-b border-black mb-2 uppercase tracking-wide">Seller Information</h2>
+                                    <div className="grid grid-cols-[130px_1fr] gap-1">
+                                        <div className="font-semibold">Business Name:</div><div>{user.settings?.businessName}</div>
+                                        <div className="font-semibold">Registration No.:</div><div>{user.settings?.ntn || user.settings?.strn}</div>
+                                        <div className="font-semibold">Province:</div><div>{user.settings?.province}</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h2 className="font-bold border-b border-black mb-2 uppercase tracking-wide">Buyer Information</h2>
+                                    <div className="grid grid-cols-[130px_1fr] gap-1">
+                                        <div className="font-semibold">Business Name:</div><div>{lastInv?.customerName}</div>
+                                        <div className="font-semibold">Registration No.:</div><div>{lastInv?.customerNTN}</div>
+                                        <div className="font-semibold">Province:</div><div>{lastInv?.customerDestination}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mb-6 text-sm">
+                                <h2 className="font-bold border-b border-black mb-2 uppercase tracking-wide">Invoice Summary</h2>
+                                <div className="grid grid-cols-2 gap-x-8 gap-y-1">
+                                    <div className="grid grid-cols-[130px_1fr] gap-1">
+                                        <div className="font-semibold">FBR Invoice No.:</div><div>{lastInv?.fbrInvoiceNumber}</div>
+                                        <div className="font-semibold">Invoice Date:</div><div>{lastInv?.invoiceDate || lastInv?.date}</div>
+                                    </div>
+                                    <div className="grid grid-cols-[130px_1fr] gap-1">
+                                        <div className="font-semibold">Invoice Type:</div><div>{lastInv?.type || 'Sale Invoice'}</div>
+                                        <div className="font-semibold">Tax Period:</div><div>{taxPeriod}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto mb-6 border border-black">
+                                <table className="w-full text-[10px] border-collapse text-center">
+                                    <thead>
+                                        <tr className="bg-gray-100">
+                                            <th className="border border-black p-1">Sr. No.</th>
+                                            <th className="border border-black p-1">HS Code</th>
+                                            <th className="border border-black p-1 text-left">Product Description</th>
+                                            <th className="border border-black p-1">Sales Type</th>
+                                            <th className="border border-black p-1">Quantity</th>
+                                            <th className="border border-black p-1">UoM</th>
+                                            <th className="border border-black p-1">Rate</th>
+                                            <th className="border border-black p-1">Sales Value</th>
+                                            <th className="border border-black p-1">Retail Price</th>
+                                            <th className="border border-black p-1">Sales Tax</th>
+                                            <th className="border border-black p-1">Extra Tax</th>
+                                            <th className="border border-black p-1">Further Tax</th>
+                                            <th className="border border-black p-1">FED</th>
+                                            <th className="border border-black p-1">ST WHT</th>
+                                            <th className="border border-black p-1">SRO/Schedule No.</th>
+                                            <th className="border border-black p-1">Discount</th>
+                                            <th className="border border-black p-1">SRO Item Sr. No.</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {lastInv?.items?.map((item, idx) => {
+                                            const q = parseFloat(item.qty) || 0;
+                                            const p = parseFloat(item.price) || 0;
+                                            const r = parseFloat(item.retailPrice) || 0;
+                                            const isRet = isRetailFedSale(item.saleType);
+                                            const val = (isRet ? r : p) * q;
+                                            const stAmt = val * (parseFloat(item.taxRate) / 100 || 0);
+                                            const exAmt = isRet ? (val * (parseFloat(item.extraTax) / 100 || 0)) : 0;
+                                            const furAmt = val * (parseFloat(item.furtherTax) / 100 || 0);
+                                            const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
+                                            const wht = parseFloat(item.wht) || 0;
+                                            const disc = parseFloat(item.discount) || 0;
+
+                                            return (
+                                                <tr key={idx}>
+                                                    <td className="border border-black p-1">{idx + 1}</td>
+                                                    <td className="border border-black p-1">{item.hsCode?.split(' - ')[0]}</td>
+                                                    <td className="border border-black p-1 text-left">{item.desc}</td>
+                                                    <td className="border border-black p-1">{item.saleType}</td>
+                                                    <td className="border border-black p-1">{q}</td>
+                                                    <td className="border border-black p-1">{item.uom}</td>
+                                                    <td className="border border-black p-1">{item.taxRate}%</td>
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(val)}</td>
+                                                    <td className="border border-black p-1 text-right">{isRet ? formatCurrency(r) : '0.00'}</td>
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(stAmt)}</td>
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(exAmt)}</td>
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(furAmt)}</td>
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(fedAmt)}</td>
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(wht)}</td>
+                                                    <td className="border border-black p-1">{item.sroScheduleNo || '-'}</td>
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(disc)}</td>
+                                                    <td className="border border-black p-1">{item.sroItemSerialNo || '-'}</td>
+                                                </tr>
+                                            )
+                                        })}
+                                        <tr className="font-bold bg-gray-100">
+                                            <td className="border border-black p-1 text-right" colSpan="7">Total:</td>
+                                            <td className="border border-black p-1 text-right">{formatCurrency(lastInv?.subtotal)}</td>
+                                            <td className="border border-black p-1 text-right">-</td>
+                                            <td className="border border-black p-1 text-right">{formatCurrency(lastInv?.gst)}</td>
+                                            <td className="border border-black p-1 text-right">{formatCurrency(lastInv?.extra)}</td>
+                                            <td className="border border-black p-1 text-right">{formatCurrency(lastInv?.further)}</td>
+                                            <td className="border border-black p-1 text-right">{formatCurrency(lastInv?.fed)}</td>
+                                            <td className="border border-black p-1 text-right">{formatCurrency(lastInv?.wht)}</td>
+                                            <td className="border border-black p-1">-</td>
+                                            <td className="border border-black p-1 text-right">{formatCurrency(lastInv?.totalDisc)}</td>
+                                            <td className="border border-black p-1">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div className="flex justify-between items-end mt-8">
+                                {qrUrl ? <img src={qrUrl} alt="QR Code" className="w-24 h-24" /> : <div className="w-24 h-24 bg-gray-100 border flex items-center justify-center text-xs text-gray-400">No QR Code</div>}
+                                <div className="text-right">
+                                    <h3 className="font-bold text-lg border-t-2 border-black pt-1 min-w-[200px]">Grand Total: {formatCurrency(lastInv?.total)}</h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 mb-6 flex justify-center no-print relative z-10"><Button onClick={() => window.print()}><Icons.Printer /> Print Invoice</Button></div>
                     </div>
                 );
             };
@@ -1795,9 +1660,6 @@
                                             className="text-xs text-black py-1 px-2 rounded font-bold border-none outline-none appearance-none"
                                             value={user.activeBusinessId}
                                             onChange={async (e) => {
-                                                const newBusinessId = parseInt(e.target.value);
-                                                // Ideally we call an endpoint, but for simplicity we can just re-login conceptually, but we can't do that easily without a password here.
-                                                // Actually logging out is safest to trigger full sync
                                                 alert("Business Switched. Please log in again to sync new business data.");
                                                 onLogout();
                                             }}
@@ -1813,24 +1675,21 @@
                                 {['invoice', 'inventory', 'customers', 'history', 'settings'].map(t => (
                                     <button key={t} onClick={() => setActiveTab(t)} className={`px-3 py-1.5 rounded capitalize transition-all duration-200 ${activeTab === t ? 'bg-white text-black font-bold' : 'hover:bg-gray-800 text-gray-300'}`}>{t}</button>
                                 ))}
-                                <button onClick={(e) => { e.preventDefault(); console.log("Logout button clicked"); onLogout(e); }} className="bg-gray-800 hover:bg-red-600 p-2 rounded ml-2 transition-colors"><Icons.LogOut /></button>
+                                <button onClick={(e) => { e.preventDefault(); onLogout(e); }} className="bg-gray-800 hover:bg-red-600 p-2 rounded ml-2 transition-colors"><Icons.LogOut /></button>
                             </div>
                         </div>
                     </nav>
 
-                    {/* Subscription Alert Bar */}
                     {daysLeft <= 7 && (
                         <div className={`w-full text-center py-2 text-xs font-bold uppercase tracking-wider ${daysLeft <= 0 ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'}`}>
                             {daysLeft <= 0 ? "SUBSCRIPTION EXPIRED - Please Renew" : `Subscription Expiring in ${daysLeft} days`}
                         </div>
                     )}
 
-                    {/* Separate Announcement Row */}
                     {announcement && <div className="bg-gray-100 text-gray-900 text-center py-2 text-sm border-b border-gray-200 font-medium relative"><strong className="mr-2">Notice:</strong> {announcement}</div>}
 
                     <main className="max-w-[1600px] mx-auto p-6">
                         {msg && <div className={`mb-6 p-4 rounded-lg flex gap-3 border ${msg.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>{msg.type === 'error' ? <Icons.AlertCircle /> : <Icons.CheckCircle />} {msg.text} <button onClick={() => setMsg(null)} className="ml-auto">✕</button></div>}
-
 
                         {activeTab === 'invoice' && (
                             <div className="space-y-6">
@@ -1878,6 +1737,9 @@
                                                                 <input type="text" className="table-input flex-1 !h-6 !text-[10px]" placeholder="SRO Sch No" value={item.sroScheduleNo || ''} onChange={e => updateInvItem(item.id, 'sroScheduleNo', e.target.value)} />
                                                                 <input type="text" className="table-input flex-1 !h-6 !text-[10px]" placeholder="SRO Item Ser No" value={item.sroItemSerialNo || ''} onChange={e => updateInvItem(item.id, 'sroItemSerialNo', e.target.value)} />
                                                             </div>
+                                                            <div className="mt-1">
+                                                                <input type="number" className="table-input w-full !h-6 !text-[10px]" placeholder="Discount Amount" value={item.discount || ''} onChange={e => updateInvItem(item.id, 'discount', e.target.value)} />
+                                                            </div>
                                                         </td>
                                                         <td className="p-2"><input type="number" className="table-input" value={item.qty} onChange={e => updateInvItem(item.id, 'qty', e.target.value)} /></td>
                                                         <td className="p-2"><input type="number" className="table-input" value={item.price} onChange={e => updateInvItem(item.id, 'price', e.target.value)} /></td>
@@ -1914,7 +1776,6 @@
                                     <div className="mt-6 flex justify-end gap-3">
                                         <Button onClick={() => setLastInv({ ...invoice, ...totals, id: invoice.invoiceNumber }) || setShowReceipt(true)} variant="secondary"><Icons.Printer /> Print Preview</Button>
 
-                                        {/* Hide FBR posting for view-only users, though allowed to print preview */}
                                         {!(user.role === 'restricted_user' && user.accessLevel === 'view') && (
                                             <>
                                                 <Button onClick={() => callFbrApi(SYSTEM_CONFIG.API_URL, true)} variant="secondary" disabled={loading}><Icons.ShieldCheck /> Validate Invoice</Button>
@@ -2019,7 +1880,7 @@
                                                     </tr>
                                                 ))}
                                                 {filteredCustomers.length === 0 && (
-                                                    <tr><td colSpan="5" className="p-4 text-center text-gray-400 text-sm">No customers found</td></tr>
+                                                    <tr><td colSpan="6" className="p-4 text-center text-gray-400 text-sm">No customers found</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
@@ -2050,27 +1911,12 @@
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="Business Name" value={user?.settings?.businessName} readOnly /><Input label="Business Address" value={user?.settings?.address} readOnly /></div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="NTN" value={user?.settings?.ntn} readOnly /><Input label="STRN" value={user?.settings?.strn} readOnly /></div>
-                                        <div className="grid grid-cols-1 gap-6">
-                                            <div>
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Custom HTML Invoice Template</label>
-                                                </div>
-                                                <VisualTemplateBuilder 
-                                                    value={user?.settings?.invoiceTemplate || ''} 
-                                                    onChange={val => saveUser({ settings: { ...user.settings, invoiceTemplate: val } })}
-                                                    readOnly={false} 
-                                                />
-                                                <div className="text-xs text-gray-500 mt-2">
-                                                    <strong>Available Variables (for custom code):</strong> <code className="bg-gray-100 px-1 rounded">{`{{businessName}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{address}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{ntn}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{invoiceNumber}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{invoiceDate}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{customerName}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{subtotal}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{gst}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{total}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{fbrInvoiceNumber}}`}</code>, <code className="bg-gray-100 px-1 rounded">{`{{QR_CODE_URL}}`}</code>
-                                                </div>
-                                            </div>
-                                        </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="Sale Origination Province" value={user?.settings?.province} readOnly /><Input label="Whitelisted IP" value={user?.settings?.whitelistedIp} readOnly /></div>
                                         <div className="opacity-80 pointer-events-none"><label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Company Logo</label>{user.settings.logo ? <img src={user.settings.logo} className="h-10 mt-2" /> : <p className="text-sm">No Logo Uploaded</p>}</div>
                                         <div className="opacity-80 pointer-events-none"><label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Active Environment</label><span className={`flex items-center gap-1 px-2 py-1 rounded text-xs w-24 ${user.settings.integrationMode === 'production' ? 'bg-gray-200 text-gray-800' : 'bg-yellow-100 text-yellow-800'}`}>{user.settings.integrationMode === 'production' ? 'Production' : 'Sandbox'}</span></div>
                                         <div className="opacity-80 pointer-events-none"><label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Access Valid Till</label><span className="text-sm">{new Date(user.billing.expiry).toDateString()}</span></div>
                                     </div>
-                                    <div className="text-center mt-6 text-sm text-gray-500">Contact Administrator to update basic details. You can update your Invoice Template visually above.</div>
+                                    <div className="text-center mt-6 text-sm text-gray-500">Contact Administrator to update basic details. Invoices are permanently locked to the strict FBR Standard format.</div>
                                 </Card></div>
                             )
                         }
