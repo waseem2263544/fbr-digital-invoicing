@@ -572,55 +572,60 @@
         };
 // --- ADMIN DASHBOARD --- 
         const AdminDashboard = ({ onLogout, onImpersonate }) => {
-            const [clients, setClients] = useState([]);
-            const [restrictedUsers, setRestrictedUsers] = useState([]);
-            const [activeAdminTab, setActiveAdminTab] = useState('clients'); 
-            const [showCreate, setShowCreate] = useState(false);
-            const [editingBiz, setEditingBiz] = useState(null);
+            const [businesses, setBusinesses] = useState([]);
+            const [users, setUsers] = useState([]);
+            const [activeTab, setActiveTab] = useState('businesses'); 
+            
+            const [showBizModal, setShowBizModal] = useState(false);
+            const [editingBiz, setEditingBiz] = useState(null); 
+            
+            const [showUserModal, setShowUserModal] = useState(false);
+            const [newUser, setNewUser] = useState({ username: '', password: '', role: 'client' });
+            
             const [adminError, setAdminError] = useState("");
 
-            const [newClient, setNewClient] = useState({ 
-                username: '', password: '', businessName: '', ntn: '', strn: '', address: '', province: 'Sindh', integrationMode: 'sandbox', sandboxToken: '', productionToken: '' 
-            });
-
-            const fetchClients = async () => {
-                const res = await fetch('https://app.tallied.pk/api/admin/clients', { headers: { 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` } });
-                if (res.ok) setClients(await res.json());
+            const fetchData = async () => {
+                const token = sessionStorage.getItem('fbr_token');
+                const [bRes, uRes] = await Promise.all([
+                    fetch('https://app.tallied.pk/api/admin/businesses', { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch('https://app.tallied.pk/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } })
+                ]);
+                if (bRes.ok) setBusinesses(await bRes.json());
+                if (uRes.ok) setUsers(await uRes.json());
             };
 
-            const fetchRestrictedUsers = async () => {
-                const res = await fetch('https://app.tallied.pk/api/admin/restricted-users', { headers: { 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` } });
-                if (res.ok) setRestrictedUsers(await res.json());
-            };
+            useEffect(() => { fetchData(); }, [activeTab]);
 
-            useEffect(() => {
-                if (activeAdminTab === 'clients') fetchClients();
-                else if (activeAdminTab === 'users') { fetchRestrictedUsers(); fetchClients(); }
-            }, [activeAdminTab]);
-
-            const createClient = async () => {
+            const saveBusiness = async () => {
                 setAdminError("");
+                if (!editingBiz.businessName) return setAdminError("Business Name is required");
+                const url = editingBiz.id ? `https://app.tallied.pk/api/admin/businesses/${editingBiz.id}` : 'https://app.tallied.pk/api/admin/businesses';
+                const method = editingBiz.id ? 'PUT' : 'POST';
                 try {
-                    const res = await fetch('https://app.tallied.pk/api/admin/create-client', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                        body: JSON.stringify(newClient)
-                    });
-                    if (res.ok) {
-                        setShowCreate(false); 
-                        fetchClients();
-                    } else setAdminError((await res.json()).error);
+                    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify(editingBiz) });
+                    if (res.ok) { setShowBizModal(false); setEditingBiz(null); fetchData(); }
+                    else setAdminError((await res.json()).error || "Error saving business");
                 } catch (e) { setAdminError("Network Error"); }
             };
 
-            const updateBusiness = async () => {
+            const createUser = async () => {
+                setAdminError("");
+                if (!newUser.username || newUser.password.length < 6) return setAdminError("Invalid username or password (min 6 chars).");
                 try {
-                    const res = await fetch(`https://app.tallied.pk/api/admin/businesses/${editingBiz.id}`, {
-                        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                        body: JSON.stringify(editingBiz)
-                    });
-                    if (res.ok) { fetchClients(); setEditingBiz(null); }
-                    else alert("Error saving settings");
-                } catch (e) { alert("Error saving settings"); }
+                    const res = await fetch('https://app.tallied.pk/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify(newUser) });
+                    if (res.ok) { setShowUserModal(false); setNewUser({ username: '', password: '', role: 'client' }); fetchData(); }
+                    else setAdminError((await res.json()).error || "Error creating user");
+                } catch (e) { setAdminError("Network Error"); }
+            };
+
+            const handleAccessChange = async (userId, businessId, accessLevel) => {
+                await fetch(`https://app.tallied.pk/api/admin/users/${userId}/access`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify({ businessId, accessLevel }) });
+                fetchData();
+            };
+
+            const openCreateBiz = () => {
+                setEditingBiz({ businessName: '', ntn: '', strn: '', address: '', province: 'Sindh', integrationMode: 'sandbox', sandboxToken: '', productionToken: '', taxRates: { salesTax: 18, furtherTax: 4, extraTax: 0 }, allowRetailFed: false });
+                setShowBizModal(true);
             };
 
             return (
@@ -630,8 +635,8 @@
                             <div className="flex items-center gap-2 font-bold"><Icons.ShieldCheck /> Super Admin</div>
                             <div className="flex items-center gap-4">
                                 <div className="flex bg-gray-800 rounded p-1">
-                                    <button onClick={() => setActiveAdminTab('clients')} className={`px-4 py-1 text-sm rounded ${activeAdminTab === 'clients' ? 'bg-white text-black font-bold' : 'text-gray-300'}`}>Clients (Owners)</button>
-                                    <button onClick={() => setActiveAdminTab('users')} className={`px-4 py-1 text-sm rounded ${activeAdminTab === 'users' ? 'bg-white text-black font-bold' : 'text-gray-300'}`}>Staff Users</button>
+                                    <button onClick={() => setActiveTab('businesses')} className={`px-4 py-1 text-sm rounded ${activeTab === 'businesses' ? 'bg-white text-black font-bold' : 'text-gray-300'}`}>Businesses</button>
+                                    <button onClick={() => setActiveTab('users')} className={`px-4 py-1 text-sm rounded ${activeTab === 'users' ? 'bg-white text-black font-bold' : 'text-gray-300'}`}>System Users</button>
                                 </div>
                                 <Button onClick={onLogout} variant="danger" className="py-1 text-sm"><Icons.LogOut /> Logout</Button>
                             </div>
@@ -640,58 +645,58 @@
 
                     <main className="max-w-7xl mx-auto p-6">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-gray-800">{activeAdminTab === 'clients' ? 'Client Accounts' : 'Staff Accounts'}</h2>
-                            {activeAdminTab === 'clients' && <Button onClick={() => setShowCreate(true)} variant="primary"><Icons.Plus /> Create Client Profile</Button>}
+                            <h2 className="text-2xl font-bold text-gray-800">{activeTab === 'businesses' ? 'Registered Businesses' : 'User Accounts'}</h2>
+                            {activeTab === 'businesses' ? (
+                                <Button onClick={openCreateBiz} variant="primary"><Icons.Plus /> Create Business</Button>
+                            ) : (
+                                <Button onClick={() => setShowUserModal(true)} variant="primary"><Icons.Plus /> Create User</Button>
+                            )}
                         </div>
 
-                        {showCreate && (
+                        {showBizModal && editingBiz && (
                             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                                 <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                                     <div className="flex justify-between items-center mb-6">
-                                        <h3 className="text-2xl font-bold text-gray-800">Create User & Assign Business</h3>
-                                        <button onClick={() => setShowCreate(false)} className="text-gray-400"><Icons.X size={24} /></button>
+                                        <h3 className="text-2xl font-bold text-gray-800">{editingBiz.id ? `Manage: ${editingBiz.businessName}` : 'Create New Business'}</h3>
+                                        <button onClick={() => setShowBizModal(false)} className="text-gray-400"><Icons.X size={24} /></button>
                                     </div>
-                                    {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border">{adminError}</div>}
+                                    
+                                    {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border border-red-200">{adminError}</div>}
+                                    
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-4">
-                                            <h4 className="font-bold text-gray-700 border-b pb-2">User Login</h4>
-                                            <Input label="Username" value={newClient.username} onChange={e => setNewClient({ ...newClient, username: e.target.value })} />
-                                            <Input label="Password" type="password" value={newClient.password} onChange={e => setNewClient({ ...newClient, password: e.target.value })} />
-                                        </div>
-                                        <div className="space-y-4">
-                                            <h4 className="font-bold text-gray-700 border-b pb-2">First Business Profile</h4>
-                                            <Input label="Business Name" value={newClient.businessName} onChange={e => setNewClient({ ...newClient, businessName: e.target.value })} />
-                                            <Input label="NTN" value={newClient.ntn} onChange={e => setNewClient({ ...newClient, ntn: e.target.value })} />
-                                            <select className="w-full border p-2 rounded" value={newClient.integrationMode} onChange={e => setNewClient({ ...newClient, integrationMode: e.target.value })}><option value="sandbox">Sandbox</option><option value="production">Production</option></select>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-end gap-3 mt-8 border-t pt-4">
-                                        <Button onClick={() => setShowCreate(false)} variant="secondary">Cancel</Button>
-                                        <Button onClick={createClient}>Create Account</Button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                                            <h4 className="font-bold text-gray-700 border-b pb-2">Profile & Status</h4>
+                                            
+                                            {editingBiz.id && (
+                                                <div className="bg-gray-50 p-4 rounded flex flex-col gap-4 border border-gray-200">
+                                                    <div className="flex justify-between items-center">
+                                                        <div>
+                                                            <div className="font-bold">Billing Status</div>
+                                                            <div className={`text-sm ${editingBiz.isRevoked ? 'text-red-600' : 'text-blue-600'}`}>{editingBiz.isRevoked ? 'Access Revoked' : 'Active'}</div>
+                                                        </div>
+                                                        <Button onClick={() => setEditingBiz({ ...editingBiz, isRevoked: !editingBiz.isRevoked })} variant={editingBiz.isRevoked ? "primary" : "danger"} className="text-xs">
+                                                            {editingBiz.isRevoked ? "Restore Access" : "Revoke (Non-Payment)"}
+                                                        </Button>
+                                                    </div>
+                                                    <div className="border-t pt-3">
+                                                        <div className="font-bold mb-2 text-sm">Subscription Expiry</div>
+                                                        <Input type="date" value={(editingBiz.expiryDate || new Date().toISOString()).split('T')[0]} onChange={e => setEditingBiz({ ...editingBiz, expiryDate: new Date(e.target.value).toISOString() })} />
+                                                        <div className="flex gap-2 mt-2">
+                                                            <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 30); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border px-2 py-1 rounded">+30 Days</button>
+                                                            <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 365); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border px-2 py-1 rounded">+1 Year</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
 
-                        {editingBiz && (
-                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                                <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-xl font-bold">Manage Business: {editingBiz.businessName}</h3>
-                                        <button onClick={() => setEditingBiz(null)}><Icons.X /></button>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-4">
-                                            <h4 className="font-bold text-gray-700 border-b pb-2">Business Profile</h4>
-                                            <Input label="Business Name" value={editingBiz.businessName || ''} onChange={e => setEditingBiz({ ...editingBiz, businessName: e.target.value })} />
-                                            <Input label="Address" value={editingBiz.address || ''} onChange={e => setEditingBiz({ ...editingBiz, address: e.target.value })} />
+                                            <Input label="Business Name" value={editingBiz.businessName} onChange={e => setEditingBiz({ ...editingBiz, businessName: e.target.value })} required />
                                             <div className="grid grid-cols-2 gap-2">
-                                                <Input label="NTN" value={editingBiz.ntn || ''} onChange={e => setEditingBiz({ ...editingBiz, ntn: e.target.value })} />
-                                                <Input label="STRN" value={editingBiz.strn || ''} onChange={e => setEditingBiz({ ...editingBiz, strn: e.target.value })} />
+                                                <Input label="NTN" value={editingBiz.ntn} onChange={e => setEditingBiz({ ...editingBiz, ntn: e.target.value })} />
+                                                <Input label="STRN" value={editingBiz.strn} onChange={e => setEditingBiz({ ...editingBiz, strn: e.target.value })} />
                                             </div>
-                                            <SearchableDropdown label="Province" value={editingBiz.province || 'Sindh'} options={PROVINCES} onChange={val => setEditingBiz({ ...editingBiz, province: val })} />
-
+                                            <Input label="Address" value={editingBiz.address} onChange={e => setEditingBiz({ ...editingBiz, address: e.target.value })} />
+                                            <SearchableDropdown label="Province" value={editingBiz.province} options={PROVINCES} onChange={val => setEditingBiz({ ...editingBiz, province: val })} />
+                                            
                                             <div>
                                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Company Logo</label>
                                                 <input type="file" accept="image/*" onChange={(e) => {
@@ -704,55 +709,28 @@
                                                 }} className="text-sm" />
                                                 {editingBiz.logo && <img src={editingBiz.logo} className="h-10 mt-2 object-contain" />}
                                             </div>
-
-                                            <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Access Control</h4>
-                                            <div className="bg-gray-50 p-3 rounded flex justify-between items-center">
-                                                <div>
-                                                    <div className="text-sm font-bold">Account Status</div>
-                                                    <div className={`text-xs ${editingBiz.isRevoked ? 'text-red-600' : 'text-blue-600'}`}>{editingBiz.isRevoked ? 'Revoked' : 'Active'}</div>
-                                                </div>
-                                                <Button onClick={() => setEditingBiz({ ...editingBiz, isRevoked: !editingBiz.isRevoked })} variant={editingBiz.isRevoked ? "primary" : "danger"} className="text-xs">{editingBiz.isRevoked ? "Restore Access" : "Revoke Access"}</Button>
-                                            </div>
-
-                                            <div className="bg-blue-50 p-3 rounded">
-                                                <div className="text-sm font-bold mb-2">Extend Access</div>
-                                                <Input type="date" label="Expiry Date" value={(editingBiz.expiryDate || new Date().toISOString()).split('T')[0]} onChange={e => setEditingBiz({ ...editingBiz, expiryDate: new Date(e.target.value).toISOString() })} />
-                                                <div className="flex gap-2 mt-2">
-                                                    <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 30); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border px-2 py-1 rounded">+30 Days</button>
-                                                    <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 365); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border px-2 py-1 rounded">+1 Year</button>
-                                                </div>
-                                            </div>
                                         </div>
 
                                         <div className="space-y-4">
-                                            <h4 className="font-bold text-gray-700 border-b pb-2">FBR Environment</h4>
-
+                                            <h4 className="font-bold text-gray-700 border-b pb-2">FBR Configuration</h4>
+                                            <select className="w-full border p-2 rounded text-sm" value={editingBiz.integrationMode} onChange={e => setEditingBiz({ ...editingBiz, integrationMode: e.target.value })}>
+                                                <option value="sandbox">Sandbox Mode</option>
+                                                <option value="production">Production Mode</option>
+                                            </select>
+                                            
                                             <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
                                                 <h5 className="font-bold text-xs mb-2">Sandbox (Simulation)</h5>
-                                                <Input label="Sandbox Auth Token" value={editingBiz.sandboxToken || ''} onChange={e => setEditingBiz({ ...editingBiz, sandboxToken: e.target.value })} placeholder="Bearer ..." />
+                                                <Input label="Sandbox Auth Token" value={editingBiz.sandboxToken || ''} onChange={e => setEditingBiz({ ...editingBiz, sandboxToken: e.target.value })} />
                                             </div>
 
                                             <div className="bg-gray-100 p-3 rounded border border-gray-200">
                                                 <h5 className="font-bold text-xs mb-2">Production (Live)</h5>
-                                                <Input label="Production Auth Token" value={editingBiz.productionToken || ''} onChange={e => setEditingBiz({ ...editingBiz, productionToken: e.target.value })} placeholder="Bearer ..." />
-                                            </div>
-
-                                            <div>
-                                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Active Environment</label>
-                                                <select className="w-full border border-gray-300 p-2 rounded" value={editingBiz.integrationMode || 'sandbox'} onChange={e => setEditingBiz({ ...editingBiz, integrationMode: e.target.value })}>
-                                                    <option value="sandbox">Sandbox</option>
-                                                    <option value="production">Production</option>
-                                                </select>
+                                                <Input label="Production Auth Token" value={editingBiz.productionToken || ''} onChange={e => setEditingBiz({ ...editingBiz, productionToken: e.target.value })} />
                                             </div>
 
                                             <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Feature Control</h4>
                                             <div className="flex items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    id="allowRetailFed"
-                                                    checked={editingBiz.allowRetailFed || false}
-                                                    onChange={e => setEditingBiz({ ...editingBiz, allowRetailFed: e.target.checked })}
-                                                />
+                                                <input type="checkbox" id="allowRetailFed" checked={editingBiz.allowRetailFed || false} onChange={e => setEditingBiz({ ...editingBiz, allowRetailFed: e.target.checked })} />
                                                 <label htmlFor="allowRetailFed" className="text-sm">Allow Retail Price & FED Fields</label>
                                             </div>
 
@@ -764,141 +742,115 @@
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-                                        <Button onClick={() => setEditingBiz(null)} variant="secondary">Cancel</Button>
-                                        <Button onClick={updateBusiness}>Save Changes</Button>
+                                    <div className="flex justify-end gap-3 mt-8 border-t pt-4">
+                                        <Button onClick={() => setShowBizModal(false)} variant="secondary">Cancel</Button>
+                                        <Button onClick={saveBusiness}>Save Business</Button>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {activeAdminTab === 'clients' && (
-                            <div className="grid gap-6">
-                                {clients.map(client => (
-                                    <Card key={client.id} className="p-5 border-l-4 border-black shadow-md">
-                                        <div className="flex justify-between items-center mb-4 border-b pb-3">
-                                            <div className="font-bold text-xl flex items-center gap-2"><Icons.User /> {client.username}</div>
-                                            <Button onClick={() => onImpersonate(client.id)} variant="primary"><Icons.Eye /> Login As {client.username}</Button>
+                        {showUserModal && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                                <Card className="p-6 w-full max-w-md">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="text-xl font-bold">Create New User</h3>
+                                        <button onClick={() => setShowUserModal(false)}><Icons.X /></button>
+                                    </div>
+                                    {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border">{adminError}</div>}
+                                    <div className="space-y-4">
+                                        <Input label="Username" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} required />
+                                        <Input label="Password" type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} required />
+                                        <div>
+                                            <label className="text-xs font-semibold text-gray-500 uppercase block mb-1">User Role</label>
+                                            <select className="w-full border p-2 rounded text-sm" value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
+                                                <option value="client">Client (Full Dashboard Access)</option>
+                                                <option value="restricted_user">Staff (View/Edit Specifics)</option>
+                                            </select>
                                         </div>
-                                        <div className="space-y-3">
-                                            <h4 className="text-sm font-bold text-gray-500 uppercase">Assigned Businesses</h4>
-                                            {(client.businesses || []).map(biz => {
-                                                const daysLeft = Math.ceil((new Date(biz.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
-                                                return (
-                                                    <div key={biz.id} className={`flex justify-between items-center bg-gray-50 p-4 rounded border ${biz.isRevoked ? 'opacity-60 border-red-300 bg-red-50' : 'border-gray-200'}`}>
-                                                        <div>
-                                                            <div className="font-bold text-lg">{biz.businessName} {biz.isRevoked && <span className="text-xs bg-red-600 text-white px-2 py-1 rounded ml-2">REVOKED</span>}</div>
-                                                            <div className="text-xs text-gray-500 mt-1">NTN: {biz.ntn} | Mode: <span className="font-bold uppercase">{biz.integrationMode}</span></div>
-                                                        </div>
-                                                        <div className="flex items-center gap-4">
-                                                            <div className={`text-xs font-bold ${daysLeft < 7 ? 'text-red-600' : 'text-gray-500'}`}><Icons.Calendar size={12} className="inline"/> {daysLeft} Days Left</div>
-                                                            <Button onClick={() => setEditingBiz(biz)} variant="secondary" className="text-xs border-gray-300">Billing & Settings</Button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </Card>
-                                ))}
+                                        <Button onClick={createUser} className="w-full mt-4">Create User</Button>
+                                    </div>
+                                </Card>
                             </div>
                         )}
 
-                        {activeAdminTab === 'users' && (
-                            <div className="space-y-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-xl font-bold">Staff Users</h3>
-                                    <Button onClick={() => { setShowCreate(!showCreate); setAdminError(""); }} variant="primary"><Icons.Plus /> Create User</Button>
-                                </div>
-
-                                {showCreate && (
-                                    <Card className="p-4 bg-gray-50 border-gray-200">
-                                        <h4 className="font-bold mb-4">New Staff User</h4>
-                                        {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border">{adminError}</div>}
-                                        <div className="flex gap-4 items-end">
-                                            <Input label="Username" value={newClient.username} onChange={e => setNewClient({ ...newClient, username: e.target.value })} />
-                                            <Input label="Password" type="password" value={newClient.password} onChange={e => setNewClient({ ...newClient, password: e.target.value })} />
-                                            <Button onClick={async () => {
-                                                setAdminError("");
-                                                if (!newClient.username || newClient.password.length < 6) return setAdminError("Invalid username or weak password.");
-                                                try {
-                                                    const res = await fetch('https://app.tallied.pk/api/admin/restricted-users', {
-                                                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                                                        body: JSON.stringify({ username: newClient.username, password: newClient.password })
-                                                    });
-                                                    if (res.ok) { setShowCreate(false); setNewClient({ username: '', password: '' }); fetchRestrictedUsers(); }
-                                                    else setAdminError((await res.json()).error);
-                                                } catch (e) { setAdminError("Network Error."); }
-                                            }}>Create Staff User</Button>
-                                        </div>
-                                    </Card>
-                                )}
-
-                                <div className="grid gap-4">
-                                    {restrictedUsers.map(ru => (
-                                        <Card key={ru.id} className="p-4">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="font-bold text-lg flex items-center gap-2">
-                                                    <Icons.Users size={18} /> {ru.username}
-                                                    {ru.isRevoked && <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded">REVOKED</span>}
+                        {activeTab === 'businesses' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {businesses.map(biz => {
+                                    const daysLeft = Math.ceil((new Date(biz.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+                                    return (
+                                        <Card key={biz.id} className={`p-5 flex flex-col justify-between border-l-4 ${biz.isRevoked ? 'border-red-600 opacity-75' : 'border-black'}`}>
+                                            <div>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="font-bold text-lg">{biz.businessName} {biz.isRevoked && <span className="text-xs bg-red-600 text-white px-2 py-1 rounded ml-2">REVOKED</span>}</div>
+                                                    <span className={`text-xs px-2 py-1 rounded font-bold uppercase ${biz.integrationMode === 'production' ? 'bg-gray-800 text-white' : 'bg-yellow-200 text-yellow-800'}`}>{biz.integrationMode}</span>
                                                 </div>
-                                                <Button variant={ru.isRevoked ? "primary" : "danger"} className="text-xs" onClick={async () => {
-                                                    await fetch(`https://app.tallied.pk/api/admin/restricted-users/${ru.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify({ isRevoked: !ru.isRevoked }) });
-                                                    fetchRestrictedUsers();
-                                                }}>{ru.isRevoked ? "Restore Access" : "Revoke User"}</Button>
+                                                <div className="text-sm text-gray-500">NTN: {biz.ntn || 'N/A'}</div>
+                                                <div className={`text-sm font-bold mt-3 ${daysLeft < 7 ? 'text-red-600' : 'text-gray-600'}`}><Icons.Calendar size={14} className="inline mr-1"/> {daysLeft} Days Left</div>
                                             </div>
-
-                                            <div className="mt-4 border-t pt-4">
-                                                <h5 className="font-bold text-sm text-gray-700 mb-3">Assigned Businesses</h5>
-                                                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-                                                    {clients.flatMap(c => c.businesses || []).map(biz => {
-                                                        const userAccess = (ru.access || []).find(a => a.businessId === biz.id);
-                                                        const hasAccess = !!userAccess;
-                                                        const currentLevel = hasAccess ? userAccess.accessLevel : 'view';
-
-                                                        return (
-                                                            <div key={biz.id} className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-100">
-                                                                <div className="flex items-center gap-3">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={hasAccess}
-                                                                        onChange={async (e) => {
-                                                                            const level = e.target.checked ? currentLevel : null;
-                                                                            await fetch(`https://app.tallied.pk/api/admin/restricted-users/${ru.id}/access`, {
-                                                                                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                                                                                body: JSON.stringify({ businessId: biz.id, accessLevel: level })
-                                                                            });
-                                                                            fetchRestrictedUsers();
-                                                                        }}
-                                                                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                                                    />
-                                                                    <span className="text-sm font-medium text-gray-700">{biz.businessName}</span>
-                                                                </div>
-                                                                {hasAccess && (
-                                                                    <select
-                                                                        className="text-xs border border-gray-300 rounded p-1 bg-white"
-                                                                        value={currentLevel}
-                                                                        onChange={async (e) => {
-                                                                            await fetch(`https://app.tallied.pk/api/admin/restricted-users/${ru.id}/access`, {
-                                                                                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                                                                                body: JSON.stringify({ businessId: biz.id, accessLevel: e.target.value })
-                                                                            });
-                                                                            fetchRestrictedUsers();
-                                                                        }}
-                                                                    >
-                                                                        <option value="view">View Only</option>
-                                                                        <option value="edit">Full Access</option>
-                                                                    </select>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
+                                            <div className="mt-4 pt-4 border-t flex justify-end">
+                                                <Button onClick={() => { setEditingBiz(biz); setShowBizModal(true); }} variant="secondary" className="text-sm">Manage Profile & Billing</Button>
                                             </div>
                                         </Card>
-                                    ))}
-                                    {restrictedUsers.length === 0 && <div className="text-center p-8 text-gray-500">No system users created yet.</div>}
-                                </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {activeTab === 'users' && (
+                            <div className="grid gap-6">
+                                {users.map(u => (
+                                    <Card key={u.id} className="p-5">
+                                        <div className="flex justify-between items-center mb-4 pb-4 border-b">
+                                            <div>
+                                                <div className="font-bold text-xl flex items-center gap-2"><Icons.User /> {u.username}</div>
+                                                <span className={`text-xs px-2 py-1 rounded mt-2 inline-block font-bold uppercase ${u.role === 'client' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>{u.role.replace('_', ' ')}</span>
+                                            </div>
+                                            <Button onClick={() => onImpersonate(u.id)} variant="primary"><Icons.Eye /> Login As User</Button>
+                                        </div>
+                                        
+                                        <div>
+                                            <h4 className="text-sm font-bold text-gray-700 mb-3">Assign Business Access</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                                                {businesses.map(biz => {
+                                                    const userAccess = (u.access || []).find(a => a.businessId === biz.id);
+                                                    const hasAccess = !!userAccess;
+                                                    const currentLevel = hasAccess ? userAccess.accessLevel : (u.role === 'client' ? 'admin' : 'view');
+
+                                                    return (
+                                                        <div key={biz.id} className={`flex items-center justify-between p-2 rounded border ${hasAccess ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+                                                            <div className="flex items-center gap-3">
+                                                                <input 
+                                                                    type="checkbox" 
+                                                                    checked={hasAccess} 
+                                                                    onChange={(e) => handleAccessChange(u.id, biz.id, e.target.checked ? currentLevel : null)}
+                                                                    className="w-4 h-4 text-blue-600 rounded"
+                                                                />
+                                                                <span className="text-sm font-medium">{biz.businessName}</span>
+                                                            </div>
+                                                            {hasAccess && (
+                                                                <select 
+                                                                    className="text-xs border p-1 rounded bg-white"
+                                                                    value={currentLevel}
+                                                                    onChange={(e) => handleAccessChange(u.id, biz.id, e.target.value)}
+                                                                >
+                                                                    {u.role === 'client' ? (
+                                                                        <option value="admin">Full Admin</option>
+                                                                    ) : (
+                                                                        <>
+                                                                            <option value="view">View Only</option>
+                                                                            <option value="edit">Edit Access</option>
+                                                                        </>
+                                                                    )}
+                                                                </select>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </Card>
+                                ))}
                             </div>
                         )}
                     </main>
