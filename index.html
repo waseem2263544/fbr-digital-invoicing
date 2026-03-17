@@ -570,131 +570,60 @@
                 </div>
             );
         };
-
-        // --- ADMIN DASHBOARD --- 
+// --- ADMIN DASHBOARD --- 
         const AdminDashboard = ({ onLogout, onImpersonate }) => {
-            const [users, setUsers] = useState([]);
-            const [search, setSearch] = useState("");
-            const [sortBy, setSortBy] = useState("name");
-            const [newClient, setNewClient] = useState({ 
-                businessName: '', 
-                settings: { ntn: '', strn: '', address: '', province: 'Sindh', integrationMode: 'sandbox', sandboxToken: '', productionToken: '' } 
-            });
+            const [clients, setClients] = useState([]);
+            const [restrictedUsers, setRestrictedUsers] = useState([]);
+            const [activeAdminTab, setActiveAdminTab] = useState('clients'); 
             const [showCreate, setShowCreate] = useState(false);
-            const [editingClient, setEditingClient] = useState(null);
+            const [editingBiz, setEditingBiz] = useState(null);
             const [adminError, setAdminError] = useState("");
 
-            const [activeAdminTab, setActiveAdminTab] = useState('clients'); 
-            const [restrictedUsers, setRestrictedUsers] = useState([]);
-            const [showCreateUser, setShowCreateUser] = useState(false);
-            const [newUserParams, setNewUserParams] = useState({ username: '', password: '' });
+            const [newClient, setNewClient] = useState({ 
+                username: '', password: '', businessName: '', ntn: '', strn: '', address: '', province: 'Sindh', integrationMode: 'sandbox', sandboxToken: '', productionToken: '' 
+            });
 
-            const [showSystem, setShowSystem] = useState(false);
-            const [announcement, setAnnouncement] = useState(DataManager.getGlobalAnnouncement());
-
-            const fetchUsers = async () => {
-                try {
-                    const res = await fetch('https://app.tallied.pk/api/users', { headers: { 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` } });
-                    if (res.ok) setUsers(await res.json());
-                } catch (e) { console.error(e); }
+            const fetchClients = async () => {
+                const res = await fetch('https://app.tallied.pk/api/admin/clients', { headers: { 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` } });
+                if (res.ok) setClients(await res.json());
             };
 
             const fetchRestrictedUsers = async () => {
-                try {
-                    const res = await fetch('https://app.tallied.pk/api/admin/restricted-users', { headers: { 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` } });
-                    if (res.ok) setRestrictedUsers(await res.json());
-                } catch (e) { console.error(e); }
+                const res = await fetch('https://app.tallied.pk/api/admin/restricted-users', { headers: { 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` } });
+                if (res.ok) setRestrictedUsers(await res.json());
             };
 
             useEffect(() => {
-                if (activeAdminTab === 'clients') fetchUsers();
-                else if (activeAdminTab === 'users') { fetchRestrictedUsers(); fetchUsers(); }
-                setAdminError(""); 
+                if (activeAdminTab === 'clients') fetchClients();
+                else if (activeAdminTab === 'users') { fetchRestrictedUsers(); fetchClients(); }
             }, [activeAdminTab]);
 
             const createClient = async () => {
                 setAdminError("");
-                if (!newClient.businessName || !newClient.settings.ntn) return setAdminError("Business Name and NTN are required fields");
-
                 try {
-                    const res = await fetch('https://app.tallied.pk/api/register', {
+                    const res = await fetch('https://app.tallied.pk/api/admin/create-client', {
                         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
                         body: JSON.stringify(newClient)
                     });
                     if (res.ok) {
                         setShowCreate(false); 
-                        setNewClient({ 
-                            businessName: '', 
-                            settings: { ntn: '', strn: '', address: '', province: 'Sindh', integrationMode: 'sandbox', sandboxToken: '', productionToken: '' } 
-                        });
-                        fetchUsers();
-                    } else {
-                        const data = await res.json(); setAdminError(data.error || "Failed to create client");
-                    }
-                } catch (e) { 
-                    setAdminError("Network Error: " + e.message); 
-                }
+                        fetchClients();
+                    } else setAdminError((await res.json()).error);
+                } catch (e) { setAdminError("Network Error"); }
             };
 
-            const updateClientSettings = async () => {
-                if (!editingClient) return;
-                if (editingClient.password && !validatePassword(editingClient.password)) return alert("Password weak.");
-
+            const updateBusiness = async () => {
                 try {
-                    const res = await fetch(`https://app.tallied.pk/api/users/${editingClient.id}`, {
+                    const res = await fetch(`https://app.tallied.pk/api/admin/businesses/${editingBiz.id}`, {
                         method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                        body: JSON.stringify(editingClient)
+                        body: JSON.stringify(editingBiz)
                     });
-                    if (res.ok) {
-                        fetchUsers();
-                        setEditingClient(null);
-                    } else alert("Error saving settings");
+                    if (res.ok) { fetchClients(); setEditingBiz(null); }
+                    else alert("Error saving settings");
                 } catch (e) { alert("Error saving settings"); }
             };
 
-            const toggleRevoke = async (client) => {
-                try {
-                    await fetch(`https://app.tallied.pk/api/users/${client.id}`, {
-                        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                        body: JSON.stringify({ isRevoked: !client.isRevoked })
-                    });
-                    fetchUsers();
-                    if (editingClient && editingClient.id === client.id) setEditingClient({ ...client, isRevoked: !client.isRevoked });
-                } catch (e) { }
-            };
-
-            const modifyExpiryDate = (newDate) => {
-                if (!editingClient) return;
-                setEditingClient({ ...editingClient, billing: { ...editingClient.billing, expiry: newDate } });
-            };
-
-            const handleLogoUpload = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => { setEditingClient(prev => ({ ...prev, settings: { ...prev.settings, logo: reader.result } })); };
-                    reader.readAsDataURL(file);
-                }
-            };
-
-            const saveAnnouncement = () => {
-                DataManager.setGlobalAnnouncement(announcement);
-                alert("Announcement Updated");
-                setShowSystem(false);
-            };
-
-            const getDaysRemaining = (expiryDate) => {
-                if (!expiryDate) return 0;
-                const diff = new Date(expiryDate) - new Date();
-                return Math.ceil(diff / (1000 * 60 * 60 * 24));
-            };
-
-            const filteredUsers = users
-                .filter(u => u.username.toLowerCase().includes(search.toLowerCase()) || (u.settings?.businessName || "").toLowerCase().includes(search.toLowerCase()))
-                .sort((a, b) => {
-                    if (sortBy === 'expiry') return new Date(a.billing?.expiry || 0) - new Date(b.billing?.expiry || 0);
-                    return a.username.localeCompare(b.username);
-                });
+            const modifyExpiryDate = (newDate) => setEditingBiz({ ...editingBiz, expiryDate: newDate });
 
             return (
                 <div className="min-h-screen bg-gray-50">
@@ -703,315 +632,114 @@
                             <div className="flex items-center gap-2 font-bold"><Icons.ShieldCheck /> Super Admin</div>
                             <div className="flex items-center gap-4">
                                 <div className="flex bg-gray-800 rounded p-1">
-                                    <button onClick={() => setActiveAdminTab('clients')} className={`px-4 py-1 text-sm rounded transition-colors ${activeAdminTab === 'clients' ? 'bg-white text-black font-bold' : 'text-gray-300 hover:text-white'}`}>Businesses</button>
-                                    <button onClick={() => setActiveAdminTab('users')} className={`px-4 py-1 text-sm rounded transition-colors ${activeAdminTab === 'users' ? 'bg-white text-black font-bold' : 'text-gray-300 hover:text-white'}`}>System Users</button>
+                                    <button onClick={() => setActiveAdminTab('clients')} className={`px-4 py-1 text-sm rounded ${activeAdminTab === 'clients' ? 'bg-white text-black font-bold' : 'text-gray-300'}`}>Client Users</button>
+                                    <button onClick={() => setActiveAdminTab('users')} className={`px-4 py-1 text-sm rounded ${activeAdminTab === 'users' ? 'bg-white text-black font-bold' : 'text-gray-300'}`}>Staff Users</button>
                                 </div>
-                                <div className="flex gap-2">
-                                    <Button onClick={() => setShowSystem(true)} variant="secondary" className="text-xs text-gray-800"><Icons.Settings size={14} /> System</Button>
-                                    <Button onClick={onLogout} variant="danger" className="py-1 text-sm"><Icons.LogOut /> Logout</Button>
-                                </div>
+                                <Button onClick={onLogout} variant="danger" className="py-1 text-sm"><Icons.LogOut /> Logout</Button>
                             </div>
                         </div>
                     </nav>
 
                     <main className="max-w-7xl mx-auto p-6">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-gray-800">Client Management</h2>
-                            <div className="flex gap-2 items-center">
-                                <Button onClick={() => setShowCreate(true)} variant="primary"><Icons.Plus /> New Client</Button>
-                                <select className="border border-gray-300 p-2 rounded text-sm bg-white" value={sortBy} onChange={e => setSortBy(e.target.value)}>
-                                    <option value="name">Sort by Name</option>
-                                    <option value="expiry">Sort by Expiry</option>
-                                </select>
-                                <div className="relative w-64"><input type="text" placeholder="Search client..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8" value={search} onChange={e => setSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div>
-                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800">{activeAdminTab === 'clients' ? 'Client Accounts' : 'Staff Accounts'}</h2>
+                            {activeAdminTab === 'clients' && <Button onClick={() => setShowCreate(true)} variant="primary"><Icons.Plus /> Create Client Profile</Button>}
                         </div>
-
-                        {showSystem && (
-                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                                <div className="bg-white p-6 rounded-lg w-full max-w-md">
-                                    <h3 className="text-xl font-bold mb-4">System Utilities</h3>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <Input label="Global Announcement" value={announcement} onChange={e => setAnnouncement(e.target.value)} />
-                                        </div>
-                                        <div className="flex justify-end gap-2 mt-4">
-                                            <Button onClick={() => setShowSystem(false)} variant="secondary">Close</Button>
-                                            <Button onClick={saveAnnouncement}>Save</Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
                         {showCreate && (
                             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                                 <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                                     <div className="flex justify-between items-center mb-6">
-                                        <h3 className="text-2xl font-bold text-gray-800">Create New Business</h3>
-                                        <button onClick={() => { setShowCreate(false); setAdminError(""); }} className="text-gray-400 hover:text-gray-600"><Icons.X size={24} /></button>
+                                        <h3 className="text-2xl font-bold text-gray-800">Create User & Assign Business</h3>
+                                        <button onClick={() => setShowCreate(false)} className="text-gray-400"><Icons.X size={24} /></button>
                                     </div>
-                                    {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border border-red-200">{adminError}</div>}
+                                    {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border">{adminError}</div>}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-4">
-                                            <h4 className="font-bold text-gray-700 border-b pb-2">Business Profile</h4>
-                                            <Input label="Business Name" value={newClient.businessName} onChange={e => setNewClient({ ...newClient, businessName: e.target.value })} />
-                                            <Input label="Address" value={newClient.settings.address} onChange={e => setNewClient({ ...newClient, settings: { ...newClient.settings, address: e.target.value } })} />
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <Input label="NTN (7 or 13 digits)" value={newClient.settings.ntn} onChange={e => setNewClient({ ...newClient, settings: { ...newClient.settings, ntn: e.target.value } })} />
-                                                <Input label="STRN" value={newClient.settings.strn} onChange={e => setNewClient({ ...newClient, settings: { ...newClient.settings, strn: e.target.value } })} />
-                                            </div>
-                                            <SearchableDropdown label="Province" value={newClient.settings.province} options={PROVINCES} onChange={val => setNewClient({ ...newClient, settings: { ...newClient.settings, province: val } })} />
+                                            <h4 className="font-bold text-gray-700 border-b pb-2">User Login</h4>
+                                            <Input label="Username" value={newClient.username} onChange={e => setNewClient({ ...newClient, username: e.target.value })} />
+                                            <Input label="Password" type="password" value={newClient.password} onChange={e => setNewClient({ ...newClient, password: e.target.value })} />
                                         </div>
                                         <div className="space-y-4">
-                                            <h4 className="font-bold text-gray-700 border-b pb-2">FBR Integration Configuration</h4>
-                                            <div className="flex gap-4">
-                                                <label className="flex items-center gap-2 cursor-pointer">
-                                                    <input type="radio" name="newMode" checked={newClient.settings.integrationMode === 'sandbox'} onChange={() => setNewClient({ ...newClient, settings: { ...newClient.settings, integrationMode: 'sandbox' } })} /> Sandbox Mode
-                                                </label>
-                                                <label className="flex items-center gap-2 cursor-pointer">
-                                                    <input type="radio" name="newMode" checked={newClient.settings.integrationMode === 'production'} onChange={() => setNewClient({ ...newClient, settings: { ...newClient.settings, integrationMode: 'production' } })} /> Production Mode
-                                                </label>
-                                            </div>
-                                            {newClient.settings.integrationMode === 'sandbox' ? (
-                                                <Input label="Sandbox API Token" type="password" value={newClient.settings.sandboxToken} onChange={e => setNewClient({ ...newClient, settings: { ...newClient.settings, sandboxToken: e.target.value } })} />
-                                            ) : (
-                                                <Input label="Production API Token" type="password" value={newClient.settings.productionToken} onChange={e => setNewClient({ ...newClient, settings: { ...newClient.settings, productionToken: e.target.value } })} />
-                                            )}
+                                            <h4 className="font-bold text-gray-700 border-b pb-2">First Business Profile</h4>
+                                            <Input label="Business Name" value={newClient.businessName} onChange={e => setNewClient({ ...newClient, businessName: e.target.value })} />
+                                            <Input label="NTN" value={newClient.ntn} onChange={e => setNewClient({ ...newClient, ntn: e.target.value })} />
+                                            <select className="w-full border p-2 rounded" value={newClient.integrationMode} onChange={e => setNewClient({ ...newClient, integrationMode: e.target.value })}><option value="sandbox">Sandbox</option><option value="production">Production</option></select>
                                         </div>
                                     </div>
                                     <div className="flex justify-end gap-3 mt-8 border-t pt-4">
-                                        <Button onClick={() => { setShowCreate(false); setAdminError(""); }} variant="secondary">Cancel</Button>
-                                        <Button onClick={createClient}>Create Business</Button>
+                                        <Button onClick={() => setShowCreate(false)} variant="secondary">Cancel</Button>
+                                        <Button onClick={createClient}>Create Account</Button>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {editingClient && (
+                        {editingBiz && (
                             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                                <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                                <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-xl font-bold">Manage Client: {editingClient.username}</h3>
-                                        <button onClick={() => setEditingClient(null)}><Icons.X /></button>
+                                        <h3 className="text-xl font-bold">Manage Business: {editingBiz.businessName}</h3>
+                                        <button onClick={() => setEditingBiz(null)}><Icons.X /></button>
                                     </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-4">
-                                            <h4 className="font-bold text-gray-700 border-b pb-2">Business Profile</h4>
-                                            <Input label="Business Name" value={editingClient.settings?.businessName || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, businessName: e.target.value } })} />
-                                            <Input label="Address" value={editingClient.settings?.address || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, address: e.target.value } })} />
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <Input label="NTN" value={editingClient.settings?.ntn || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, ntn: e.target.value } })} />
-                                                <Input label="STRN" value={editingClient.settings?.strn || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, strn: e.target.value } })} />
-                                            </div>
-                                            <SearchableDropdown label="Province" value={editingClient.settings?.province || 'Sindh'} options={PROVINCES} onChange={val => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, province: val } })} />
-
+                                    <div className="space-y-4">
+                                        <div className="bg-gray-50 p-4 rounded flex justify-between items-center border">
                                             <div>
-                                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Company Logo</label>
-                                                <input type="file" accept="image/*" onChange={handleLogoUpload} className="text-sm" />
-                                                {editingClient.settings?.logo && <img src={editingClient.settings.logo} className="h-10 mt-2 object-contain" />}
+                                                <div className="font-bold">Billing Status</div>
+                                                <div className={`text-sm ${editingBiz.isRevoked ? 'text-red-600' : 'text-blue-600'}`}>{editingBiz.isRevoked ? 'Access Revoked' : 'Active'}</div>
                                             </div>
-
-                                            <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Access Control</h4>
-                                            <div className="bg-gray-50 p-3 rounded flex justify-between items-center">
-                                                <div>
-                                                    <div className="text-sm font-bold">Account Status</div>
-                                                    <div className={`text-xs ${editingClient.isRevoked ? 'text-red-600' : 'text-blue-600'}`}>{editingClient.isRevoked ? 'Revoked' : 'Active'}</div>
-                                                </div>
-                                                <Button onClick={() => toggleRevoke(editingClient)} variant={editingClient.isRevoked ? "primary" : "danger"} className="text-xs">{editingClient.isRevoked ? "Restore Access" : "Revoke Access"}</Button>
-                                            </div>
-
-                                            <div className="bg-blue-50 p-3 rounded">
-                                                <div className="text-sm font-bold mb-2">Extend Access</div>
-                                                <Input type="date" label="Expiry Date" value={(editingClient.billing?.expiry || new Date().toISOString()).split('T')[0]} onChange={e => modifyExpiryDate(new Date(e.target.value).toISOString())} />
-                                                <div className="flex gap-2 mt-2">
-                                                    <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 30); modifyExpiryDate(d.toISOString()) }} className="text-xs bg-white border px-2 py-1 rounded">+30 Days</button>
-                                                    <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 365); modifyExpiryDate(d.toISOString()) }} className="text-xs bg-white border px-2 py-1 rounded">+1 Year</button>
-                                                </div>
+                                            <Button onClick={() => setEditingBiz({ ...editingBiz, isRevoked: !editingBiz.isRevoked })} variant={editingBiz.isRevoked ? "primary" : "danger"}>
+                                                {editingBiz.isRevoked ? "Restore Access" : "Revoke (Non-Payment)"}
+                                            </Button>
+                                        </div>
+                                        <div className="bg-blue-50 p-4 rounded border border-blue-100">
+                                            <div className="font-bold mb-2">Subscription Expiry</div>
+                                            <Input type="date" value={(editingBiz.expiryDate || new Date().toISOString()).split('T')[0]} onChange={e => modifyExpiryDate(new Date(e.target.value).toISOString())} />
+                                            <div className="flex gap-2 mt-2">
+                                                <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 30); modifyExpiryDate(d.toISOString()) }} className="text-xs bg-white border px-2 py-1 rounded">+30 Days</button>
+                                                <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 365); modifyExpiryDate(d.toISOString()) }} className="text-xs bg-white border px-2 py-1 rounded">+1 Year</button>
                                             </div>
                                         </div>
-
-                                        <div className="space-y-4">
-                                            <h4 className="font-bold text-gray-700 border-b pb-2">FBR Environment</h4>
-
-                                            <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
-                                                <h5 className="font-bold text-xs mb-2">Sandbox (Simulation)</h5>
-                                                <div className="text-xs text-gray-500 mb-2 truncate" title={SYSTEM_CONFIG.BASE_URL + SYSTEM_CONFIG.PATHS.POST_INVOICE_SB}>{SYSTEM_CONFIG.BASE_URL + SYSTEM_CONFIG.PATHS.POST_INVOICE_SB}</div>
-                                                <Input label="Sandbox Auth Token" value={editingClient.settings?.sandbox?.token || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, sandbox: { ...(editingClient.settings?.sandbox || {}), token: e.target.value } } })} placeholder="Bearer ..." />
-                                            </div>
-
-                                            <div className="bg-gray-100 p-3 rounded border border-gray-200">
-                                                <h5 className="font-bold text-xs mb-2">Production (Live)</h5>
-                                                <div className="text-xs text-gray-500 mb-2 truncate" title={SYSTEM_CONFIG.BASE_URL + SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD}>{SYSTEM_CONFIG.BASE_URL + SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD}</div>
-                                                <Input label="Production Auth Token" value={editingClient.settings?.production?.token || ''} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, production: { ...(editingClient.settings?.production || {}), token: e.target.value } } })} placeholder="Bearer ..." />
-                                            </div>
-
-                                            <div>
-                                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Active Environment</label>
-                                                <select className="w-full border border-gray-300 p-2 rounded" value={editingClient.settings?.integrationMode || 'sandbox'} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, integrationMode: e.target.value } })}>
-                                                    <option value="sandbox">Sandbox</option>
-                                                    <option value="production">Production</option>
-                                                </select>
-                                            </div>
-
-                                            <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Feature Control</h4>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    id="allowRetailFed"
-                                                    checked={editingClient.settings?.allowRetailFed || false}
-                                                    onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, allowRetailFed: e.target.checked } })}
-                                                />
-                                                <label htmlFor="allowRetailFed" className="text-sm">Allow Retail Price & FED Fields</label>
-                                            </div>
-
-                                            <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Default Rates</h4>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                <Input label="Sales Tax %" type="number" value={editingClient.settings?.taxRates?.salesTax || 18} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, taxRates: { ...(editingClient.settings?.taxRates || {}), salesTax: parseFloat(e.target.value) } } })} />
-                                                <Input label="Further Tax %" type="number" value={editingClient.settings?.taxRates?.furtherTax || 4} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, taxRates: { ...(editingClient.settings?.taxRates || {}), furtherTax: parseFloat(e.target.value) } } })} />
-                                                <Input label="Extra Tax %" type="number" value={editingClient.settings?.taxRates?.extraTax || 0} onChange={e => setEditingClient({ ...editingClient, settings: { ...editingClient.settings, taxRates: { ...(editingClient.settings?.taxRates || {}), extraTax: parseFloat(e.target.value) } } })} />
-                                            </div>
-                                        </div>
+                                        <Input label="Business Name" value={editingBiz.businessName} onChange={e => setEditingBiz({ ...editingBiz, businessName: e.target.value })} />
+                                        <Input label="NTN" value={editingBiz.ntn} onChange={e => setEditingBiz({ ...editingBiz, ntn: e.target.value })} />
+                                        <select className="w-full border p-2 rounded" value={editingBiz.integrationMode} onChange={e => setEditingBiz({ ...editingBiz, integrationMode: e.target.value })}><option value="sandbox">Sandbox</option><option value="production">Production</option></select>
                                     </div>
-
                                     <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-                                        <Button onClick={() => setEditingClient(null)} variant="secondary">Cancel</Button>
-                                        <Button onClick={updateClientSettings}>Save Changes</Button>
+                                        <Button onClick={() => setEditingBiz(null)} variant="secondary">Cancel</Button>
+                                        <Button onClick={updateBusiness}>Save Changes</Button>
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {activeAdminTab === 'clients' && (
-                            <>
-                                <div className="grid gap-4">{filteredUsers.map(u => {
-                                    const daysLeft = getDaysRemaining(u.billing?.expiry);
-                                    return (
-                                        <Card key={u.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 ${u.isRevoked ? 'opacity-50' : ''}`}>
-                                            <div className="flex-1">
-                                                <div className="font-bold text-lg flex items-center gap-2">
-                                                    {u.settings?.businessName || "Unnamed"}
-                                                    {u.isRevoked && <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded">REVOKED</span>}
-                                                </div>
-                                                <div className="text-xs text-gray-500">{u.username}</div>
-                                                <div className="text-sm text-gray-500 flex gap-4 mt-1 items-center">
-                                                    <span className={`flex items-center gap-1 font-bold ${daysLeft < 7 ? 'text-red-600' : 'text-gray-600'}`}><Icons.Calendar size={12} /> {daysLeft} Days Left</span>
-                                                    <span className={`flex items-center gap-1 px-2 rounded text-xs ${u.settings?.integrationMode === 'production' ? 'bg-gray-200 text-gray-800' : 'bg-yellow-100 text-yellow-800'}`}>{u.settings?.integrationMode === 'production' ? 'Prod' : 'Sand'}</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-2 items-end">
-                                                <div className="flex gap-2">
-                                                    <Button onClick={() => onImpersonate(u.id)} variant="secondary" className="text-xs bg-gray-50 text-gray-700 border-gray-200" disabled={u.isRevoked}><Icons.Eye size={14} /> Login As</Button>
-                                                    <Button onClick={() => setEditingClient(u)} variant="secondary" className="text-xs"><Icons.Settings size={14} /> Manage</Button>
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    );
-                                })}</div>
-                            </>
-                        )}
-
-                        {activeAdminTab === 'users' && (
-                            <div className="space-y-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-xl font-bold">System Users (Restricted Access)</h3>
-                                    <Button onClick={() => { setShowCreateUser(!showCreateUser); setAdminError(""); }} variant="primary"><Icons.Plus /> Create User</Button>
-                                </div>
-
-                                {showCreateUser && (
-                                    <Card className="p-4 bg-gray-50 border-gray-200">
-                                        <h4 className="font-bold mb-4">New System User</h4>
-                                        {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border border-red-200">{adminError}</div>}
-                                        <div className="flex gap-4 items-end">
-                                            <Input label="Username" value={newUserParams.username} onChange={e => setNewUserParams({ ...newUserParams, username: e.target.value })} />
-                                            <Input label="Password" type="password" value={newUserParams.password} onChange={e => setNewUserParams({ ...newUserParams, password: e.target.value })} />
-                                            <Button onClick={async () => {
-                                                setAdminError("");
-                                                if (!newUserParams.username || !validatePassword(newUserParams.password)) return setAdminError("Invalid username or weak password. Needs 8+ chars, 1 letter, 1 number, 1 symbol.");
-                                                try {
-                                                    const res = await fetch('https://app.tallied.pk/api/admin/restricted-users', {
-                                                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                                                        body: JSON.stringify(newUserParams)
-                                                    });
-                                                    if (res.ok) { setShowCreateUser(false); setNewUserParams({ username: '', password: '' }); fetchRestrictedUsers(); }
-                                                    else setAdminError((await res.json()).error || "Failed to create user");
-                                                } catch (e) { setAdminError("Error creating user"); }
-                                            }}>Create</Button>
+                            <div className="grid gap-6">
+                                {clients.map(client => (
+                                    <Card key={client.id} className="p-5 border-l-4 border-black shadow-md">
+                                        <div className="flex justify-between items-center mb-4 border-b pb-3">
+                                            <div className="font-bold text-xl flex items-center gap-2"><Icons.User /> {client.username}</div>
+                                            <Button onClick={() => onImpersonate(client.id)} variant="primary"><Icons.Eye /> Login As {client.username}</Button>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <h4 className="text-sm font-bold text-gray-500 uppercase">Assigned Businesses</h4>
+                                            {client.businesses.map(biz => {
+                                                const daysLeft = Math.ceil((new Date(biz.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+                                                return (
+                                                    <div key={biz.id} className={`flex justify-between items-center bg-gray-50 p-4 rounded border ${biz.isRevoked ? 'opacity-60 border-red-300 bg-red-50' : 'border-gray-200'}`}>
+                                                        <div>
+                                                            <div className="font-bold text-lg">{biz.businessName} {biz.isRevoked && <span className="text-xs bg-red-600 text-white px-2 py-1 rounded ml-2">REVOKED</span>}</div>
+                                                            <div className="text-xs text-gray-500 mt-1">NTN: {biz.ntn} | Mode: <span className="font-bold uppercase">{biz.integrationMode}</span></div>
+                                                        </div>
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={`text-xs font-bold ${daysLeft < 7 ? 'text-red-600' : 'text-gray-500'}`}><Icons.Calendar size={12} className="inline"/> {daysLeft} Days Left</div>
+                                                            <Button onClick={() => setEditingBiz(biz)} variant="secondary" className="text-xs border-gray-300">Billing & Settings</Button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </Card>
-                                )}
-
-                                <div className="grid gap-4">
-                                    {restrictedUsers.map(ru => (
-                                        <Card key={ru.id} className="p-4">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <div className="font-bold text-lg flex items-center gap-2">
-                                                        <Icons.Users size={18} /> {ru.username}
-                                                        {ru.isRevoked && <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded">REVOKED</span>}
-                                                    </div>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <Button variant={ru.isRevoked ? "primary" : "danger"} className="text-xs" onClick={async () => {
-                                                        await fetch(`https://app.tallied.pk/api/admin/restricted-users/${ru.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify({ isRevoked: !ru.isRevoked }) });
-                                                        fetchRestrictedUsers();
-                                                    }}>{ru.isRevoked ? "Restore Access" : "Revoke User"}</Button>
-                                                </div>
-                                            </div>
-
-                                            <div className="mt-4 border-t pt-4">
-                                                <h5 className="font-bold text-sm text-gray-700 mb-3">Assigned Businesses</h5>
-                                                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-                                                    {users.map(client => {
-                                                        const userAccess = (ru.access || []).find(a => a.businessId === client.id);
-                                                        const hasAccess = !!userAccess;
-                                                        const currentLevel = hasAccess ? userAccess.accessLevel : 'view';
-
-                                                        return (
-                                                            <div key={client.id} className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-100">
-                                                                <div className="flex items-center gap-3">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={hasAccess}
-                                                                        onChange={async (e) => {
-                                                                            const isChecked = e.target.checked;
-                                                                            const level = isChecked ? currentLevel : null;
-                                                                            await fetch(`https://app.tallied.pk/api/admin/restricted-users/${ru.id}/access`, {
-                                                                                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                                                                                body: JSON.stringify({ businessId: client.id, accessLevel: level })
-                                                                            });
-                                                                            fetchRestrictedUsers();
-                                                                        }}
-                                                                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                                                    />
-                                                                    <span className="text-sm font-medium text-gray-700">{client.settings?.businessName || 'Unnamed'} <span className="text-xs text-gray-400">({client.username})</span></span>
-                                                                </div>
-                                                                {hasAccess && (
-                                                                    <select
-                                                                        className="text-xs border border-gray-300 rounded p-1 bg-white"
-                                                                        value={currentLevel}
-                                                                        onChange={async (e) => {
-                                                                            await fetch(`https://app.tallied.pk/api/admin/restricted-users/${ru.id}/access`, {
-                                                                                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                                                                                body: JSON.stringify({ businessId: client.id, accessLevel: e.target.value })
-                                                                            });
-                                                                            fetchRestrictedUsers();
-                                                                        }}
-                                                                    >
-                                                                        <option value="view">View Only</option>
-                                                                        <option value="edit">Full Access</option>
-                                                                    </select>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    ))}
-                                    {restrictedUsers.length === 0 && <div className="text-center p-8 text-gray-500">No system users created yet.</div>}
-                                </div>
+                                ))}
                             </div>
                         )}
                     </main>
@@ -1021,487 +749,23 @@
 
         // --- CLIENT DASHBOARD --- 
         const ClientDashboard = ({ user, setUser, onLogout }) => {
-            const [activeTab, setActiveTab] = useState('invoice');
-            const [invoice, setInvoice] = useState({
-                type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
-                refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "",
-                customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh",
-                customerAddress: "", scenarioId: "SN001", items: [], discount: 0
-            });
-            const [loading, setLoading] = useState(false);
-            const [msg, setMsg] = useState(null);
-            const [showReceipt, setShowReceipt] = useState(false);
-            const [lastInv, setLastInv] = useState(null);
+            const isRevoked = user.businessStatus?.isRevoked;
+            const daysLeft = Math.ceil((new Date(user.businessStatus?.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
 
-            const [hsCodes, setHsCodes] = useState([]);
-            const [editingCustId, setEditingCustId] = useState(null);
-            const [editingInvId, setEditingInvId] = useState(null);
-            const [newItem, setNewItem] = useState({
-                name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0,
-                taxRate: user.settings.taxRates?.salesTax || 18,
-                furtherTax: 0,
-                extraTax: user.settings.taxRates?.extraTax || 0,
-                fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: ""
-            });
-            const [newCust, setNewCust] = useState({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
+            if (isRevoked) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+                        <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full border-t-4 border-red-600 text-center">
+                            <Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" />
+                            <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1>
+                            <p className="text-gray-600 mb-6">Your access to <b>{user.settings?.businessName}</b> has been suspended due to pending administrative action or non-payment.</p>
+                            <Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700">Log Out</Button>
+                        </div>
+                    </div>
+                );
+            }
 
-            const [invSearch, setInvSearch] = useState("");
-            const [histSearch, setHistSearch] = useState("");
-            const [custSearch, setCustSearch] = useState("");
-
-            const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS);
-            const [invUomStatus, setInvUomStatus] = useState(null);
-            const [announcement, setAnnouncement] = useState("");
-
-            const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES);
-            const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES);
-            const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
-
-            const daysLeft = Math.ceil((new Date(user?.billing?.expiry) - new Date()) / (1000 * 60 * 60 * 24));
-            const isExpired = daysLeft <= 0;
-
-            const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
-            const showRetailFed = activeTab === 'invoice'
-                ? invoice.items.some(i => isRetailFedSale(i.saleType))
-                : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType));
-
-            useEffect(() => {
-                if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province }));
-            }, [user?.settings?.province]);
-
-            useEffect(() => {
-                setAnnouncement(DataManager.getGlobalAnnouncement());
-                const fetchReferenceData = async () => {
-                    const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
-                    if (!token) return;
-
-                    const headers = { 'Authorization': `Bearer ${token}` };
-
-                    try {
-                        const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.ITEM_CODE}`, { method: 'GET', headers });
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (Array.isArray(data)) setHsCodes(data.map(item => ({ val: `${item.hS_CODE} - ${item.description}`, desc: item.description })));
-                        }
-                    } catch (e) { console.warn("Failed to fetch HS Codes", e); }
-
-                    try {
-                        const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.PROVINCES}`, { headers });
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (Array.isArray(data) && data.length > 0) setDynamicProvinces(data.map(d => d.stateProvinceDesc));
-                        }
-                    } catch (e) { console.warn("Failed to fetch Provinces", e); }
-
-                    try {
-                        const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.DOCTYPECODE}`, { headers });
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (Array.isArray(data) && data.length > 0) setDynamicDocTypes(data.map(d => d.docDescription));
-                        }
-                    } catch (e) { console.warn("Failed to fetch Doc Types", e); }
-
-                    try {
-                        const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.UOM}`, { headers });
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (Array.isArray(data) && data.length > 0) {
-                                const uoms = data.map(d => d.description);
-                                setDynamicUOMs(uoms);
-                                setInvUomOptions(uoms);
-                            }
-                        }
-                    } catch (e) { console.warn("Failed to fetch UOMs", e); }
-                };
-                fetchReferenceData();
-            }, []);
-
-            useEffect(() => {
-                const isUnregistered = invoice.customerRegType === "Unregistered";
-                const ftRate = user.settings.taxRates?.furtherTax || 4;
-
-                setInvoice(prev => {
-                    const newItems = prev.items.map(item => {
-                        let newFTRate = parseFloat(item.furtherTax) || 0;
-                        if (isUnregistered) {
-                            if (newFTRate === 0) newFTRate = ftRate;
-                        } else {
-                            newFTRate = 0;
-                        }
-                        return { ...item, furtherTax: newFTRate };
-                    });
-                    return { ...prev, items: newItems };
-                });
-            }, [invoice.customerRegType]);
-
-            const fetchAllowedUOMs = async (hsCode) => {
-                if (!hsCode || hsCode.length < 3) {
-                    setInvUomStatus(null);
-                    return dynamicUOMs;
-                }
-                const actualCode = hsCode.includes(" - ") ? hsCode.split(" - ")[0] : hsCode;
-
-                const tryFetch = async (code) => {
-                    const url = `${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.HS_UOM}?hs_code=${code}&annexure_id=3`;
-                    const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
-
-                    const res = await fbrFetch(url, {
-                        method: 'GET',
-                        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
-                    });
-
-                    if (res.status === 401) throw new Error("401");
-                    if (!res.ok) return null;
-
-                    const data = await res.json();
-                    if (Array.isArray(data)) {
-                        if (data.length > 0) return data.map(d => d.description);
-                        return [];
-                    }
-                    return null;
-                };
-
-                try {
-                    setInvUomStatus({ text: "Fetching...", type: "info" });
-                    let uoms = await tryFetch(actualCode);
-                    if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; }
-
-                    const cleanCode = actualCode.replace(/[^0-9]/g, '');
-                    if (cleanCode !== actualCode) {
-                        uoms = await tryFetch(cleanCode);
-                        if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; }
-                    }
-
-                    if (cleanCode.length === 8) {
-                        const formatted = `${cleanCode.slice(0, 4)}.${cleanCode.slice(4)}`;
-                        if (formatted !== actualCode) {
-                            uoms = await tryFetch(formatted);
-                            if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; }
-                        }
-                    }
-
-                    setInvUomStatus({ text: "Not Found", type: "error" });
-                    return dynamicUOMs;
-
-                } catch (e) {
-                    if (e.message === "401") {
-                        setMsg({ type: 'error', text: "Invalid Auth Token. Contact Admin." });
-                        setInvUomStatus({ text: "Auth Error", type: "error" });
-                    } else {
-                        setInvUomStatus({ text: "Net Error", type: "error" });
-                    }
-                    return dynamicUOMs;
-                }
-            };
-
-            const calculate = () => {
-                let subtotal = 0, gst = 0, extra = 0, further = 0, fed = 0, wht = 0, totalDisc = 0;
-                invoice.items.forEach(i => {
-                    const price = parseFloat(i.price) || 0;
-                    const retailPrice = parseFloat(i.retailPrice) || 0;
-                    const qty = parseFloat(i.qty) || 0;
-                    const disc = parseFloat(i.discount) || 0;
-                    let valueForTax = (isRetailFedSale(i.saleType) ? retailPrice : price) * qty;
-                    subtotal += valueForTax;
-                    gst += valueForTax * ((parseFloat(i.taxRate) || 0) / 100);
-                    extra += isRetailFedSale(i.saleType) ? (valueForTax * ((parseFloat(i.extraTax) || 0) / 100)) : 0;
-                    further += valueForTax * ((parseFloat(i.furtherTax) || 0) / 100);
-                    fed += isRetailFedSale(i.saleType) ? ((parseFloat(i.fedPayable) || 0) * qty) : 0;
-                    wht += parseFloat(i.wht || 0);
-                    totalDisc += disc;
-                });
-                const total = subtotal + gst + extra + further + fed - totalDisc - wht;
-                return { subtotal, gst, extra, further, fed, wht, total, totalDisc };
-            };
-            const totals = calculate();
-
-            const saveUser = async (newData) => {
-                const u = { ...user, ...newData };
-                setUser(u);
-                await localforage.setItem('fbr_session', u);
-                sessionStorage.setItem('fbr_session', JSON.stringify(u)); 
-                try {
-                    await fetch('https://app.tallied.pk/api/sync', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                        body: JSON.stringify({ user: u })
-                    });
-                } catch (e) { console.error("Sync Error", e); }
-            };
-
-            const addInvItem = () => setInvoice(p => ({ ...p, items: [...p.items, { id: Date.now(), desc: "", hsCode: "", qty: 1, price: 0, taxRate: user?.settings?.taxRates?.salesTax || 18, uom: "", saleType: "Goods at standard rate (default)", extraTax: user?.settings?.taxRates?.extraTax || 0, furtherTax: 0, retailPrice: 0, fedPayable: 0, wht: 0, discount: 0, allowedUOMs: UOM_OPTIONS, isFromInventory: false }] }));
-            const updateInvItem = (id, field, val) => setInvoice(p => ({ ...p, items: p.items.map(i => i.id === id ? { ...i, [field]: val } : i) }));
-            const pickProduct = (invId, prod) => {
-                fetchAllowedUOMs(prod.hsCode).then(uoms => {
-                    setInvoice(p => ({
-                        ...p, items: p.items.map(i => i.id === invId ? {
-                            ...i, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: prod.furtherTax, fedPayable: prod.fedPayable, wht: prod.wht, discount: prod.discount || 0, allowedUOMs: uoms, isFromInventory: true
-                        } : i)
-                    }));
-                });
-            };
-
-            const handleItemHSBlur = (id, hsCode) => {
-                fetchAllowedUOMs(hsCode).then(uoms => {
-                    setInvoice(p => ({
-                        ...p,
-                        items: p.items.map(i => i.id === id ? { ...i, allowedUOMs: uoms } : i)
-                    }));
-                });
-            };
-
-            const addCustomer = () => {
-                if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
-                if (!newCust.name) return;
-                let newCustomersList;
-                if (editingCustId) {
-                    newCustomersList = (user.customers || []).map(c => c.id === editingCustId ? { ...c, ...newCust } : c);
-                    setEditingCustId(null);
-                } else {
-                    newCustomersList = [...(user.customers || []), { id: Date.now(), ...newCust }];
-                }
-                saveUser({ customers: newCustomersList });
-                setNewCust({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
-            };
-
-            const editCustomer = (c) => {
-                if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
-                setNewCust(c); setEditingCustId(c.id);
-            };
-            const deleteCustomer = (id) => {
-                if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
-                saveUser({ customers: (user.customers || []).filter(c => c.id !== id) });
-            };
-            const addInventory = () => {
-                if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
-                if (newItem.name) { saveUser({ inventory: [...(user.inventory || []), { id: Date.now(), ...newItem, status: 'Active' }] }); setNewItem({ ...newItem, name: '', uom: "" }); }
-            };
-            const deleteInventory = (id) => {
-                if (user.role === 'restricted_user' && user.accessLevel === 'view') return alert("View-only access.");
-                saveUser({ inventory: (user.inventory || []).filter(i => i.id !== id) });
-            };
-
-            const downloadInvoice = (inv) => {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inv, null, 2));
-                const anchor = document.createElement('a');
-                anchor.href = dataStr;
-                anchor.download = `invoice_${inv.fbrInvoiceNumber}.json`;
-                document.body.appendChild(anchor); anchor.click(); anchor.remove();
-            };
-
-            const filteredInventory = (user.inventory || []).filter(i => !invSearch || i.name.toLowerCase().includes(invSearch.toLowerCase()) || i.hsCode.toLowerCase().includes(invSearch.toLowerCase()));
-            const filteredHistory = (user.history || []).filter(h => !histSearch || (h.fbrInvoiceNumber && h.fbrInvoiceNumber.toLowerCase().includes(histSearch.toLowerCase())) || (h.customerName && h.customerName.toLowerCase().includes(histSearch.toLowerCase())));
-            const filteredCustomers = (user.customers || []).filter(c => c && (!custSearch || c.name.toLowerCase().includes(custSearch.toLowerCase()) || (c.ntn && c.ntn.includes(custSearch))));
-
-            const onSelectCustomerName = (val) => {
-                try {
-                    const existingCust = (user.customers || []).find(c => c && c.name === val);
-                    if (existingCust) {
-                        setInvoice(prev => ({
-                            ...prev,
-                            customerName: existingCust.name,
-                            customerNTN: existingCust.ntn,
-                            customerDestination: existingCust.destination,
-                            customerAddress: existingCust.address
-                        }));
-                    } else {
-                        setInvoice(prev => ({ ...prev, customerName: val }));
-                    }
-                } catch (e) {
-                    setInvoice(prev => ({ ...prev, customerName: val }));
-                }
-            };
-
-            const checkBuyerStatus = async (regNo) => {
-                if (!regNo || regNo.length < 7) { setMsg({ type: 'error', text: 'Invalid NTN' }); return; }
-
-                setMsg({ type: 'info', text: 'Verifying with FBR...' });
-                const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
-
-                try {
-                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.GET_REG_TYPE}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': token ? `Bearer ${token}` : ''
-                        },
-                        body: JSON.stringify({ Registration_No: regNo })
-                    });
-
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.statuscode === "00") {
-                            setMsg({ type: 'success', text: `Verified: ${data.REGISTRATION_TYPE}` });
-                            setInvoice(prev => ({ ...prev, customerRegType: data.REGISTRATION_TYPE }));
-                        } else {
-                            const errDesc = FBR_ERRORS[data.statuscode] || 'Not Registered / Inactive';
-                            setMsg({ type: 'error', text: `FBR Error: ${errDesc} (${data.statuscode})` });
-                            setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" }));
-                        }
-                    } else {
-                        setMsg({ type: 'error', text: `FBR API Failed: ${res.statusText}` });
-                    }
-                } catch (e) {
-                    setMsg({ type: 'error', text: 'Verification Error (CORS/Network)' });
-                }
-            };
-
-            const checkCustomerStatus = async (regNo) => {
-                if (!regNo || regNo.length < 7) { setMsg({ type: 'error', text: 'Invalid NTN' }); return; }
-
-                setMsg({ type: 'info', text: 'Verifying with FBR...' });
-                const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
-
-                try {
-                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.GET_REG_TYPE}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': token ? `Bearer ${token}` : ''
-                        },
-                        body: JSON.stringify({ Registration_No: regNo })
-                    });
-
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.statuscode === "00") {
-                            setMsg({ type: 'success', text: `Verified: ${data.REGISTRATION_TYPE}` });
-                            setNewCust(prev => ({ ...prev, regType: data.REGISTRATION_TYPE }));
-                        } else {
-                            const errDesc = FBR_ERRORS[data.statuscode] || 'Not Registered / Inactive';
-                            setMsg({ type: 'error', text: `FBR Error: ${errDesc} (${data.statuscode})` });
-                            setNewCust(prev => ({ ...prev, regType: "Unregistered" }));
-                        }
-                    } else {
-                        setMsg({ type: 'error', text: `FBR API Failed: ${res.statusText}` });
-                    }
-                } catch (e) {
-                    setMsg({ type: 'error', text: 'Verification Error (CORS/Network)' });
-                }
-            };
-
-            const constructFBRPayload = () => {
-                const payload = {
-                    invoiceType: invoice.type,
-                    invoiceDate: invoice.invoiceDate,
-                    sellerNTNCNIC: String(user?.settings?.ntn || "").replace(/-/g, ""),
-                    sellerBusinessName: user?.settings?.businessName || "",
-                    sellerProvince: user?.settings?.province || "Sindh",
-                    sellerAddress: user?.settings?.address || "",
-
-                    buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "",
-                    buyerBusinessName: invoice.customerName || "",
-                    buyerProvince: invoice.customerDestination || "Sindh",
-                    buyerAddress: invoice.customerAddress || "",
-                    buyerRegistrationType: invoice.customerRegType,
-                    invoiceRefNo: invoice.refInvoiceNumber || "",
-
-                    items: invoice.items.map(item => {
-                        const q = parseFloat(item.qty) || 0;
-                        const p = parseFloat(item.price) || 0;
-                        const r = parseFloat(item.retailPrice) || 0;
-                        const baseVal = (isRetailFedSale(item.saleType) ? r : p) * q;
-                        const gstVal = baseVal * (parseFloat(item.taxRate) / 100 || 0);
-                        const exVal = isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0;
-                        const furVal = baseVal * (parseFloat(item.furtherTax) / 100 || 0);
-                        const fedVal = isRetailFedSale(item.saleType) ? (parseFloat(item.fedPayable) || 0) : 0;
-
-                        return {
-                            hsCode: item.hsCode,
-                            productDescription: item.desc,
-                            rate: `${item.taxRate}%`,
-                            uoM: item.uom || "Numbers, pieces, units",
-                            quantity: q,
-                            totalValues: +(baseVal + gstVal + furVal + exVal).toFixed(2),
-                            valueSalesExcludingST: +baseVal.toFixed(2),
-                            fixedNotifiedValueOrRetailPrice: +r.toFixed(2),
-                            salesTaxApplicable: +gstVal.toFixed(2),
-                            salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2),
-                            extraTax: +exVal.toFixed(2),
-                            furtherTax: +furVal.toFixed(2),
-                            sroScheduleNo: item.sroScheduleNo || "",
-                            fedPayable: +fedVal.toFixed(2),
-                            discount: +(parseFloat(item.discount) || 0).toFixed(2),
-                            saleType: item.saleType,
-                            sroItemSerialNo: item.sroItemSerialNo || ""
-                        };
-                    })
-                };
-
-                if (user.settings.integrationMode !== 'production') {
-                    payload.scenarioId = invoice.scenarioId || "SN001";
-                }
-
-                return payload;
-            };
-
-            const callFbrApi = async (pathType, isValidate = false) => {
-                if (isExpired) { setMsg({ type: 'error', text: 'Subscription Expired.' }); return; }
-
-                const mode = user.settings.integrationMode;
-                const token = mode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
-
-                let endpoint = '';
-                if (isValidate) {
-                    endpoint = mode === 'production' ? SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_PROD : SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_SB;
-                } else {
-                    endpoint = mode === 'production' ? SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD : SYSTEM_CONFIG.PATHS.POST_INVOICE_SB;
-                }
-
-                if (!token) { setMsg({ type: 'error', text: 'FBR Token Missing. Contact Admin.' }); return; }
-
-                const payload = constructFBRPayload();
-
-                setLoading(true);
-                try {
-                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (isValidate) {
-                        if (res.ok) {
-                            const responseData = await res.json();
-                            if (responseData && responseData.Code && responseData.Code !== "0000") {
-                                const err = FBR_ERRORS[responseData.Code] || responseData.Message || 'Validation Failed';
-                                setMsg({ type: 'error', text: `Validation Error: ${err}` });
-                            } else {
-                                setMsg({ type: 'success', text: "Validation Successful" });
-                            }
-                        } else {
-                            setMsg({ type: 'error', text: `FBR Validation API Failed: ${res.statusText}` });
-                        }
-                    } else {
-                        if (res.ok) {
-                            const responseData = await res.json();
-                            if (responseData && responseData.Code && responseData.Code !== "0000") {
-                                const err = FBR_ERRORS[responseData.Code] || responseData.Message || 'Submission Failed';
-                                setMsg({ type: 'error', text: `FBR Error: ${err}` });
-                            } else {
-                                setMsg({ type: 'success', text: "Submitted Successfully" });
-                                saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: responseData?.InvoiceNumber || `FBR-${Date.now()}` }, ...(user.history || [])] });
-                                setInvoice({ ...invoice, invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, items: [], discount: 0 });
-                            }
-                        } else {
-                            setMsg({ type: 'error', text: `FBR Submit API Failed: ${res.statusText}` });
-                        }
-                    }
-                } catch (e) {
-                    if (isValidate) {
-                        setMsg({ type: 'success', text: "Validation Status: Valid (Demo Mode - API Unreachable)" });
-                        console.log("Validation Payload:", payload);
-                    } else {
-                        setMsg({ type: 'success', text: "Submitted (Demo Mode - API Unreachable)" });
-                        saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: `FBR-${Date.now()}` }, ...(user.history || [])] });
-                        setInvoice({ ...invoice, invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, items: [], discount: 0 });
-                    }
-                } finally { setLoading(false); }
-            };
-
+            // ... (KEEP THE REST OF YOUR EXISTING ClientDashboard COMPONENT EXACTLY THE SAME BELOW THIS LINE) ...
             // NEW FBR STANDARDIZED TEMPLATE LAYOUT
             const renderInvoiceTemplate = () => {
                 const qrData = `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`;
