@@ -45,7 +45,7 @@
             return <button title={title} onClick={onClick} disabled={disabled} className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 ${variants[variant]} ${className}`}>{children}</button>;
         };
 
-        const Card = ({ children, className = '' }) => <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>{children}</div>;
+        const Card = ({ children, className = '', onClick }) => <div onClick={onClick} className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>{children}</div>;
 
         const Input = ({ label, value, onChange, type = "text", placeholder = "", required = false, className = "", readOnly = false }) => (
             <div className={`flex flex-col gap-1 ${className}`}>
@@ -58,9 +58,16 @@
             const [show, setShow] = useState(false);
             const [filter, setFilter] = useState("");
             const wrapperRef = useRef(null);
-            useEffect(() => { const handleClickOutside = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setShow(false); }; document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside); }, []);
+
+            useEffect(() => {
+                const handleClickOutside = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setShow(false); };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, []);
+
             const safeOptions = Array.isArray(options) ? options : [];
             const filteredOptions = safeOptions.filter(opt => String(opt).toLowerCase().includes(filter.toLowerCase()));
+
             return (
                 <div className="flex flex-col gap-1 relative w-full" ref={wrapperRef}>
                     <div className="flex justify-between items-center">
@@ -100,35 +107,50 @@
             return { ok: proxyData.ok, status: proxyData.status, json: async () => proxyData.data };
         };
 
-        const BusinessSelectionScreen = ({ user, onSelect, onLogout }) => (
-            <div className="min-h-screen bg-gray-50 flex flex-col">
-                <nav className="bg-black text-white shadow-lg sticky top-0 z-50">
-                    <div className="max-w-[1600px] mx-auto px-4 py-3 flex justify-between items-center">
-                        <div className="flex items-center gap-2 font-bold"><Icons.ShieldCheck /> FBR Invoice System</div>
-                        <Button onClick={onLogout} variant="danger" className="text-xs py-1"><Icons.LogOut size={16}/> {user.isAdminImpersonating ? 'Return to Admin' : 'Logout'}</Button>
-                    </div>
-                </nav>
-                <main className="max-w-[1600px] mx-auto w-full p-6 mt-8">
-                    <div className="mb-6 border-b border-gray-200 pb-4">
-                        <h2 className="text-3xl font-bold text-gray-900">Select a Dashboard</h2>
-                        <p className="text-gray-500 mt-1">Choose the business account you want to manage today.</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {user.accessibleBusinesses.map(b => (
-                            <Card key={b.id} className="p-0 overflow-hidden hover:border-black transition-colors cursor-pointer">
-                                <button onClick={() => onSelect(b.id)} className="w-full p-5 flex items-center bg-white hover:bg-gray-50 transition-colors text-left group gap-4">
-                                    <div className="bg-gray-100 p-3 rounded-lg group-hover:bg-blue-50 transition-colors"><Icons.Briefcase className="text-gray-500 group-hover:text-blue-600" size={24}/></div>
-                                    <div>
-                                        <h3 className="font-bold text-xl text-gray-900 group-hover:text-black">{b.name}</h3>
-                                        <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
+        // --- NEW: UNIFIED BUSINESS LOBBY ---
+        const BusinessSelectionScreen = ({ user, onSelect, onLogout }) => {
+            const [searchQuery, setSearchQuery] = useState("");
+            const filteredBiz = user.accessibleBusinesses.filter(b => b.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+            return (
+                <div className="min-h-screen bg-gray-50 flex flex-col">
+                    <nav className="bg-black text-white shadow-lg sticky top-0 z-50">
+                        <div className="max-w-[1600px] mx-auto px-4 py-3 flex justify-between items-center">
+                            <div className="flex items-center gap-2 font-bold"><Icons.ShieldCheck /> FBR Invoice System</div>
+                            <Button onClick={onLogout} variant="danger" className="text-xs py-1"><Icons.LogOut size={16}/> {user.isAdminImpersonating ? 'Return to Admin' : 'Logout'}</Button>
+                        </div>
+                    </nav>
+                    <main className="max-w-[1600px] mx-auto w-full p-6 mt-4">
+                        <div className="flex justify-between items-center mb-6 border-b pb-4">
+                            <div>
+                                <h2 className="text-3xl font-bold text-gray-900">Select a Business</h2>
+                                <p className="text-gray-500 mt-1">Search and select the business account you want to manage today.</p>
+                            </div>
+                            <div className="relative w-64">
+                                <input type="text" placeholder="Search businesses..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                                <span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-4">
+                            {filteredBiz.length > 0 ? filteredBiz.map(b => (
+                                <Card key={b.id} className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 border-black hover:shadow-md transition-shadow cursor-pointer bg-white hover:bg-gray-50" onClick={() => onSelect(b.id)}>
+                                    <div className="flex-1 flex items-center gap-4">
+                                        <div className="bg-gray-100 p-3 rounded-lg"><Icons.Briefcase className="text-gray-500" size={24}/></div>
+                                        <div>
+                                            <h3 className="font-bold text-xl text-gray-900">{b.name}</h3>
+                                            <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
+                                        </div>
                                     </div>
-                                </button>
-                            </Card>
-                        ))}
-                    </div>
-                </main>
-            </div>
-        );
+                                    <div className="flex items-center gap-6">
+                                        <Button variant="secondary" className="text-sm bg-white border-gray-300">Open Dashboard</Button>
+                                    </div>
+                                </Card>
+                            )) : <div className="text-center py-8 text-gray-400">No businesses match your search.</div>}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
 
         function App() {
             const [user, setUser] = useState(null);
@@ -178,8 +200,10 @@
                     if (res.ok) {
                         const data = await res.json();
                         sessionStorage.setItem('fbr_token', data.token);
-                        sessionStorage.setItem('activeTab', 'invoice'); // Always go to invoice tab
+                        // INSTANTLY FORCE INVOICE TAB ON LOAD
+                        window.location.hash = 'invoice';
                         await handleLogin(data.user);
+                        window.location.reload();
                     } else { alert("Failed to switch business context."); }
                 } catch (e) { alert("Network Error"); }
             };
@@ -215,6 +239,7 @@
                         sessionStorage.setItem('fbr_token', fallbackToken);
                         sessionStorage.setItem('fbr_session', fallbackBackup);
                         if (window.localforage) await window.localforage.setItem('fbr_session', adminUser).catch(()=>{});
+                        window.location.hash = ''; // Clear hash to prevent getting stuck
                         window.location.reload();
                     } else { handleLogout(null, true); }
                 } catch (err) { window.location.href = window.location.pathname + '?logout=' + Date.now(); }
@@ -222,7 +247,11 @@
 
             if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading System...</div>;
             if (!user) return <LoginScreen onLogin={handleLogin} />;
-            if (user.needsBusinessSelection) return <BusinessSelectionScreen user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} />;
+            
+            if (user.needsBusinessSelection) {
+                return <BusinessSelectionScreen user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} />;
+            }
+
             if (user.role !== 'admin' && (!user.settings || !user.businessStatus)) return <LoginScreen onLogin={handleLogin} />;
 
             return (
@@ -236,6 +265,7 @@
             const [form, setForm] = useState({ username: '', password: '' });
             const [error, setError] = useState('');
             const [loading, setLoading] = useState(false);
+
             const handleSubmit = async () => {
                 if (!form.username || !form.password) return setError("Fill all fields");
                 setLoading(true);
@@ -247,6 +277,7 @@
                 } catch (e) { setError("Network Error"); }
                 setLoading(false);
             };
+
             return (
                 <div className="min-h-screen flex items-center justify-center bg-white">
                     <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-xl w-full max-w-md">
@@ -261,14 +292,16 @@
         const AdminDashboard = ({ onLogout, onImpersonate }) => {
             const [businesses, setBusinesses] = useState([]);
             const [users, setUsers] = useState([]);
-            // Safe Hash Routing
+            
+            // Safe Hash Routing for Admin
             const [activeTab, setActiveTab] = useState(() => window.location.hash.replace('#', '') || 'businesses');
-            useEffect(() => { const handleHash = () => setActiveTab(window.location.hash.replace('#', '') || 'businesses'); window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
-            const changeTab = (t) => window.location.hash = t;
+            useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if(['businesses', 'users'].includes(hash)) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
+            const changeTab = (t) => { window.location.hash = t; };
 
             const [showBizModal, setShowBizModal] = useState(false);
             const [editingBiz, setEditingBiz] = useState(null); 
             const [editingUser, setEditingUser] = useState(null);
+            
             const [adminError, setAdminError] = useState("");
             const [bizSearch, setBizSearch] = useState("");
             const [userSearch, setUserSearch] = useState("");
@@ -285,6 +318,7 @@
                 if (bRes.ok) setBusinesses(await bRes.json());
                 if (uRes.ok) setUsers(await uRes.json());
             };
+
             useEffect(() => { fetchData(); }, [activeTab]);
 
             const saveBusiness = async () => {
@@ -455,8 +489,8 @@
 
             // Safe Hash Routing
             const [activeTab, setActiveTab] = useState(() => window.location.hash.replace('#', '') || 'invoice');
-            useEffect(() => { const handleHash = () => setActiveTab(window.location.hash.replace('#', '') || 'invoice'); window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
-            const changeTab = (t) => { window.location.hash = t; };
+            useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
+            const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
 
             const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "SN001", items: [], discount: 0 });
             
@@ -468,11 +502,13 @@
             const [newCust, setNewCust] = useState({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
             const [invSearch, setInvSearch] = useState(""); const [histSearch, setHistSearch] = useState(""); const [custSearch, setCustSearch] = useState(""); const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS); const [invUomStatus, setInvUomStatus] = useState(null);
             const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES); const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES); const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
+            const [bizSwitchSearch, setBizSwitchSearch] = useState("");
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
             const showRetailFed = activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType));
             
+            // Reordered Tabs: 'businesses' is now first
             const tabs = user.accessibleBusinesses?.length > 1 ? ['businesses', 'invoice', 'inventory', 'customers', 'history', 'settings'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
 
             useEffect(() => { if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province })); }, [user?.settings?.province]);
@@ -675,20 +711,24 @@
                         {msg && <div className={`mb-6 p-4 rounded-lg flex gap-3 border ${msg.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>{msg.type === 'error' ? <Icons.AlertCircle /> : <Icons.CheckCircle />} {msg.text} <button onClick={() => setMsg(null)} className="ml-auto">✕</button></div>}
 
                         {activeTab === 'businesses' && (
-                            <div className="max-w-4xl mx-auto w-full mt-4">
-                                <h2 className="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">Switch Business Dashboard</h2>
+                            <div className="max-w-[1600px] mx-auto w-full mt-4">
+                                <div className="flex justify-between items-center mb-6 border-b pb-4">
+                                    <div><h2 className="text-3xl font-bold text-gray-900">Switch Business Dashboard</h2><p className="text-gray-500 mt-1">Search and select the business account you want to manage.</p></div>
+                                    <div className="relative w-64"><input type="text" placeholder="Search businesses..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={bizSwitchSearch} onChange={e => setBizSwitchSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div>
+                                </div>
                                 <div className="flex flex-col gap-4">
-                                    {user.accessibleBusinesses.map(b => (
-                                        <Card key={b.id} className={`p-0 overflow-hidden transition-colors ${b.id === user.activeBusinessId ? 'border-blue-600 border-2' : 'border-black hover:shadow-md'}`}>
-                                            <button onClick={() => { sessionStorage.setItem('activeTab', 'invoice'); onSwitch(b.id); }} className={`w-full p-5 flex justify-between items-center text-left group ${b.id === user.activeBusinessId ? 'bg-blue-50' : 'bg-white hover:bg-gray-50'}`}>
-                                                <div className="flex items-center gap-4">
-                                                    <div className="bg-gray-100 p-3 rounded-lg"><Icons.Briefcase className="text-gray-500" size={24}/></div>
-                                                    <div>
-                                                        <h3 className="font-bold text-xl text-gray-900">{b.name} {b.id === user.activeBusinessId && <span className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded ml-2 uppercase tracking-wide">Current</span>}</h3>
-                                                        <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
-                                                    </div>
+                                    {user.accessibleBusinesses.filter(b => b.name.toLowerCase().includes(bizSwitchSearch.toLowerCase())).map(b => (
+                                        <Card key={b.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 transition-colors cursor-pointer ${b.id === user.activeBusinessId ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-black bg-white hover:shadow-md'}`} onClick={() => { if(b.id !== user.activeBusinessId) onSwitch(b.id); }}>
+                                            <div className="flex-1 flex items-center gap-4">
+                                                <div className="bg-gray-100 p-3 rounded-lg"><Icons.Briefcase className="text-gray-500" size={24}/></div>
+                                                <div>
+                                                    <h3 className="font-bold text-xl text-gray-900">{b.name} {b.id === user.activeBusinessId && <span className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded ml-2 uppercase tracking-wide">Current</span>}</h3>
+                                                    <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
                                                 </div>
-                                            </button>
+                                            </div>
+                                            <div className="flex items-center gap-6">
+                                                {b.id !== user.activeBusinessId && <Button variant="secondary" className="text-sm bg-white border-gray-300">Open Dashboard</Button>}
+                                            </div>
                                         </Card>
                                     ))}
                                 </div>
@@ -748,6 +788,7 @@
                                         </div>
                                     </div>
 
+                                    {/* STRICT NO-WRAP INVOICE TABLE */}
                                     <div className="table-container border border-gray-200 rounded-lg">
                                         <table className="fbr-table">
                                             <thead className="bg-black text-white text-xs uppercase tracking-wide">
