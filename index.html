@@ -107,7 +107,6 @@
             return { ok: proxyData.ok, status: proxyData.status, json: async () => proxyData.data };
         };
 
-        // --- NEW: UNIFIED BUSINESS LOBBY ---
         const BusinessSelectionScreen = ({ user, onSelect, onLogout }) => {
             const [searchQuery, setSearchQuery] = useState("");
             const filteredBiz = user.accessibleBusinesses.filter(b => b.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -200,7 +199,6 @@
                     if (res.ok) {
                         const data = await res.json();
                         sessionStorage.setItem('fbr_token', data.token);
-                        // INSTANTLY FORCE INVOICE TAB ON LOAD
                         window.location.hash = 'invoice';
                         await handleLogin(data.user);
                         window.location.reload();
@@ -239,7 +237,7 @@
                         sessionStorage.setItem('fbr_token', fallbackToken);
                         sessionStorage.setItem('fbr_session', fallbackBackup);
                         if (window.localforage) await window.localforage.setItem('fbr_session', adminUser).catch(()=>{});
-                        window.location.hash = ''; // Clear hash to prevent getting stuck
+                        window.location.hash = ''; 
                         window.location.reload();
                     } else { handleLogout(null, true); }
                 } catch (err) { window.location.href = window.location.pathname + '?logout=' + Date.now(); }
@@ -293,7 +291,6 @@
             const [businesses, setBusinesses] = useState([]);
             const [users, setUsers] = useState([]);
             
-            // Safe Hash Routing for Admin
             const [activeTab, setActiveTab] = useState(() => window.location.hash.replace('#', '') || 'businesses');
             useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if(['businesses', 'users'].includes(hash)) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
             const changeTab = (t) => { window.location.hash = t; };
@@ -487,7 +484,6 @@
             const daysLeft = Math.ceil((new Date(user.businessStatus?.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
             if (isRevoked) { return (<div className="min-h-screen flex items-center justify-center bg-gray-50 p-6"><div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full border-t-4 border-red-600 text-center"><Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" /><h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1><p className="text-gray-600 mb-6">Your access to <b>{user.settings?.businessName}</b> has been suspended.</p><Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700">Return to Portal</Button></div></div>); }
 
-            // Safe Hash Routing
             const [activeTab, setActiveTab] = useState(() => window.location.hash.replace('#', '') || 'invoice');
             useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
             const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
@@ -506,9 +502,8 @@
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
-            const showRetailFed = activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType));
+            const showRetailFed = user.settings?.allowRetailFed || (activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType)));
             
-            // Reordered Tabs: 'businesses' is now first
             const tabs = user.accessibleBusinesses?.length > 1 ? ['businesses', 'invoice', 'inventory', 'customers', 'history', 'settings'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
 
             useEffect(() => { if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province })); }, [user?.settings?.province]);
