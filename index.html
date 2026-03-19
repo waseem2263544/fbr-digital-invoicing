@@ -33,6 +33,26 @@
         const SCENARIOS = [ "SN001", "SN002", "SN003", "SN004", "SN005", "SN006", "SN007", "SN008", "SN009", "SN010", "SN011", "SN012", "SN013", "SN014", "SN015", "SN016", "SN017", "SN018", "SN019", "SN020", "SN021", "SN022", "SN023", "SN024", "SN025", "SN026", "SN027", "SN028" ];
         const FBR_ERRORS = { "0000": "Successful", "0001": "Invalid NTN/Reg. No. format", "0004": "Seller Reg No. doesn't match", "0005": "Buyer Name is empty/invalid", "0007": "Sale Type not allowed/invalid", "0009": "Provide UOM in KG", "0010": "Quantity/Electricity Units missing", "0011": "Provide Value of Sales Excl. ST", "0039": "STWH invoice fields must be same as sale invoice", "0041": "Invoice number cannot be empty", "0042": "Invoice date cannot be empty", "0044": "HS Code cannot be empty", "0053": "Buyer Registration Type is invalid", "0070": "User is not registered, STWH is allowed only for registered user", "0073": "Provide Sale Origination Province of Supplier", "0074": "Provide Destination of Supply", "0077": "SRO/Schedule Number cannot be empty", "0078": "Item serial number cannot be empty", "0082": "The Seller is not registered for sales tax", "0106": "The Buyer is not registered for sales tax", "0401": "Unauthorized access: Seller NTN/CNIC token is invalid", "0402": "Unauthorized access: Buyer NTN/CNIC token is invalid" };
 
+        const numberToWords = (num) => {
+            if (num === 0) return "Zero";
+            const a = ["", "One ", "Two ", "Three ", "Four ", "Five ", "Six ", "Seven ", "Eight ", "Nine ", "Ten ", "Eleven ", "Twelve ", "Thirteen ", "Fourteen ", "Fifteen ", "Sixteen ", "Seventeen ", "Eighteen ", "Nineteen "];
+            const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+            const format = (n) => {
+                if (n < 20) return a[n];
+                if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + a[n % 10] : "");
+                return a[Math.floor(n / 100)] + "Hundred " + (n % 100 !== 0 ? format(n % 100) : "");
+            };
+            let res = "";
+            let crore = Math.floor(num / 10000000); num %= 10000000;
+            let lakh = Math.floor(num / 100000); num %= 100000;
+            let thousand = Math.floor(num / 1000); num %= 1000;
+            if (crore > 0) res += format(crore) + "Crore ";
+            if (lakh > 0) res += format(lakh) + "Lakh ";
+            if (thousand > 0) res += format(thousand) + "Thousand ";
+            if (num > 0) res += format(num);
+            return res.trim() + " Rupees Only";
+        };
+
         class ErrorBoundary extends Component { constructor(props) { super(props); this.state = { hasError: false, error: null }; } static getDerivedStateFromError(error) { return { hasError: true, error }; } render() { if (this.state.hasError) return (<div className="min-h-screen flex items-center justify-center"><div className="bg-white p-8 rounded-lg shadow-xl"><h1 className="text-xl font-bold mb-2">Error Occurred</h1><button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="bg-black text-white px-4 py-2 rounded">Reset App Data</button></div></div>); return this.props.children; } }
 
         const IconBase = ({ size = 20, children, ...props }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg> );
@@ -107,7 +127,6 @@
             return { ok: proxyData.ok, status: proxyData.status, json: async () => proxyData.data };
         };
 
-        // --- UNIFIED BUSINESS LIST FOR LOBBY AND TAB ---
         const BusinessList = ({ user, onSelect, onLogout, isLobby = false }) => {
             const [searchQuery, setSearchQuery] = useState("");
             const filteredBiz = user.accessibleBusinesses.filter(b => b.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -204,7 +223,7 @@
                     if (res.ok) {
                         const data = await res.json();
                         sessionStorage.setItem('fbr_token', data.token);
-                        window.location.hash = 'invoice'; // Force Invoice Tab
+                        window.location.hash = 'invoice'; 
                         await handleLogin(data.user);
                         window.location.reload();
                     } else { alert("Failed to switch business context."); }
@@ -489,12 +508,11 @@
             const daysLeft = Math.ceil((new Date(user.businessStatus?.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
             if (isRevoked) { return (<div className="min-h-screen flex items-center justify-center bg-gray-50 p-6"><div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full border-t-4 border-red-600 text-center"><Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" /><h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1><p className="text-gray-600 mb-6">Your access to <b>{user.settings?.businessName}</b> has been suspended.</p><Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700">Return to Portal</Button></div></div>); }
 
-            // Safe Hash Routing
             const [activeTab, setActiveTab] = useState(() => window.location.hash.replace('#', '') || 'invoice');
             useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
             const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
 
-            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "SN001", items: [], discount: 0 });
+            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "SN001", items: [], discount: 0, remarks: "", transportType: "", vehicleNo: "", departureTime: "" });
             
             const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
@@ -508,7 +526,6 @@
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
             
-            // STRICT RETAIL BOOLEAN PARSING: Unifies the global toggle for both Inventory and Invoices
             const allowSetting = user.settings?.allowRetailFed;
             const forceRetailFed = allowSetting === true || allowSetting === 1 || String(allowSetting) === "true" || String(allowSetting) === "1";
             const showRetailFed = forceRetailFed || (activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType)));
@@ -650,43 +667,155 @@
             };
 
             const renderInvoiceTemplate = () => {
-                let qrUrl = ""; try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 150 }).toDataURL(); } catch (e) {}
+                let qrUrl = ""; try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 120 }).toDataURL(); } catch (e) {}
+                
+                // Determine if we need to show retail columns for this specific printed invoice
+                const printShowRetail = lastInv?.items?.some(i => isRetailFedSale(i.saleType)) || showRetailFed;
+
                 return (
                     <div className="bg-white w-full max-w-5xl rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] relative print:w-full print:max-w-none print:max-h-none print:shadow-none">
                         <button onClick={() => setShowReceipt(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-50 no-print" style={{ zIndex: 9999 }}><Icons.X /></button>
+                        
                         <div id="printable-area" className="p-8 text-black bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
-                            <h1 className="text-center font-bold text-xl mb-6 tracking-widest">FBR DIGITAL INVOICING SYSTEM</h1>
-                            <div className="grid grid-cols-2 gap-8 mb-6 text-sm">
-                                <div><h2 className="font-bold border-b border-black mb-2 uppercase tracking-wide">Seller Information</h2><div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">Business Name:</div><div>{user.settings?.businessName}</div><div className="font-semibold">Registration No.:</div><div>{user.settings?.ntn || user.settings?.strn}</div><div className="font-semibold">Province:</div><div>{user.settings?.province}</div></div></div>
-                                <div><h2 className="font-bold border-b border-black mb-2 uppercase tracking-wide">Buyer Information</h2><div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">Business Name:</div><div>{lastInv?.customerName}</div><div className="font-semibold">Registration No.:</div><div>{lastInv?.customerNTN}</div><div className="font-semibold">Province:</div><div>{lastInv?.customerDestination}</div></div></div>
+                            {/* PIXEL PERFECT HEADER */}
+                            <div className="flex justify-between items-start mb-6">
+                                <div>
+                                    {user.settings?.logo && <img src={user.settings.logo} className="h-16 mb-2 object-contain" />}
+                                    <h1 className="font-bold text-xl uppercase">{user.settings?.businessName}</h1>
+                                    <div className="text-xs text-gray-700 mt-1">{user.settings?.address} {user.settings?.province}</div>
+                                    <div className="text-xs text-gray-700 mt-1">Phone No: {user.settings?.phone || '-'}</div>
+                                    <div className="text-xs text-gray-700">Email: {user.settings?.email || '-'}</div>
+                                    <div className="text-xs text-gray-700 font-bold mt-1">NTN No: {user.settings?.ntn}</div>
+                                </div>
+                                <div className="text-right flex flex-col items-end">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        {qrUrl && <img src={qrUrl} alt="QR Code" className="w-20 h-20" />}
+                                        <div className="text-center border-l-2 border-black pl-2 ml-2">
+                                            <h2 className="font-bold text-lg leading-tight tracking-widest text-green-700">FBR<br/>DIGITAL<br/>INVOICING<br/>SYSTEM</h2>
+                                        </div>
+                                    </div>
+                                    <div className="font-bold text-sm bg-gray-100 px-2 py-1 rounded border border-gray-300">FBR Invoice No: <span className="text-red-600">{lastInv?.fbrInvoiceNumber || 'Pending'}</span></div>
+                                </div>
                             </div>
-                            <div className="mb-6 text-sm">
-                                <h2 className="font-bold border-b border-black mb-2 uppercase tracking-wide">Invoice Summary</h2>
-                                <div className="grid grid-cols-2 gap-x-8 gap-y-1"><div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">FBR Invoice No.:</div><div>{lastInv?.fbrInvoiceNumber}</div><div className="font-semibold">Invoice Date:</div><div>{lastInv?.invoiceDate || lastInv?.date}</div></div><div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">Invoice Type:</div><div>{lastInv?.type || 'Sale Invoice'}</div><div className="font-semibold">Tax Period:</div><div>{(lastInv?.invoiceDate || lastInv?.date || '').replace(/-/g, '').substring(0, 6)}</div></div></div>
+
+                            <h2 className="text-center font-bold text-lg mb-4 uppercase tracking-widest border-y-2 border-black py-1">Digital Sales Invoice</h2>
+
+                            {/* META DATA */}
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="border border-black p-2 text-xs">
+                                    <table className="w-full">
+                                        <tbody>
+                                            <tr><td className="font-bold w-32 py-1">Customer Name:</td><td>{lastInv?.customerName}</td></tr>
+                                            <tr><td className="font-bold py-1">Province:</td><td>{lastInv?.customerDestination}</td></tr>
+                                            <tr><td className="font-bold py-1">Address:</td><td>{lastInv?.customerAddress || '-'}</td></tr>
+                                            <tr><td className="font-bold py-1">NTN No:</td><td>{lastInv?.customerNTN || 'Unregistered'}</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="border border-black p-2 text-xs">
+                                    <table className="w-full">
+                                        <tbody>
+                                            <tr><td className="font-bold w-32 py-1">Invoice No:</td><td>{lastInv?.invoiceNumber || lastInv?.id}</td></tr>
+                                            <tr><td className="font-bold py-1">Document Date:</td><td>{lastInv?.invoiceDate}</td></tr>
+                                            <tr><td className="font-bold py-1">Posting Date:</td><td>{lastInv?.invoiceDate}</td></tr>
+                                            <tr><td className="font-bold py-1">Posted By:</td><td>{user.username}</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                            <div className="overflow-x-auto mb-6 border border-black">
-                                <table className="w-full text-[10px] border-collapse text-center">
-                                    <thead><tr className="bg-gray-100"><th className="border border-black p-1">Sr. No.</th><th className="border border-black p-1">HS Code</th><th className="border border-black p-1 text-left">Product Description</th><th className="border border-black p-1">Sales Type</th><th className="border border-black p-1">Quantity</th><th className="border border-black p-1">UoM</th><th className="border border-black p-1">Rate</th><th className="border border-black p-1">Sales Value</th><th className="border border-black p-1">Retail Price</th><th className="border border-black p-1">Sales Tax</th><th className="border border-black p-1">Extra Tax</th><th className="border border-black p-1">Further Tax</th><th className="border border-black p-1">FED</th><th className="border border-black p-1">ST WHT</th><th className="border border-black p-1">SRO/Schedule No.</th><th className="border border-black p-1">Discount</th><th className="border border-black p-1">SRO Item Sr. No.</th></tr></thead>
+
+                            {/* ITEMS TABLE */}
+                            <div className="mb-4">
+                                <table className="w-full text-[10px] border-collapse border border-black">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+                                            <th className="border border-black p-1">No.</th>
+                                            <th className="border border-black p-1 text-left">Item</th>
+                                            <th className="border border-black p-1">Qty. UOM</th>
+                                            <th className="border border-black p-1">Unit Price</th>
+                                            {printShowRetail && <th className="border border-black p-1">Assessed Value</th>}
+                                            {printShowRetail && <th className="border border-black p-1">FED</th>}
+                                            {printShowRetail && <th className="border border-black p-1">Retail Price</th>}
+                                            <th className="border border-black p-1">Amt. Excl Sales Tax</th>
+                                            <th className="border border-black p-1">Sales Tax %</th>
+                                            <th className="border border-black p-1">Sales Tax</th>
+                                            <th className="border border-black p-1">Total Incl Further Tax</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
                                         {lastInv?.items?.map((item, idx) => {
-                                            const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType), val = (isRet ? r : p) * q;
+                                            const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
+                                            const val = (isRet ? r : p) * q;
+                                            const stAmt = val * (parseFloat(item.taxRate) / 100 || 0);
+                                            const furAmt = val * (parseFloat(item.furtherTax) / 100 || 0);
+                                            const exAmt = isRet ? (val * (parseFloat(item.extraTax) / 100 || 0)) : 0;
+                                            const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
+                                            
+                                            const amtExclSt = val + fedAmt + exAmt; 
+                                            const lineTotal = amtExclSt + stAmt + furAmt;
+
                                             return (
                                                 <tr key={idx}>
-                                                    <td className="border border-black p-1">{idx + 1}</td><td className="border border-black p-1">{item.hsCode?.split(' - ')[0]}</td><td className="border border-black p-1 text-left">{item.desc}</td><td className="border border-black p-1">{item.saleType}</td><td className="border border-black p-1">{q}</td><td className="border border-black p-1">{item.uom}</td><td className="border border-black p-1">{item.taxRate}%</td>
-                                                    <td className="border border-black p-1 text-right">{formatCurrency(val)}</td><td className="border border-black p-1 text-right">{isRet ? formatCurrency(r) : '0.00'}</td><td className="border border-black p-1 text-right">{formatCurrency(val * (parseFloat(item.taxRate) / 100 || 0))}</td><td className="border border-black p-1 text-right">{formatCurrency(isRet ? (val * (parseFloat(item.extraTax) / 100 || 0)) : 0)}</td>
-                                                    <td className="border border-black p-1 text-right">{formatCurrency(val * (parseFloat(item.furtherTax) / 100 || 0))}</td><td className="border border-black p-1 text-right">{formatCurrency(isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0)}</td><td className="border border-black p-1 text-right">{formatCurrency(parseFloat(item.wht) || 0)}</td><td className="border border-black p-1">{item.sroScheduleNo || '-'}</td><td className="border border-black p-1 text-right">{formatCurrency(parseFloat(item.discount) || 0)}</td><td className="border border-black p-1">{item.sroItemSerialNo || '-'}</td>
+                                                    <td className="border border-black p-1 text-center">{idx + 1}</td>
+                                                    <td className="border border-black p-1 text-left font-bold">{item.desc} <br/><span className="font-normal text-gray-600">HS Code:{item.hsCode?.split(' - ')[0]}</span></td>
+                                                    <td className="border border-black p-1 text-center">{q} {item.uom}</td>
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(p)}</td>
+                                                    {printShowRetail && <td className="border border-black p-1 text-right">{formatCurrency(val)}</td>}
+                                                    {printShowRetail && <td className="border border-black p-1 text-right">{formatCurrency(fedAmt)}</td>}
+                                                    {printShowRetail && <td className="border border-black p-1 text-right">{isRet ? formatCurrency(r) : '0.00'}</td>}
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(amtExclSt)}</td>
+                                                    <td className="border border-black p-1 text-center">{item.taxRate}%</td>
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(stAmt)}</td>
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(lineTotal)}</td>
                                                 </tr>
                                             )
                                         })}
-                                        <tr className="font-bold bg-gray-100"><td className="border border-black p-1 text-right" colSpan="7">Total:</td><td className="border border-black p-1 text-right">{formatCurrency(lastInv?.subtotal)}</td><td className="border border-black p-1 text-right">-</td><td className="border border-black p-1 text-right">{formatCurrency(lastInv?.gst)}</td><td className="border border-black p-1 text-right">{formatCurrency(lastInv?.extra)}</td><td className="border border-black p-1 text-right">{formatCurrency(lastInv?.further)}</td><td className="border border-black p-1 text-right">{formatCurrency(lastInv?.fed)}</td><td className="border border-black p-1 text-right">{formatCurrency(lastInv?.wht)}</td><td className="border border-black p-1">-</td><td className="border border-black p-1 text-right">{formatCurrency(lastInv?.totalDisc)}</td><td className="border border-black p-1">-</td></tr>
                                     </tbody>
                                 </table>
                             </div>
-                            <div className="flex justify-between items-end mt-8">
-                                {qrUrl ? <img src={qrUrl} alt="QR Code" className="w-24 h-24" /> : <div className="w-24 h-24 bg-gray-100 border flex items-center justify-center text-xs text-gray-400">No QR Code</div>}
-                                <div className="text-right"><h3 className="font-bold text-lg border-t-2 border-black pt-1 min-w-[200px]">Grand Total: {formatCurrency(lastInv?.total)}</h3></div>
+
+                            {/* NOTES & TOTALS */}
+                            <div className="grid grid-cols-2 gap-4 mb-4 text-xs">
+                                <div>
+                                    {lastInv?.remarks && <div className="mb-2 font-bold">Note: <span className="font-normal">{lastInv.remarks}</span></div>}
+                                    {(lastInv?.transportType || lastInv?.vehicleNo) && (
+                                        <table className="border border-black w-3/4">
+                                            <tbody>
+                                                <tr><td className="border-b border-r border-black p-1 font-bold">Type of Transport</td><td className="border-b border-black p-1">= {lastInv?.transportType || '-'}</td></tr>
+                                                <tr><td className="border-b border-r border-black p-1 font-bold">Reg Vehicle No.</td><td className="border-b border-black p-1">= {lastInv?.vehicleNo || '-'}</td></tr>
+                                                <tr><td className="border-r border-black p-1 font-bold">Departure Time</td><td className="p-1">= {lastInv?.departureTime || '-'}</td></tr>
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                                <div>
+                                    <table className="w-full text-right border-collapse border border-black">
+                                        <tbody>
+                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal)}</td></tr>}
+                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold">FED</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.fed)}</td></tr>}
+                                            <tr><td className="border-b border-r border-black p-1 font-bold">Amount Excl Discount:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + lastInv?.fed + lastInv?.extra + lastInv?.totalDisc)}</td></tr>
+                                            <tr><td className="border-b border-r border-black p-1 font-bold">Amount Excl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + lastInv?.fed + lastInv?.extra)}</td></tr>
+                                            <tr><td className="border-b border-r border-black p-1 font-bold">Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.gst)}</td></tr>
+                                            <tr><td className="border-b border-r border-black p-1 font-bold">Amount Incl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + lastInv?.fed + lastInv?.extra + lastInv?.gst)}</td></tr>
+                                            <tr><td className="border-b border-r border-black p-1 font-bold">Total Incl Further Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.total + lastInv?.wht)}</td></tr>
+                                            <tr><td className="border-b border-r border-black p-1 font-bold">Advance Tax (0%):</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.wht)}</td></tr>
+                                            <tr><td className="border-r border-black p-1 font-bold text-sm bg-gray-100">Total Amount:</td><td className="p-1 font-bold text-sm bg-gray-100">{formatCurrency(lastInv?.total)}</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div className="text-xs mb-4">
+                                <div className="font-bold">Amount in Words:</div>
+                                <div className="italic border-b border-black inline-block min-w-[300px]">{numberToWords(Math.round(lastInv?.total || 0))}</div>
+                            </div>
+
+                            <div className="flex justify-between items-end text-[10px] text-gray-500 pt-8 mt-8 border-t border-black">
+                                <div>This document is system-generated and does not require a signature.</div>
+                                <div className="italic font-bold">digital invoice powered by tallied.pk</div>
                             </div>
                         </div>
+
                         <div className="mt-6 mb-6 flex justify-center no-print relative z-10"><Button onClick={() => window.print()}><Icons.Printer /> Print Invoice</Button></div>
                     </div>
                 );
@@ -714,7 +843,7 @@
                     <main className="max-w-[1600px] mx-auto p-6">
                         {msg && <div className={`mb-6 p-4 rounded-lg flex gap-3 border ${msg.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>{msg.type === 'error' ? <Icons.AlertCircle /> : <Icons.CheckCircle />} {msg.text} <button onClick={() => setMsg(null)} className="ml-auto">✕</button></div>}
 
-                        {activeTab === 'businesses' && <BusinessList user={user} onSelect={onSwitch} />}
+                        {activeTab === 'businesses' && <BusinessList user={user} onSelect={(id) => { sessionStorage.setItem('activeTab', 'invoice'); onSwitch(id); }} />}
 
                         {activeTab === 'invoice' && (
                             <div className="space-y-6">
@@ -735,40 +864,56 @@
                                         {user.settings.integrationMode !== 'production' && <SearchableDropdown label="Scenario ID (Sandbox)" value={invoice.scenarioId} options={SCENARIOS} onChange={v => setInvoice({ ...invoice, scenarioId: v })} />}
                                     </div>
 
-                                    {/* --- UPDATED: CLEAN MULTI-ROW LINE ITEM FORM --- */}
-                                    <div className="mb-6 border border-blue-200 rounded-lg overflow-hidden">
-                                        <div className="bg-blue-50 px-4 py-3 font-bold text-blue-900 border-b border-blue-200">Line Item Form</div>
-                                        <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 bg-white items-end">
-                                            {/* Row 1 */}
-                                            <div className="md:col-span-4"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={(user.inventory || []).filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = (user.inventory || []).find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
-                                            <div className="md:col-span-4"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
-                                            <div className="md:col-span-2"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
-                                            <div className="md:col-span-2"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
+                                    {/* --- NEW: TRANSPORT & REMARKS --- */}
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded border border-gray-200">
+                                        <div className="md:col-span-2"><Input label="Invoice Remarks / Notes" value={invoice.remarks || ''} onChange={e => setInvoice({ ...invoice, remarks: e.target.value })} placeholder="Optional note for invoice" /></div>
+                                        <Input label="Transport Type" value={invoice.transportType || ''} onChange={e => setInvoice({ ...invoice, transportType: e.target.value })} placeholder="e.g. Mazda" />
+                                        <Input label="Vehicle Reg No." value={invoice.vehicleNo || ''} onChange={e => setInvoice({ ...invoice, vehicleNo: e.target.value })} placeholder="e.g. JX-5276" />
+                                    </div>
+
+                                    {/* --- NEW: SPACIOUS MULTI-ROW LINE ITEM FORM --- */}
+                                    <div className="mb-6 border border-blue-200 rounded-lg overflow-hidden shadow-sm">
+                                        <div className="bg-blue-50 px-4 py-3 font-bold text-blue-900 border-b border-blue-200 flex justify-between">
+                                            <span>Line Item Entry Form</span>
+                                            {showRetailFed && <span className="text-[10px] bg-yellow-200 text-yellow-800 px-2 py-1 rounded uppercase tracking-wide">Retail & FED Enabled</span>}
+                                        </div>
+                                        <div className="p-5 bg-white">
+                                            {/* Row 1: Core Identity */}
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 items-end">
+                                                <div className="md:col-span-5"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={(user.inventory || []).filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = (user.inventory || []).find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
+                                                <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
+                                                <div className="md:col-span-2"><SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={SALE_TYPES} onChange={v => setLineItemForm({...lineItemForm, saleType: v})} /></div>
+                                            </div>
                                             
-                                            {/* Row 2 */}
-                                            <div className="md:col-span-4"><SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={SALE_TYPES} onChange={v => setLineItemForm({...lineItemForm, saleType: v})} /></div>
-                                            <div className="md:col-span-2"><Input label="Price" type="number" value={lineItemForm.price} onChange={e => setLineItemForm({...lineItemForm, price: e.target.value})} /></div>
-                                            <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={lineItemForm.taxRate} onChange={e => setLineItemForm({...lineItemForm, taxRate: e.target.value})} /></div>
-                                            <div className="md:col-span-2"><Input label="Fur.Tax %" type="number" value={lineItemForm.furtherTax} onChange={e => setLineItemForm({...lineItemForm, furtherTax: e.target.value})} /></div>
-                                            <div className="md:col-span-2"><Input label="Disc. Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
-                                            
-                                            {/* Row 3 (Conditional FBR Fields) */}
+                                            {/* Row 2: Quantities & Pricing */}
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 items-end bg-gray-50 p-4 rounded border border-gray-100">
+                                                <div className="md:col-span-2"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
+                                                <div className="md:col-span-2"><Input label="Unit Price" type="number" value={lineItemForm.price} onChange={e => setLineItemForm({...lineItemForm, price: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={lineItemForm.taxRate} onChange={e => setLineItemForm({...lineItemForm, taxRate: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="Further Tax %" type="number" value={lineItemForm.furtherTax} onChange={e => setLineItemForm({...lineItemForm, furtherTax: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="Discount Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
+                                            </div>
+
+                                            {/* Row 3: FBR Specifics (Conditional) */}
                                             {showRetailFed && (
-                                                <>
-                                                    <div className="md:col-span-2"><Input label="Ret.Price" type="number" value={lineItemForm.retailPrice} onChange={e => setLineItemForm({...lineItemForm, retailPrice: e.target.value})} /></div>
-                                                    <div className="md:col-span-2"><Input label="Ex.Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
-                                                    <div className="md:col-span-2"><Input label="FED" type="number" value={lineItemForm.fedPayable} onChange={e => setLineItemForm({...lineItemForm, fedPayable: e.target.value})} /></div>
-                                                </>
+                                                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 items-end bg-yellow-50 p-4 rounded border border-yellow-200">
+                                                    <div className="md:col-span-3"><Input label="Retail Price" type="number" value={lineItemForm.retailPrice} onChange={e => setLineItemForm({...lineItemForm, retailPrice: e.target.value})} /></div>
+                                                    <div className="md:col-span-3"><Input label="Extra Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
+                                                    <div className="md:col-span-3"><Input label="FED Amount" type="number" value={lineItemForm.fedPayable} onChange={e => setLineItemForm({...lineItemForm, fedPayable: e.target.value})} /></div>
+                                                    <div className="md:col-span-3"><Input label="ST WHT Amount" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>
+                                                </div>
                                             )}
-                                            
-                                            {/* Remaining Row */}
-                                            <div className="md:col-span-2"><Input label="ST WHT" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>
-                                            <div className="md:col-span-2"><Input label="SRO Sch#" value={lineItemForm.sroScheduleNo} onChange={e => setLineItemForm({...lineItemForm, sroScheduleNo: e.target.value})} /></div>
-                                            <div className="md:col-span-2"><Input label="SRO Ser#" value={lineItemForm.sroItemSerialNo} onChange={e => setLineItemForm({...lineItemForm, sroItemSerialNo: e.target.value})} /></div>
-                                            
-                                            <div className={`col-span-12 flex justify-end gap-2 mt-4 border-t border-gray-100 pt-4`}>
-                                                {lineItemForm.id && <Button onClick={() => setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0})} variant="secondary">Cancel</Button>}
-                                                <Button onClick={pushItemToInvoice} className="w-full md:w-auto"><Icons.Plus /> {lineItemForm.id ? 'Update Line Item' : 'Add Line Item'}</Button>
+
+                                            {/* Row 4: SRO Data & Submit */}
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end border-t border-gray-100 pt-4">
+                                                <div className="md:col-span-3"><Input label="SRO Schedule No." value={lineItemForm.sroScheduleNo} onChange={e => setLineItemForm({...lineItemForm, sroScheduleNo: e.target.value})} /></div>
+                                                <div className="md:col-span-3"><Input label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} onChange={e => setLineItemForm({...lineItemForm, sroItemSerialNo: e.target.value})} /></div>
+                                                {!showRetailFed && <div className="md:col-span-2"><Input label="ST WHT Amount" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>}
+                                                <div className={`col-span-12 ${!showRetailFed ? 'md:col-span-4' : 'md:col-span-6'} flex justify-end gap-2`}>
+                                                    {lineItemForm.id && <Button onClick={() => setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0})} variant="secondary">Cancel</Button>}
+                                                    <Button onClick={pushItemToInvoice} className="w-full md:w-auto px-8"><Icons.Plus /> {lineItemForm.id ? 'Update Line Item' : 'Add Line Item'}</Button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -837,7 +982,6 @@
                             </div>
                         )}
 
-                        {/* --- UPDATED INVENTORY ADD/EDIT FORM --- */}
                         {activeTab === 'inventory' && (
                             <div className="w-full">
                                 {userCanEdit && (
@@ -846,28 +990,28 @@
                                         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-gray-50 p-4 border border-gray-200 rounded-lg">
                                             {/* Row 1 */}
                                             <div className="md:col-span-4"><Input label="Product Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} /></div>
-                                            <div className="md:col-span-4"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
-                                            <div className="md:col-span-2"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
+                                            <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
+                                            <div className="md:col-span-3"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
                                             
                                             {/* Row 2 */}
-                                            <div className="md:col-span-4"><SearchableDropdown label="Sales Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
+                                            <div className="md:col-span-6"><SearchableDropdown label="Sales Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
                                             <div className="md:col-span-2"><Input label="Price" type="number" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} /></div>
                                             <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={newItem.taxRate} onChange={e => setNewItem({ ...newItem, taxRate: e.target.value })} /></div>
                                             <div className="md:col-span-2"><Input label="Fur.Tax %" type="number" value={newItem.furtherTax} onChange={e => setNewItem({ ...newItem, furtherTax: e.target.value })} /></div>
                                             
                                             {/* Row 3 (Conditional) */}
                                             {showRetailFed && (
-                                                <>
-                                                    <div className="md:col-span-2"><Input label="Ret. Price" type="number" value={newItem.retailPrice} onChange={e => setNewItem({ ...newItem, retailPrice: e.target.value })} /></div>
-                                                    <div className="md:col-span-2"><Input label="Ex.Tax %" type="number" value={newItem.extraTax} onChange={e => setNewItem({ ...newItem, extraTax: e.target.value })} /></div>
-                                                    <div className="md:col-span-2"><Input label="FED" type="number" value={newItem.fedPayable} onChange={e => setNewItem({ ...newItem, fedPayable: e.target.value })} /></div>
-                                                </>
+                                                <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-12 gap-4 bg-yellow-50 p-3 rounded border border-yellow-200">
+                                                    <div className="md:col-span-4"><Input label="Retail Price" type="number" value={newItem.retailPrice} onChange={e => setNewItem({ ...newItem, retailPrice: e.target.value })} /></div>
+                                                    <div className="md:col-span-4"><Input label="Extra Tax %" type="number" value={newItem.extraTax} onChange={e => setNewItem({ ...newItem, extraTax: e.target.value })} /></div>
+                                                    <div className="md:col-span-4"><Input label="FED Amount" type="number" value={newItem.fedPayable} onChange={e => setNewItem({ ...newItem, fedPayable: e.target.value })} /></div>
+                                                </div>
                                             )}
 
                                             {/* Row 4 */}
-                                            <div className="md:col-span-2"><Input label="ST WHT" type="number" value={newItem.wht} onChange={e => setNewItem({ ...newItem, wht: e.target.value })} /></div>
-                                            <div className="md:col-span-2"><Input label="SRO Schedule No" value={newItem.sroScheduleNo} onChange={e => setNewItem({ ...newItem, sroScheduleNo: e.target.value })} /></div>
-                                            <div className="md:col-span-2"><Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
+                                            <div className="md:col-span-4"><Input label="SRO Schedule No" value={newItem.sroScheduleNo} onChange={e => setNewItem({ ...newItem, sroScheduleNo: e.target.value })} /></div>
+                                            <div className="md:col-span-4"><Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
+                                            <div className="md:col-span-4"><Input label="ST WHT Amount" type="number" value={newItem.wht} onChange={e => setNewItem({ ...newItem, wht: e.target.value })} /></div>
                                             
                                             <div className="md:col-span-12 flex justify-end gap-2 mt-4 border-t border-gray-200 pt-4">
                                                 {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-4">Cancel</Button>}
@@ -877,7 +1021,7 @@
                                     </Card>
                                 )}
 
-                                {/* UPDATED VISUAL INVENTORY TABLE */}
+                                {/* FULL VISUAL INVENTORY TABLE */}
                                 <Card className="p-0 overflow-hidden">
                                     <div className="table-container">
                                         <table className="fbr-table text-left text-sm w-full">
@@ -944,22 +1088,35 @@
                             </div>
                         )}
 
+                        {/* --- EXPANDED HISTORY TABLE --- */}
                         {activeTab === 'history' && (
                             <Card className="p-0 overflow-hidden w-full">
                                 <div className="flex justify-between items-center p-4 bg-gray-100 border-b border-gray-200"><div className="font-bold text-gray-900">Recent Invoices</div><div className="relative w-64"><input type="text" placeholder="Search..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={histSearch} onChange={e => setHistSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div></div>
-                                <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">FBR Invoice #</th><th className="p-3">Date</th><th className="p-3">Customer</th><th className="p-3">NTN</th><th className="p-3 text-right">Total</th><th className="p-3 text-center">Action</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredHistory.map(inv => (<tr key={inv.id} className="hover:bg-gray-50"><td className="p-3 text-xs font-bold">{inv.fbrInvoiceNumber}</td><td className="p-3">{inv.invoiceDate || inv.date}</td><td className="p-3">{inv.customerName}</td><td className="p-3">{inv.customerNTN}</td><td className="p-3 text-right">{formatCurrency(inv.total)}</td><td className="p-3 text-center"><div className="flex justify-center gap-2"><button onClick={() => { setLastInv(inv); setShowReceipt(true); }} className="text-gray-600 hover:text-black" title="Print"><Icons.Printer /></button><button onClick={() => downloadInvoice(inv)} className="text-gray-600 hover:text-black" title="Download"><Icons.Download /></button></div></td></tr>))}</tbody></table>
+                                <div className="table-container">
+                                    <table className="w-full text-left text-sm fbr-table"><thead className="bg-black text-white uppercase text-xs tracking-wide"><tr><th className="p-3">FBR Invoice #</th><th className="p-3">Date</th><th className="p-3">Customer</th><th className="p-3">NTN</th><th className="p-3 text-right">Subtotal</th><th className="p-3 text-right">Sales Tax</th><th className="p-3 text-right">FED</th><th className="p-3 text-right">Fur.Tax</th><th className="p-3 text-right">WHT</th><th className="p-3 text-right">Grand Total</th><th className="p-3 text-center">Action</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredHistory.map(inv => (<tr key={inv.id} className="hover:bg-gray-50"><td className="p-3 text-xs font-bold text-red-600">{inv.fbrInvoiceNumber}</td><td className="p-3 text-xs text-gray-500">{inv.invoiceDate || inv.date}</td><td className="p-3 text-xs font-bold">{inv.customerName}</td><td className="p-3 text-xs text-gray-500">{inv.customerNTN}</td><td className="p-3 text-xs text-right text-gray-600">{formatCurrency(inv.subtotal)}</td><td className="p-3 text-xs text-right text-gray-600">{formatCurrency(inv.gst)}</td><td className="p-3 text-xs text-right text-gray-600">{formatCurrency(inv.fed)}</td><td className="p-3 text-xs text-right text-gray-600">{formatCurrency(inv.further)}</td><td className="p-3 text-xs text-right text-blue-600">{formatCurrency(inv.wht)}</td><td className="p-3 text-xs text-right font-bold text-black">{formatCurrency(inv.total)}</td><td className="p-3 text-center"><div className="flex justify-center gap-2"><button onClick={() => { setLastInv(inv); setShowReceipt(true); }} className="text-gray-600 hover:text-black" title="Print"><Icons.Printer /></button><button onClick={() => downloadInvoice(inv)} className="text-gray-600 hover:text-black" title="Download"><Icons.Download /></button></div></td></tr>))}</tbody></table>
+                                </div>
                             </Card>
                         )}
 
                         {activeTab === 'settings' && (
                             <div className="w-full"><Card className="p-8"><h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><Icons.Settings /> Client Configuration</h2>
                                 <div className="space-y-6">
+                                    {/* Edit Phone and Email Locally */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-6">
+                                        <div><h3 className="font-bold text-sm mb-4">Contact Information</h3>
+                                            <div className="space-y-4">
+                                                <Input label="Contact Phone" value={user?.settings?.phone || ''} onChange={e => { const newU = {...user, settings: {...user.settings, phone: e.target.value}}; setUser(newU); saveUser({ settings: newU.settings }); }} />
+                                                <Input label="Contact Email" value={user?.settings?.email || ''} onChange={e => { const newU = {...user, settings: {...user.settings, email: e.target.value}}; setUser(newU); saveUser({ settings: newU.settings }); }} />
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="Business Name" value={user?.settings?.businessName} readOnly /><Input label="Business Address" value={user?.settings?.address} readOnly /></div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="NTN" value={user?.settings?.ntn} readOnly /><Input label="STRN" value={user?.settings?.strn} readOnly /></div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none"><Input label="Sale Origination Province" value={user?.settings?.province} readOnly /><Input label="Active Environment" value={user?.settings?.integrationMode === 'production' ? 'Production' : 'Sandbox'} readOnly /></div>
                                     <div className="opacity-80 pointer-events-none"><label className="text-xs font-semibold text-gray-500 uppercase block mb-1">Company Logo</label>{user.settings?.logo ? <img src={user.settings.logo} className="h-10 mt-2 object-contain" /> : <p className="text-sm">No Logo Uploaded</p>}</div>
                                 </div>
-                                <div className="text-center mt-8 text-sm text-gray-500 border-t pt-4">Contact Administrator to update details. Invoices are locked to the FBR Standard format.</div>
+                                <div className="text-center mt-8 text-sm text-gray-500 border-t pt-4">Contact Administrator to update locked details. Invoices are printed to FBR Standard format.</div>
                             </Card></div>
                         )}
                     </main >
