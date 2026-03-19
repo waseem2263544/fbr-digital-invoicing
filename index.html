@@ -28,6 +28,10 @@
         .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .fbr-table { width: max-content; min-width: 100%; background: white; border-collapse: collapse; }
         .fbr-table th, .fbr-table td { white-space: nowrap !important; padding: 8px 12px; vertical-align: middle; border-bottom: 1px solid #e2e8f0; }
+        .fbr-table .table-input { width: 100%; min-width: 90px; height: 2rem; border: none; border-bottom: 1px solid #cbd5e1; background: transparent; outline: none; font-size: 0.85rem; transition: border-color 0.2s; }
+        .fbr-table .table-input:focus { border-bottom-color: #000; background: #f8fafc; }
+        .fbr-table .desc-col { min-width: 250px; }
+        .fbr-table .hs-col { min-width: 180px; }
         
         .standard-input { height: 2.5rem; width: 100%; border: none; border-bottom: 1px solid #e2e8f0; border-radius: 0; padding-left: 0.5rem; font-size: 0.85rem; outline: none; background: transparent; transition: border-color 0.15s ease-in-out; }
         .standard-input:focus { border-bottom-color: #000; background: #f8fafc; }
@@ -96,7 +100,8 @@
             Calendar: (props) => <IconBase {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></IconBase>,
             Edit: (props) => <IconBase {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></IconBase>,
             Download: (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconBase>,
-            Eye: (props) => <IconBase {...props}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></IconBase>
+            Eye: (props) => <IconBase {...props}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></IconBase>,
+            Briefcase: (props) => <IconBase {...props}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></IconBase>
         };
 
         const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false, title }) => {
@@ -169,29 +174,39 @@
             return { ok: proxyData.ok, status: proxyData.status, json: async () => proxyData.data };
         };
 
-        // --- NEW: BUSINESS SELECTION LOBBY ---
+        // --- NEW: THEMED LOBBY DASHBOARD ---
         const BusinessSelectionScreen = ({ user, onSelect, onLogout }) => (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-                <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-3xl">
-                    <div className="flex justify-between items-center mb-8 border-b pb-4">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900">Select Dashboard</h2>
-                            <p className="text-sm text-gray-500">You are assigned to multiple businesses.</p>
-                        </div>
-                        <Button onClick={onLogout} variant="secondary" className="text-xs"><Icons.LogOut size={16}/> {user.isAdminImpersonating ? 'Return to Admin' : 'Logout'}</Button>
+            <div className="min-h-screen bg-gray-50 flex flex-col">
+                <nav className="bg-black text-white shadow-lg sticky top-0 z-50">
+                    <div className="max-w-[1600px] mx-auto px-4 py-3 flex justify-between items-center">
+                        <div className="flex items-center gap-2 font-bold"><Icons.ShieldCheck /> FBR Invoice System</div>
+                        <Button onClick={onLogout} variant="danger" className="text-xs py-1"><Icons.LogOut size={16}/> {user.isAdminImpersonating ? 'Return to Admin' : 'Logout'}</Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
+                </nav>
+                <main className="max-w-4xl mx-auto w-full p-6 mt-8">
+                    <div className="mb-6 border-b border-gray-200 pb-4">
+                        <h2 className="text-3xl font-bold text-gray-900">Select a Dashboard</h2>
+                        <p className="text-gray-500 mt-1">Choose the business account you want to manage today.</p>
+                    </div>
+                    <div className="flex flex-col gap-4">
                         {user.accessibleBusinesses.map(b => (
-                            <button key={b.id} onClick={() => onSelect(b.id)} className="p-6 border rounded-lg hover:border-black hover:shadow-md transition-all text-left bg-gray-50 flex justify-between items-center group">
-                                <div>
-                                    <h3 className="font-bold text-lg text-gray-800 group-hover:text-black">{b.name}</h3>
-                                    <p className="text-xs text-gray-500 uppercase mt-2 font-semibold">Role: <span className="text-blue-600">{b.accessLevel}</span></p>
-                                </div>
-                                <Icons.Eye className="text-gray-300 group-hover:text-black" />
-                            </button>
+                            <Card key={b.id} className="p-0 overflow-hidden hover:border-black transition-colors">
+                                <button onClick={() => onSelect(b.id)} className="w-full p-5 flex justify-between items-center bg-white hover:bg-gray-50 transition-colors text-left group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="bg-gray-100 p-3 rounded-lg group-hover:bg-blue-50 transition-colors"><Icons.Briefcase className="text-gray-500 group-hover:text-blue-600" size={24}/></div>
+                                        <div>
+                                            <h3 className="font-bold text-xl text-gray-900 group-hover:text-black">{b.name}</h3>
+                                            <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-gray-100 p-2 rounded-full group-hover:bg-black group-hover:text-white transition-colors">
+                                        <Icons.Plus size={20} className="rotate-45 transform group-hover:rotate-0 transition-transform" />
+                                    </div>
+                                </button>
+                            </Card>
                         ))}
                     </div>
-                </div>
+                </main>
             </div>
         );
 
@@ -259,10 +274,11 @@
                         sessionStorage.setItem('fbr_admin_backup', JSON.stringify(user));
                         sessionStorage.setItem('fbr_admin_token', sessionStorage.getItem('fbr_token'));
                         if (window.localforage) await window.localforage.setItem('fbr_admin_backup', user);
-                        
                         const clientUser = { ...data.user, isAdminImpersonating: true };
                         sessionStorage.setItem('fbr_token', data.token);
-                        await handleLogin(clientUser);
+                        sessionStorage.setItem('fbr_session', JSON.stringify(clientUser));
+                        if (window.localforage) await window.localforage.setItem('fbr_session', clientUser);
+                        window.location.reload();
                     } else { alert(data.error || "Failed to impersonate"); }
                 } catch (err) { alert("Network error connecting to User."); }
             };
@@ -273,11 +289,12 @@
                     const fallbackToken = sessionStorage.getItem('fbr_admin_token');
                     sessionStorage.removeItem('fbr_admin_backup'); sessionStorage.removeItem('fbr_admin_token');
                     if (window.localforage) await window.localforage.removeItem('fbr_admin_backup').catch(()=>{});
-                    
                     if (fallbackBackup && fallbackToken) {
                         const adminUser = JSON.parse(fallbackBackup);
                         sessionStorage.setItem('fbr_token', fallbackToken);
-                        await handleLogin(adminUser);
+                        sessionStorage.setItem('fbr_session', fallbackBackup);
+                        if (window.localforage) await window.localforage.setItem('fbr_session', adminUser).catch(()=>{});
+                        window.location.reload();
                     } else { handleLogout(null, true); }
                 } catch (err) { window.location.href = window.location.pathname + '?logout=' + Date.now(); }
             };
@@ -285,7 +302,6 @@
             if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading System...</div>;
             if (!user) return <LoginScreen onLogin={handleLogin} />;
             
-            // Check Lobby Requirement
             if (user.needsBusinessSelection) {
                 return <BusinessSelectionScreen user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} />;
             }
@@ -353,6 +369,10 @@
             const [bizSearch, setBizSearch] = useState("");
             const [userSearch, setUserSearch] = useState("");
 
+            // NEW: Searchable Assignment States
+            const [bizToAdd, setBizToAdd] = useState("");
+            const [roleToAdd, setRoleToAdd] = useState("view");
+
             const fetchData = async () => {
                 const token = sessionStorage.getItem('fbr_token');
                 const [bRes, uRes] = await Promise.all([
@@ -388,7 +408,10 @@
                 
                 try {
                     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify(editingUser) });
-                    if (res.ok) { setEditingUser(null); fetchData(); }
+                    if (res.ok) { 
+                        setEditingUser(null); fetchData(); 
+                        if(!isNew) alert("User profile updated!");
+                    }
                     else setAdminError((await res.json()).error || "Error saving user");
                 } catch (e) { setAdminError("Network Error"); }
             };
@@ -399,19 +422,19 @@
             return (
                 <div className="min-h-screen bg-gray-50">
                     <nav className="bg-black text-white shadow-lg sticky top-0 z-50">
-                        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+                        <div className="max-w-[1600px] mx-auto px-4 py-3 flex justify-between items-center">
                             <div className="flex items-center gap-2 font-bold"><Icons.ShieldCheck /> Super Admin</div>
                             <div className="flex items-center gap-4">
                                 <div className="flex bg-gray-800 rounded p-1">
-                                    <button onClick={() => setActiveTab('businesses')} className={`px-4 py-1 text-sm rounded ${activeTab === 'businesses' ? 'bg-white text-black font-bold' : 'text-gray-300'}`}>Businesses</button>
-                                    <button onClick={() => setActiveTab('users')} className={`px-4 py-1 text-sm rounded ${activeTab === 'users' ? 'bg-white text-black font-bold' : 'text-gray-300'}`}>System Users</button>
+                                    <button onClick={() => setActiveTab('businesses')} className={`px-4 py-1 text-sm rounded transition-colors ${activeTab === 'businesses' ? 'bg-white text-black font-bold shadow' : 'text-gray-300 hover:text-white'}`}>Businesses</button>
+                                    <button onClick={() => setActiveTab('users')} className={`px-4 py-1 text-sm rounded transition-colors ${activeTab === 'users' ? 'bg-white text-black font-bold shadow' : 'text-gray-300 hover:text-white'}`}>System Users</button>
                                 </div>
                                 <Button onClick={onLogout} variant="danger" className="py-1 text-sm"><Icons.LogOut /> Logout</Button>
                             </div>
                         </div>
                     </nav>
 
-                    <main className="max-w-7xl mx-auto p-6">
+                    <main className="max-w-[1600px] mx-auto p-6">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold text-gray-800">{activeTab === 'businesses' ? 'Registered Businesses' : 'User Accounts'}</h2>
                             <div className="flex items-center gap-4">
@@ -431,7 +454,7 @@
                                 <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                                     <div className="flex justify-between items-center mb-6 border-b pb-4">
                                         <h3 className="text-2xl font-bold text-gray-800">{editingBiz.id ? `Manage Business: ${editingBiz.businessName}` : 'Create New Business'}</h3>
-                                        <button onClick={() => setShowBizModal(false)} className="text-gray-400"><Icons.X size={24} /></button>
+                                        <button onClick={() => setShowBizModal(false)} className="text-gray-400 hover:text-black transition-colors"><Icons.X size={24} /></button>
                                     </div>
                                     {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border border-red-200">{adminError}</div>}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -446,10 +469,6 @@
                                                     <div className="border-t pt-3">
                                                         <div className="font-bold mb-2 text-sm">Subscription Expiry</div>
                                                         <Input type="date" value={(editingBiz.expiryDate || new Date().toISOString()).split('T')[0]} onChange={e => setEditingBiz({ ...editingBiz, expiryDate: new Date(e.target.value).toISOString() })} />
-                                                        <div className="flex gap-2 mt-2">
-                                                            <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 30); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border px-2 py-1 rounded">+30 Days</button>
-                                                            <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 365); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border px-2 py-1 rounded">+1 Year</button>
-                                                        </div>
                                                     </div>
                                                 </div>
                                             )}
@@ -460,7 +479,7 @@
                                         </div>
                                         <div className="space-y-4">
                                             <h4 className="font-bold text-gray-700 border-b pb-2">FBR Configuration</h4>
-                                            <select className="w-full border p-2 rounded text-sm" value={editingBiz.integrationMode} onChange={e => setEditingBiz({ ...editingBiz, integrationMode: e.target.value })}><option value="sandbox">Sandbox Mode</option><option value="production">Production Mode</option></select>
+                                            <select className="w-full border p-2 rounded text-sm outline-none" value={editingBiz.integrationMode} onChange={e => setEditingBiz({ ...editingBiz, integrationMode: e.target.value })}><option value="sandbox">Sandbox Mode</option><option value="production">Production Mode</option></select>
                                             <div className="bg-yellow-50 p-3 rounded border border-yellow-200"><h5 className="font-bold text-xs mb-2">Sandbox (Simulation)</h5><Input label="Sandbox Auth Token" value={editingBiz.sandboxToken || ''} onChange={e => setEditingBiz({ ...editingBiz, sandboxToken: e.target.value })} /></div>
                                             <div className="bg-gray-100 p-3 rounded border border-gray-200"><h5 className="font-bold text-xs mb-2">Production (Live)</h5><Input label="Production Auth Token" value={editingBiz.productionToken || ''} onChange={e => setEditingBiz({ ...editingBiz, productionToken: e.target.value })} /></div>
                                             <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Feature Control</h4>
@@ -481,13 +500,13 @@
                             </div>
                         )}
 
-                        {/* --- USER MANAGE MODAL --- */}
+                        {/* --- USER MANAGE MODAL (WITH SEARCHABLE ALLOCATION) --- */}
                         {editingUser && (
                             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                                 <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                                     <div className="flex justify-between items-center mb-6 border-b pb-4">
                                         <h3 className="text-xl font-bold flex items-center gap-2"><Icons.User /> {editingUser.id ? `Manage User: ${editingUser.username}` : 'Create New User'}</h3>
-                                        <button onClick={() => setEditingUser(null)}><Icons.X /></button>
+                                        <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-black transition-colors"><Icons.X /></button>
                                     </div>
                                     
                                     {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border">{adminError}</div>}
@@ -513,38 +532,46 @@
 
                                         <div className="space-y-4">
                                             <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide border-b pb-2">2. Business Access</h4>
-                                            <div className="text-xs text-gray-500">Check businesses to assign to this user. They will be saved in a single bulk action.</div>
+                                            <div className="text-xs text-gray-500">Search and add businesses to this user's account.</div>
                                             
-                                            <div className="space-y-2 max-h-[400px] overflow-y-auto border border-gray-200 rounded-lg p-2 bg-gray-50">
-                                                {businesses.length === 0 ? <div className="text-center p-4 text-xs text-gray-400">No businesses exist yet.</div> : 
-                                                    businesses.map(b => {
-                                                        const isAssigned = editingUser.access?.some(a => a.businessId === b.id);
-                                                        const currentAccess = editingUser.access?.find(a => a.businessId === b.id);
-                                                        return (
-                                                            <div key={b.id} className={`flex items-center justify-between p-3 border rounded shadow-sm transition-colors ${isAssigned ? 'bg-blue-50 border-blue-300' : 'bg-white hover:bg-gray-100'}`}>
-                                                                <label className="flex items-center gap-3 cursor-pointer flex-1">
-                                                                    <input type="checkbox" className="w-4 h-4 cursor-pointer" checked={isAssigned || false} onChange={e => {
-                                                                        if (e.target.checked) {
-                                                                            setEditingUser(p => ({ ...p, access: [...(p.access || []), { businessId: b.id, businessName: b.businessName, accessLevel: 'admin' }] }));
-                                                                        } else {
-                                                                            setEditingUser(p => ({ ...p, access: (p.access || []).filter(a => a.businessId !== b.id) }));
-                                                                        }
-                                                                    }} />
-                                                                    <div>
-                                                                        <div className="text-sm font-bold text-gray-900">{b.businessName}</div>
-                                                                        <div className="text-[10px] text-gray-500 uppercase">{b.ntn || 'No NTN'}</div>
-                                                                    </div>
-                                                                </label>
-                                                                {isAssigned && (
-                                                                    <select className="text-xs border border-blue-200 p-1.5 rounded bg-white outline-none focus:ring-2 focus:ring-blue-500" value={currentAccess.accessLevel} onChange={e => setEditingUser(p => ({ ...p, access: p.access.map(a => a.businessId === b.id ? { ...a, accessLevel: e.target.value } : a) }))}>
-                                                                        <option value="admin">Full Admin</option>
-                                                                        <option value="edit">Edit Data</option>
-                                                                        <option value="view">View Only</option>
-                                                                    </select>
-                                                                )}
+                                            <div className="flex items-end gap-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                                <div className="flex-1">
+                                                    <SearchableDropdown 
+                                                        label="Find Business" 
+                                                        value={bizToAdd} 
+                                                        options={businesses.filter(b => !editingUser.access?.some(a => a.businessId === b.id)).map(b => b.businessName)} 
+                                                        onChange={setBizToAdd} 
+                                                        strict={false} 
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-semibold text-gray-500 uppercase">Role</label>
+                                                    <select className="standard-input rounded-lg bg-white" value={roleToAdd} onChange={e => setRoleToAdd(e.target.value)}>
+                                                        <option value="admin">Full Admin</option>
+                                                        <option value="edit">Edit Data</option>
+                                                        <option value="view">View Only</option>
+                                                    </select>
+                                                </div>
+                                                <Button onClick={() => {
+                                                    const b = businesses.find(x => x.businessName === bizToAdd);
+                                                    if (b) {
+                                                        setEditingUser(p => ({ ...p, access: [...(p.access || []), { businessId: b.id, businessName: b.businessName, accessLevel: roleToAdd }] }));
+                                                        setBizToAdd("");
+                                                    }
+                                                }}>Add</Button>
+                                            </div>
+                                            
+                                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                                {(!editingUser.access || editingUser.access.length === 0) ? <div className="text-center p-4 text-xs text-gray-400 border border-dashed rounded">No businesses assigned.</div> : 
+                                                    editingUser.access.map(a => (
+                                                        <div key={a.businessId} className="flex items-center justify-between p-3 border rounded shadow-sm bg-white">
+                                                            <div>
+                                                                <div className="text-sm font-bold text-gray-900">{a.businessName}</div>
+                                                                <div className="text-[10px] text-gray-500 uppercase mt-1">Role: <span className="text-blue-600 font-bold">{a.accessLevel}</span></div>
                                                             </div>
-                                                        );
-                                                    })
+                                                            <button onClick={() => setEditingUser(p => ({...p, access: p.access.filter(x => x.businessId !== a.businessId)}))} className="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded"><Icons.Trash2 size={16}/></button>
+                                                        </div>
+                                                    ))
                                                 }
                                             </div>
                                         </div>
@@ -557,46 +584,48 @@
                             </div>
                         )}
 
+                        {/* --- SINGLE COLUMN MODERN LISTS --- */}
                         {activeTab === 'businesses' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="flex flex-col gap-4">
                                 {filteredBiz.length > 0 ? filteredBiz.map(biz => {
                                     const daysLeft = Math.ceil((new Date(biz.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
                                     return (
-                                        <Card key={biz.id} className={`p-5 flex flex-col justify-between border-l-4 ${biz.isRevoked ? 'border-red-600 opacity-75' : 'border-black'}`}>
-                                            <div>
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div className="font-bold text-lg">{biz.businessName} {biz.isRevoked && <span className="text-xs bg-red-600 text-white px-2 py-1 rounded ml-2">REVOKED</span>}</div>
-                                                    <span className={`text-xs px-2 py-1 rounded font-bold uppercase ${biz.integrationMode === 'production' ? 'bg-gray-800 text-white' : 'bg-yellow-200 text-yellow-800'}`}>{biz.integrationMode}</span>
+                                        <Card key={biz.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 ${biz.isRevoked ? 'border-red-600 opacity-75 bg-red-50' : 'border-black hover:shadow-md transition-shadow'}`}>
+                                            <div className="flex-1">
+                                                <div className="font-bold text-lg text-gray-900 flex items-center gap-3">
+                                                    {biz.businessName} 
+                                                    {biz.isRevoked && <span className="text-[10px] bg-red-600 text-white px-2 py-1 rounded tracking-wide">REVOKED</span>}
+                                                    <span className={`text-[10px] px-2 py-1 rounded tracking-wide uppercase ${biz.integrationMode === 'production' ? 'bg-gray-800 text-white' : 'bg-yellow-200 text-yellow-800'}`}>{biz.integrationMode}</span>
                                                 </div>
-                                                <div className="text-sm text-gray-500">NTN: {biz.ntn || 'N/A'}</div>
-                                                <div className={`text-sm font-bold mt-3 ${daysLeft < 7 ? 'text-red-600' : 'text-gray-600'}`}><Icons.Calendar size={14} className="inline mr-1"/> {daysLeft} Days Left</div>
+                                                <div className="text-sm text-gray-500 mt-1">NTN: {biz.ntn || 'N/A'} • {biz.province}</div>
                                             </div>
-                                            <div className="mt-4 pt-4 border-t flex justify-end">
+                                            <div className="flex items-center gap-6">
+                                                <div className={`text-sm font-bold flex items-center gap-1 ${daysLeft < 7 ? 'text-red-600' : 'text-gray-600'}`}><Icons.Calendar size={14}/> {daysLeft} Days Left</div>
                                                 <Button onClick={() => { setEditingBiz(biz); setShowBizModal(true); }} variant="secondary" className="text-sm">Manage Profile & Billing</Button>
                                             </div>
                                         </Card>
                                     );
-                                }) : <div className="col-span-2 text-center py-8 text-gray-400">No businesses match your search.</div>}
+                                }) : <div className="text-center py-8 text-gray-400">No businesses match your search.</div>}
                             </div>
                         )}
 
                         {activeTab === 'users' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="flex flex-col gap-4">
                                 {filteredUsers.length > 0 ? filteredUsers.map(u => (
-                                    <Card key={u.id} className={`p-5 ${u.isRevoked ? 'opacity-60 border-l-4 border-red-600' : 'border-l-4 border-blue-600'}`}>
-                                        <div className="flex justify-between items-start mb-4 pb-4 border-b">
-                                            <div>
-                                                <div className="font-bold text-lg flex items-center gap-2"><Icons.User /> {u.username}</div>
-                                                {u.isRevoked && <div className="text-xs text-red-600 font-bold mt-1 uppercase">Login Disabled</div>}
+                                    <Card key={u.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 ${u.isRevoked ? 'opacity-60 border-red-600 bg-red-50' : 'border-blue-600 hover:shadow-md transition-shadow'}`}>
+                                        <div className="flex-1">
+                                            <div className="font-bold text-lg text-gray-900 flex items-center gap-3">
+                                                <Icons.User size={20}/> {u.username}
+                                                {u.isRevoked && <span className="text-[10px] bg-red-600 text-white px-2 py-1 rounded tracking-wide">LOGIN DISABLED</span>}
                                             </div>
+                                            <div className="text-sm text-gray-500 mt-1">Assigned to <span className="font-bold text-black">{u.access?.length || 0}</span> businesses.</div>
                                         </div>
-                                        <div className="mb-4 text-sm text-gray-500">Assigned to <span className="font-bold text-black">{u.access?.length || 0}</span> businesses.</div>
-                                        <div className="grid grid-cols-2 gap-2 mt-auto">
-                                            <Button onClick={() => onImpersonate(u.id)} variant="secondary" className="text-xs bg-gray-50 border-gray-200" disabled={u.isRevoked}><Icons.Eye size={14}/> Login As</Button>
-                                            <Button onClick={() => setEditingUser(u)} variant="primary" className="text-xs">Manage User</Button>
+                                        <div className="flex items-center gap-3">
+                                            <Button onClick={() => onImpersonate(u.id)} variant="secondary" className="text-sm bg-white" disabled={u.isRevoked}><Icons.Eye size={16}/> Login As</Button>
+                                            <Button onClick={() => setEditingUser(u)} variant="primary" className="text-sm">Manage User</Button>
                                         </div>
                                     </Card>
-                                )) : <div className="col-span-3 text-center py-8 text-gray-400">No users match your search.</div>}
+                                )) : <div className="text-center py-8 text-gray-400">No users match your search.</div>}
                             </div>
                         )}
                     </main>
@@ -647,8 +676,10 @@
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
-            
             const showRetailFed = activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType));
+            
+            // Dynamic Tabs (Adds 'Businesses' tab if they have > 1)
+            const tabs = user.accessibleBusinesses?.length > 1 ? ['invoice', 'inventory', 'customers', 'history', 'settings', 'businesses'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
 
             useEffect(() => { if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province })); }, [user?.settings?.province]);
 
@@ -887,20 +918,13 @@
             return (
                 <div className="min-h-screen pb-20 relative bg-gray-50">
                     <nav className="bg-black text-white shadow-lg sticky top-0 z-40">
-                        <div className="max-w-[1500px] mx-auto px-4 py-3 flex justify-between items-center">
+                        <div className="max-w-[1600px] mx-auto px-4 py-3 flex justify-between items-center">
                             <div className="flex items-center gap-3">
                                 <div className="bg-white/10 p-2 rounded">{user.settings?.logo ? <img src={user.settings.logo} className="w-5 h-5 object-contain" /> : <Icons.FileText size={20} />}</div>
                                 <div><h1 className="font-bold leading-none">Hi {user.username || 'User'}</h1><span className="text-gray-400 text-xs">{user.settings?.businessName}</span></div>
-                                
-                                {user.accessibleBusinesses?.length > 1 && (
-                                    <select className="ml-4 text-xs text-black py-1 px-2 rounded font-bold border-none outline-none cursor-pointer hover:bg-gray-100 transition-colors" value={user.activeBusinessId} onChange={(e) => onSwitch(e.target.value)}>
-                                        {user.accessibleBusinesses.map(b => (<option key={b.id} value={b.id}>{b.name}</option>))}
-                                    </select>
-                                )}
-
                             </div>
                             <div className="flex gap-2 text-sm">
-                                {['invoice', 'inventory', 'customers', 'history', 'settings'].map(t => (<button key={t} onClick={() => setActiveTab(t)} className={`px-3 py-1.5 rounded capitalize transition-all duration-200 ${activeTab === t ? 'bg-white text-black font-bold' : 'hover:bg-gray-800 text-gray-300'}`}>{t}</button>))}
+                                {tabs.map(t => (<button key={t} onClick={() => setActiveTab(t)} className={`px-3 py-1.5 rounded capitalize transition-all duration-200 ${activeTab === t ? 'bg-white text-black font-bold' : 'hover:bg-gray-800 text-gray-300'}`}>{t}</button>))}
                                 <button onClick={onLogout} className="bg-gray-800 hover:bg-red-600 p-2 rounded ml-2"><Icons.LogOut /></button>
                             </div>
                         </div>
@@ -910,6 +934,32 @@
                     
                     <main className="max-w-[1600px] mx-auto p-6">
                         {msg && <div className={`mb-6 p-4 rounded-lg flex gap-3 border ${msg.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>{msg.type === 'error' ? <Icons.AlertCircle /> : <Icons.CheckCircle />} {msg.text} <button onClick={() => setMsg(null)} className="ml-auto">✕</button></div>}
+
+                        {activeTab === 'businesses' && (
+                            <div className="max-w-4xl mx-auto w-full mt-4">
+                                <h2 className="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">Switch Business Dashboard</h2>
+                                <div className="flex flex-col gap-4">
+                                    {user.accessibleBusinesses.map(b => (
+                                        <Card key={b.id} className={`p-0 overflow-hidden transition-colors ${b.id === user.activeBusinessId ? 'border-blue-600 border-2' : 'hover:border-black'}`}>
+                                            <button onClick={() => onSwitch(b.id)} className={`w-full p-5 flex justify-between items-center text-left group ${b.id === user.activeBusinessId ? 'bg-blue-50' : 'bg-white hover:bg-gray-50'}`}>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="bg-gray-100 p-3 rounded-lg"><Icons.Briefcase className="text-gray-500" size={24}/></div>
+                                                    <div>
+                                                        <h3 className="font-bold text-xl text-gray-900">{b.name} {b.id === user.activeBusinessId && <span className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded ml-2 uppercase">Current</span>}</h3>
+                                                        <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
+                                                    </div>
+                                                </div>
+                                                {b.id !== user.activeBusinessId && (
+                                                    <div className="bg-gray-100 p-2 rounded-full group-hover:bg-black group-hover:text-white transition-colors">
+                                                        <Icons.Plus size={20} className="rotate-45 transform group-hover:rotate-0 transition-transform" />
+                                                    </div>
+                                                )}
+                                            </button>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {activeTab === 'invoice' && (
                             <div className="space-y-6">
