@@ -24,9 +24,14 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #333; }
-        .table-input { height: 2.5rem; width: 100%; border: none; border-bottom: 1px solid #e2e8f0; border-radius: 0; padding-left: 0.5rem; padding-right: 0.5rem; font-size: 0.85rem; outline: none; background: transparent; transition: border-color 0.15s ease-in-out; }
-        .table-input:focus { border-bottom-color: #000; background: #f8fafc; }
-        .table-input:read-only { color: #6b7280; cursor: not-allowed; border-bottom-style: dashed; }
+        
+        .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .fbr-table { width: max-content; min-width: 100%; background: white; border-collapse: collapse; }
+        .fbr-table th, .fbr-table td { white-space: nowrap !important; padding: 8px 12px; vertical-align: middle; border-bottom: 1px solid #e2e8f0; }
+        
+        .standard-input { height: 2.5rem; width: 100%; border: none; border-bottom: 1px solid #e2e8f0; border-radius: 0; padding-left: 0.5rem; font-size: 0.85rem; outline: none; background: transparent; transition: border-color 0.15s ease-in-out; }
+        .standard-input:focus { border-bottom-color: #000; background: #f8fafc; }
+        .standard-input:read-only { color: #6b7280; cursor: not-allowed; border-bottom-style: dashed; }
     </style>
 </head>
 
@@ -104,7 +109,7 @@
         const Input = ({ label, value, onChange, type = "text", placeholder = "", required = false, className = "", readOnly = false }) => (
             <div className={`flex flex-col gap-1 ${className}`}>
                 {label && <label className="text-xs font-semibold text-gray-500 uppercase">{label} {required && <span className="text-red-500">*</span>}</label>}
-                <input type={type} value={value} onChange={onChange} placeholder={placeholder} readOnly={readOnly} className={`px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 outline-none ${readOnly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} />
+                <input type={type} value={value} onChange={onChange} placeholder={placeholder} readOnly={readOnly} className={`standard-input rounded-lg ${readOnly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} />
             </div>
         );
 
@@ -129,7 +134,7 @@
                         {status && <span className={`text-[10px] px-1 rounded ${status.type === 'error' ? 'text-red-600 bg-red-50' : 'text-gray-600 bg-gray-100'}`}>{status.text}</span>}
                     </div>
                     <div className="relative">
-                        <input type="text" value={value || ""} readOnly={strict || readOnly} className={`px-3 py-2 border border-gray-300 rounded-lg w-full ${strict || readOnly ? 'cursor-pointer' : ''}`} placeholder={placeholder} onClick={() => { if (!readOnly) { setShow(!show); setFilter(""); } }} onChange={!strict && !readOnly ? (e) => onChange(e.target.value) : undefined} />
+                        <input type="text" value={value || ""} readOnly={strict || readOnly} className={`standard-input rounded-lg ${strict || readOnly ? 'cursor-pointer' : ''}`} placeholder={placeholder} onClick={() => { if (!readOnly) { setShow(!show); setFilter(""); } }} onChange={!strict && !readOnly ? (e) => onChange(e.target.value) : undefined} />
                         {strict && !readOnly && <div className="absolute right-2 top-2.5 text-gray-400 pointer-events-none"><Icons.Settings size={14} /></div>}
                     </div>
                     {show && !readOnly && (
@@ -164,6 +169,32 @@
             return { ok: proxyData.ok, status: proxyData.status, json: async () => proxyData.data };
         };
 
+        // --- NEW: BUSINESS SELECTION LOBBY ---
+        const BusinessSelectionScreen = ({ user, onSelect, onLogout }) => (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+                <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-3xl">
+                    <div className="flex justify-between items-center mb-8 border-b pb-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900">Select Dashboard</h2>
+                            <p className="text-sm text-gray-500">You are assigned to multiple businesses.</p>
+                        </div>
+                        <Button onClick={onLogout} variant="secondary" className="text-xs"><Icons.LogOut size={16}/> {user.isAdminImpersonating ? 'Return to Admin' : 'Logout'}</Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
+                        {user.accessibleBusinesses.map(b => (
+                            <button key={b.id} onClick={() => onSelect(b.id)} className="p-6 border rounded-lg hover:border-black hover:shadow-md transition-all text-left bg-gray-50 flex justify-between items-center group">
+                                <div>
+                                    <h3 className="font-bold text-lg text-gray-800 group-hover:text-black">{b.name}</h3>
+                                    <p className="text-xs text-gray-500 uppercase mt-2 font-semibold">Role: <span className="text-blue-600">{b.accessLevel}</span></p>
+                                </div>
+                                <Icons.Eye className="text-gray-300 group-hover:text-black" />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+
         function App() {
             const [user, setUser] = useState(null);
             const [isAppLoading, setIsAppLoading] = useState(true);
@@ -197,10 +228,24 @@
 
             const handleLogout = async (e, force = false) => {
                 if (e && e.preventDefault) e.preventDefault();
-                if (user && user.isImpersonated && !force) return handleExitImpersonation();
+                if (user && user.isAdminImpersonating && !force) return handleExitImpersonation();
                 sessionStorage.clear(); localStorage.clear();
                 if (window.localforage) await window.localforage.clear().catch(()=>{});
                 window.location.href = window.location.pathname + '?logout=' + Date.now();
+            };
+
+            const handleBusinessSwitch = async (businessId) => {
+                try {
+                    const res = await fetch('https://app.tallied.pk/api/switch-business', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
+                        body: JSON.stringify({ businessId })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        sessionStorage.setItem('fbr_token', data.token);
+                        await handleLogin(data.user);
+                    } else { alert("Failed to switch business context."); }
+                } catch (e) { alert("Network Error"); }
             };
 
             const handleImpersonate = async (userId) => {
@@ -214,11 +259,10 @@
                         sessionStorage.setItem('fbr_admin_backup', JSON.stringify(user));
                         sessionStorage.setItem('fbr_admin_token', sessionStorage.getItem('fbr_token'));
                         if (window.localforage) await window.localforage.setItem('fbr_admin_backup', user);
-                        const clientUser = { ...data.user, isImpersonated: true };
+                        
+                        const clientUser = { ...data.user, isAdminImpersonating: true };
                         sessionStorage.setItem('fbr_token', data.token);
-                        sessionStorage.setItem('fbr_session', JSON.stringify(clientUser));
-                        if (window.localforage) await window.localforage.setItem('fbr_session', clientUser);
-                        window.location.reload();
+                        await handleLogin(clientUser);
                     } else { alert(data.error || "Failed to impersonate"); }
                 } catch (err) { alert("Network error connecting to User."); }
             };
@@ -229,25 +273,30 @@
                     const fallbackToken = sessionStorage.getItem('fbr_admin_token');
                     sessionStorage.removeItem('fbr_admin_backup'); sessionStorage.removeItem('fbr_admin_token');
                     if (window.localforage) await window.localforage.removeItem('fbr_admin_backup').catch(()=>{});
+                    
                     if (fallbackBackup && fallbackToken) {
                         const adminUser = JSON.parse(fallbackBackup);
                         sessionStorage.setItem('fbr_token', fallbackToken);
-                        sessionStorage.setItem('fbr_session', fallbackBackup);
-                        if (window.localforage) await window.localforage.setItem('fbr_session', adminUser).catch(()=>{});
-                        window.location.reload();
+                        await handleLogin(adminUser);
                     } else { handleLogout(null, true); }
                 } catch (err) { window.location.href = window.location.pathname + '?logout=' + Date.now(); }
             };
 
             if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading System...</div>;
             if (!user) return <LoginScreen onLogin={handleLogin} />;
+            
+            // Check Lobby Requirement
+            if (user.needsBusinessSelection) {
+                return <BusinessSelectionScreen user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} />;
+            }
+
             if (user.role !== 'admin' && (!user.settings || !user.businessStatus)) return <LoginScreen onLogin={handleLogin} />;
 
             return (
                 <ErrorBoundary>
                     {user.role === 'admin' ?
                         <AdminDashboard onLogout={handleLogout} onImpersonate={handleImpersonate} /> :
-                        <ClientDashboard user={user} setUser={handleLogin} onLogout={handleLogout} />
+                        <ClientDashboard user={user} setUser={handleLogin} onLogout={handleLogout} onSwitch={handleBusinessSwitch} />
                     }
                 </ErrorBoundary>
             );
@@ -298,7 +347,6 @@
             const [showBizModal, setShowBizModal] = useState(false);
             const [editingBiz, setEditingBiz] = useState(null); 
             
-            // Unified User State handles both new and existing users, plus their access!
             const [editingUser, setEditingUser] = useState(null);
             
             const [adminError, setAdminError] = useState("");
@@ -340,10 +388,7 @@
                 
                 try {
                     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify(editingUser) });
-                    if (res.ok) { 
-                        if(isNew) { setEditingUser(null); fetchData(); } 
-                        else { alert("User Profile & Access completely updated!"); fetchData(); }
-                    }
+                    if (res.ok) { setEditingUser(null); fetchData(); }
                     else setAdminError((await res.json()).error || "Error saving user");
                 } catch (e) { setAdminError("Network Error"); }
             };
@@ -436,7 +481,7 @@
                             </div>
                         )}
 
-                        {/* --- UNIFIED USER MANAGE MODAL (CHECKBOXES) --- */}
+                        {/* --- USER MANAGE MODAL --- */}
                         {editingUser && (
                             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                                 <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -467,8 +512,8 @@
                                         </div>
 
                                         <div className="space-y-4">
-                                            <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide border-b pb-2">2. Business Access Checklist</h4>
-                                            <div className="text-xs text-gray-500">Select which businesses this user can access, and their specific role.</div>
+                                            <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide border-b pb-2">2. Business Access</h4>
+                                            <div className="text-xs text-gray-500">Check businesses to assign to this user. They will be saved in a single bulk action.</div>
                                             
                                             <div className="space-y-2 max-h-[400px] overflow-y-auto border border-gray-200 rounded-lg p-2 bg-gray-50">
                                                 {businesses.length === 0 ? <div className="text-center p-4 text-xs text-gray-400">No businesses exist yet.</div> : 
@@ -506,7 +551,7 @@
                                     </div>
                                     <div className="flex justify-end gap-3 mt-8 border-t pt-4">
                                         <Button onClick={() => setEditingUser(null)} variant="secondary">Cancel</Button>
-                                        <Button onClick={saveUser}><Icons.Save /> Save User & Access</Button>
+                                        <Button onClick={saveUser}><Icons.Save /> Save User</Button>
                                     </div>
                                 </div>
                             </div>
@@ -559,7 +604,7 @@
             );
         };
 
-        const ClientDashboard = ({ user, setUser, onLogout }) => {
+        const ClientDashboard = ({ user, setUser, onLogout, onSwitch }) => {
             const isRevoked = user.businessStatus?.isRevoked;
             const daysLeft = Math.ceil((new Date(user.businessStatus?.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
 
@@ -569,7 +614,7 @@
                         <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full border-t-4 border-red-600 text-center">
                             <Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" />
                             <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1>
-                            <p className="text-gray-600 mb-6">Your access to <b>{user.settings?.businessName}</b> has been suspended due to pending administrative action or non-payment.</p>
+                            <p className="text-gray-600 mb-6">Your access to <b>{user.settings?.businessName}</b> has been suspended.</p>
                             <Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700">Return to Portal</Button>
                         </div>
                     </div>
@@ -579,7 +624,6 @@
             const [activeTab, setActiveTab] = useState('invoice');
             const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "SN001", items: [], discount: 0 });
             
-            // --- STRICT LINE ITEM FORM STATE ---
             const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
 
@@ -784,22 +828,6 @@
                 } finally { setLoading(false); }
             };
 
-            const handleBusinessSwitch = async (e) => {
-                const newBizId = e.target.value;
-                const res = await fetch('https://app.tallied.pk/api/switch-business', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` },
-                    body: JSON.stringify({ businessId: newBizId })
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    sessionStorage.setItem('fbr_token', data.token);
-                    setUser(data.user);
-                    if (window.localforage) await window.localforage.setItem('fbr_session', data.user);
-                    sessionStorage.setItem('fbr_session', JSON.stringify(data.user));
-                    window.location.reload();
-                } else { alert("Failed to switch business context."); }
-            };
-
             const renderInvoiceTemplate = () => {
                 let qrUrl = "";
                 try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 150 }).toDataURL(); } catch (e) {}
@@ -863,11 +891,13 @@
                             <div className="flex items-center gap-3">
                                 <div className="bg-white/10 p-2 rounded">{user.settings?.logo ? <img src={user.settings.logo} className="w-5 h-5 object-contain" /> : <Icons.FileText size={20} />}</div>
                                 <div><h1 className="font-bold leading-none">Hi {user.username || 'User'}</h1><span className="text-gray-400 text-xs">{user.settings?.businessName}</span></div>
+                                
                                 {user.accessibleBusinesses?.length > 1 && (
-                                    <select className="ml-4 text-xs text-black py-1 px-2 rounded font-bold border-none outline-none cursor-pointer hover:bg-gray-100 transition-colors" value={user.activeBusinessId} onChange={handleBusinessSwitch}>
+                                    <select className="ml-4 text-xs text-black py-1 px-2 rounded font-bold border-none outline-none cursor-pointer hover:bg-gray-100 transition-colors" value={user.activeBusinessId} onChange={(e) => onSwitch(e.target.value)}>
                                         {user.accessibleBusinesses.map(b => (<option key={b.id} value={b.id}>{b.name}</option>))}
                                     </select>
                                 )}
+
                             </div>
                             <div className="flex gap-2 text-sm">
                                 {['invoice', 'inventory', 'customers', 'history', 'settings'].map(t => (<button key={t} onClick={() => setActiveTab(t)} className={`px-3 py-1.5 rounded capitalize transition-all duration-200 ${activeTab === t ? 'bg-white text-black font-bold' : 'hover:bg-gray-800 text-gray-300'}`}>{t}</button>))}
@@ -935,15 +965,15 @@
                                     </div>
 
                                     {/* STRICT NO-WRAP INVOICE TABLE */}
-                                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                        <table className="w-full min-w-[1200px] text-sm text-left">
+                                    <div className="table-container border border-gray-200 rounded-lg">
+                                        <table className="fbr-table">
                                             <thead className="bg-black text-white text-xs uppercase tracking-wide">
                                                 <tr>
-                                                    <th className="p-3 whitespace-nowrap">Description</th><th className="p-3 whitespace-nowrap">HS Code</th><th className="p-3 whitespace-nowrap">Type</th><th className="p-3 whitespace-nowrap">Qty/UoM</th><th className="p-3 whitespace-nowrap">Price</th>{showRetailFed && <th className="p-3 whitespace-nowrap">Ret.P</th>}<th className="p-3 whitespace-nowrap">S.Tax%</th><th className="p-3 whitespace-nowrap">S.Tax Amt</th>{showRetailFed && <th className="p-3 whitespace-nowrap">Ex.Tax Amt</th>}<th className="p-3 whitespace-nowrap">Fur.Tax Amt</th>{showRetailFed && <th className="p-3 whitespace-nowrap">FED Amt</th>}<th className="p-3 text-center whitespace-nowrap">Action</th>
+                                                    <th className="desc-col">Description</th><th className="hs-col">HS Code</th><th>Type</th><th>Qty/UoM</th><th>Price</th>{showRetailFed && <th>Ret.P</th>}<th>S.Tax%</th><th>S.Tax Amt</th>{showRetailFed && <th>Ex.Tax Amt</th>}<th>Fur.Tax Amt</th>{showRetailFed && <th>FED Amt</th>}<th className="text-center">Action</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-gray-200">
-                                                {invoice.items.length === 0 ? <tr><td colSpan="12" className="p-8 text-center text-gray-400">No items added to invoice.</td></tr> : invoice.items.map(item => {
+                                            <tbody>
+                                                {invoice.items.length === 0 ? <tr><td colSpan="12" className="p-8 text-center text-gray-400 border-b-0">No items added to invoice.</td></tr> : invoice.items.map(item => {
                                                     const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
                                                     const val = (isRet ? r : p) * q;
                                                     const stAmt = val * (parseFloat(item.taxRate || 0) / 100);
@@ -952,18 +982,18 @@
                                                     const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
                                                     return (
                                                         <tr key={item.id} className="hover:bg-gray-50">
-                                                            <td className="p-3 font-bold text-xs whitespace-nowrap">{item.desc} {item.discount > 0 && <span className="block text-[10px] text-red-500 font-normal">Disc: {item.discount}</span>}</td>
-                                                            <td className="p-3 text-xs text-gray-500 whitespace-nowrap">{item.hsCode?.split(' - ')[0]}</td>
-                                                            <td className="p-3 text-xs text-gray-500 whitespace-nowrap">{item.saleType}</td>
-                                                            <td className="p-3 text-xs whitespace-nowrap">{q} {item.uom}</td>
-                                                            <td className="p-3 text-xs whitespace-nowrap">{formatCurrency(p)}</td>
-                                                            {showRetailFed && <td className="p-3 text-xs whitespace-nowrap">{isRet ? formatCurrency(r) : '-'}</td>}
-                                                            <td className="p-3 text-xs whitespace-nowrap">{item.taxRate}%</td>
-                                                            <td className="p-3 text-xs whitespace-nowrap">{formatCurrency(stAmt)}</td>
-                                                            {showRetailFed && <td className="p-3 text-xs whitespace-nowrap">{isRet ? formatCurrency(exAmt) : '-'}</td>}
-                                                            <td className="p-3 text-xs whitespace-nowrap">{formatCurrency(furAmt)}</td>
-                                                            {showRetailFed && <td className="p-3 text-xs whitespace-nowrap">{isRet ? formatCurrency(fedAmt) : '-'}</td>}
-                                                            <td className="p-3 text-center whitespace-nowrap">
+                                                            <td className="font-bold text-xs desc-col">{item.desc} {item.discount > 0 && <span className="block text-[10px] text-red-500 font-normal">Disc: {item.discount}</span>}</td>
+                                                            <td className="text-xs text-gray-500 hs-col">{item.hsCode?.split(' - ')[0]}</td>
+                                                            <td className="text-xs text-gray-500">{item.saleType}</td>
+                                                            <td className="text-xs">{q} {item.uom}</td>
+                                                            <td className="text-xs">{formatCurrency(p)}</td>
+                                                            {showRetailFed && <td className="text-xs">{isRet ? formatCurrency(r) : '-'}</td>}
+                                                            <td className="text-xs">{item.taxRate}%</td>
+                                                            <td className="text-xs">{formatCurrency(stAmt)}</td>
+                                                            {showRetailFed && <td className="text-xs">{isRet ? formatCurrency(exAmt) : '-'}</td>}
+                                                            <td className="text-xs">{formatCurrency(furAmt)}</td>
+                                                            {showRetailFed && <td className="text-xs">{isRet ? formatCurrency(fedAmt) : '-'}</td>}
+                                                            <td className="text-center">
                                                                 <div className="flex justify-center gap-2">
                                                                     <button onClick={() => setLineItemForm(item)} className="text-gray-600 hover:text-black"><Icons.Edit size={16} /></button>
                                                                     <button onClick={() => setInvoice(p => ({ ...p, items: p.items.filter(i => i.id !== item.id) }))} className="text-red-500"><Icons.Trash2 size={16} /></button>
@@ -974,18 +1004,19 @@
                                                 })}
                                             </tbody>
                                         </table>
-                                        <div className="p-4 bg-gray-50 flex justify-end">
-                                            <div className="flex gap-8 text-right text-sm">
-                                                <div><div className="text-gray-500 text-xs">Subtotal</div><div className="font-bold">{formatCurrency(totals.subtotal)}</div></div>
-                                                <div><div className="text-gray-500 text-xs">Sales Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.gst)}</div></div>
-                                                {showRetailFed && <div><div className="text-gray-500 text-xs">Extra Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.extra)}</div></div>}
-                                                <div><div className="text-gray-500 text-xs">Further Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.further)}</div></div>
-                                                {showRetailFed && <div><div className="text-gray-500 text-xs">FED</div><div className="font-bold text-gray-900">{formatCurrency(totals.fed)}</div></div>}
-                                                <div><div className="text-gray-500 text-xs text-blue-600">ST Withheld</div><div className="font-bold text-blue-600">-{formatCurrency(totals.wht)}</div></div>
-                                                <div className="pl-4 border-l border-gray-300"><div className="text-gray-500 text-xs">Total</div><div className="font-bold text-xl">{formatCurrency(totals.total)}</div></div>
-                                            </div>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 flex justify-end border border-t-0 border-gray-200 rounded-b-lg">
+                                        <div className="flex gap-8 text-right text-sm">
+                                            <div><div className="text-gray-500 text-xs">Subtotal</div><div className="font-bold">{formatCurrency(totals.subtotal)}</div></div>
+                                            <div><div className="text-gray-500 text-xs">Sales Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.gst)}</div></div>
+                                            {showRetailFed && <div><div className="text-gray-500 text-xs">Extra Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.extra)}</div></div>}
+                                            <div><div className="text-gray-500 text-xs">Further Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.further)}</div></div>
+                                            {showRetailFed && <div><div className="text-gray-500 text-xs">FED</div><div className="font-bold text-gray-900">{formatCurrency(totals.fed)}</div></div>}
+                                            <div><div className="text-gray-500 text-xs text-blue-600">ST Withheld</div><div className="font-bold text-blue-600">-{formatCurrency(totals.wht)}</div></div>
+                                            <div className="pl-4 border-l border-gray-300"><div className="text-gray-500 text-xs">Total</div><div className="font-bold text-xl">{formatCurrency(totals.total)}</div></div>
                                         </div>
                                     </div>
+                                    
                                     <div className="mt-6 flex justify-end gap-3">
                                         <Button onClick={() => setLastInv({ ...invoice, ...totals, id: invoice.invoiceNumber }) || setShowReceipt(true)} variant="secondary"><Icons.Printer /> Print Preview</Button>
                                         {userCanEdit && (
