@@ -12,46 +12,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
-        
-        /* Modern Apple-like Animations */
-        @keyframes slideUpFade {
-            0% { opacity: 0; transform: translateY(15px) scale(0.99); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .animate-fade-in { animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        
-        @media print { 
-            body * { visibility: hidden; } 
-            #printable-area, #printable-area * { visibility: visible; } 
-            #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none !important; border-radius: 0 !important; overflow: visible !important; } 
-            .no-print { display: none !important; } 
-            /* Fix blank page bug caused by fixed modals */
-            .print-modal-wrapper { position: static !important; display: block !important; p: 0 !important; background: transparent !important; }
-        }
-        
-        ::-webkit-scrollbar { width: 6px; height: 6px; } 
-        ::-webkit-scrollbar-track { background: transparent; } 
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; } 
-        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
-        
-        .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; } 
-        .fbr-table { width: max-content; min-width: 100%; background: white; border-collapse: collapse; } 
-        .fbr-table th { background: #f9fafb; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; white-space: nowrap !important; }
-        .fbr-table td { white-space: nowrap !important; padding: 12px 16px; vertical-align: middle; border-bottom: 1px solid #f3f4f6; font-size: 0.85rem; color: #111827; } 
-        .fbr-table tr:hover td { background-color: #f8fafc; }
-        .fbr-table .desc-col { min-width: 250px; } 
-        .fbr-table .hs-col { min-width: 180px; }
-        
-        .standard-input { height: 2.75rem; width: 100%; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding-left: 1rem; padding-right: 1rem; font-size: 0.875rem; outline: none; background: #f9fafb; transition: all 0.2s ease; box-shadow: inset 0 1px 2px rgba(0,0,0,0.01); } 
-        .standard-input:focus { border-color: #3b82f6; background: #ffffff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); } 
-        .standard-input:read-only { color: #9ca3af; cursor: not-allowed; background: #f3f4f6; border-style: dashed; }
+        @media print { body * { visibility: hidden; } #printable-area, #printable-area * { visibility: visible; } #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none !important; border-radius: 0 !important; overflow: visible !important; } .no-print { display: none !important; } }
+        ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; } ::-webkit-scrollbar-thumb:hover { background: #333; }
+        .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; } .fbr-table { width: max-content; min-width: 100%; background: white; border-collapse: collapse; } .fbr-table th, .fbr-table td { white-space: nowrap !important; padding: 8px 12px; vertical-align: middle; border-bottom: 1px solid #e2e8f0; } .fbr-table .desc-col { min-width: 250px; } .fbr-table .hs-col { min-width: 180px; }
+        .standard-input { height: 2.5rem; width: 100%; border: none; border-bottom: 1px solid #e2e8f0; border-radius: 0; padding-left: 0.5rem; font-size: 0.85rem; outline: none; background: transparent; transition: border-color 0.15s ease-in-out; } .standard-input:focus { border-bottom-color: #000; background: #f8fafc; } .standard-input:read-only { color: #6b7280; cursor: not-allowed; border-bottom-style: dashed; }
     </style>
 </head>
 
-<body class="bg-[#f5f5f7] text-[#1d1d1f]">
+<body class="bg-gray-50 text-gray-900 font-sans">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -85,7 +53,7 @@
             return res.trim() + " Rupees Only";
         };
 
-        class ErrorBoundary extends Component { constructor(props) { super(props); this.state = { hasError: false, error: null }; } static getDerivedStateFromError(error) { return { hasError: true, error }; } render() { if (this.state.hasError) return (<div className="min-h-screen flex items-center justify-center"><div className="bg-white p-8 rounded-2xl shadow-xl"><h1 className="text-xl font-bold mb-2">Error Occurred</h1><button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="bg-black text-white px-6 py-3 rounded-xl">Reset App Data</button></div></div>); return this.props.children; } }
+        class ErrorBoundary extends Component { constructor(props) { super(props); this.state = { hasError: false, error: null }; } static getDerivedStateFromError(error) { return { hasError: true, error }; } render() { if (this.state.hasError) return (<div className="min-h-screen flex items-center justify-center"><div className="bg-white p-8 rounded-lg shadow-xl"><h1 className="text-xl font-bold mb-2">Error Occurred</h1><button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="bg-black text-white px-4 py-2 rounded">Reset App Data</button></div></div>); return this.props.children; } }
 
         const IconBase = ({ size = 20, children, ...props }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg> );
         const Icons = {
@@ -93,16 +61,16 @@
         };
 
         const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false, title }) => {
-            const variants = { primary: "bg-[#1d1d1f] text-white hover:bg-black disabled:bg-gray-300 shadow-sm", secondary: "bg-white text-gray-800 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-sm", danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-100", ghost: "bg-transparent text-gray-500 hover:text-black hover:bg-gray-100 border-none" };
-            return <button title={title} onClick={onClick} disabled={disabled} className={`px-5 py-2.5 rounded-xl font-medium transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 ${variants[variant]} ${className}`}>{children}</button>;
+            const variants = { primary: "bg-black text-white hover:bg-gray-800 disabled:bg-gray-400", secondary: "bg-white text-gray-800 border border-gray-300 hover:bg-gray-50", danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200", ghost: "bg-transparent text-gray-600 hover:bg-gray-100 border-none" };
+            return <button title={title} onClick={onClick} disabled={disabled} className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 ${variants[variant]} ${className}`}>{children}</button>;
         };
 
-        const Card = ({ children, className = '', onClick }) => <div onClick={onClick} className={`bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-gray-100 ${onClick ? 'cursor-pointer hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300' : ''} ${className}`}>{children}</div>;
+        const Card = ({ children, className = '', onClick }) => <div onClick={onClick} className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>{children}</div>;
 
         const Input = ({ label, value, onChange, type = "text", placeholder = "", required = false, className = "", readOnly = false, disabled = false }) => (
-            <div className={`flex flex-col gap-1.5 ${className}`}>
-                {label && <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{label} {required && <span className="text-red-500">*</span>}</label>}
-                <input type={type} value={value} onChange={onChange} disabled={disabled} placeholder={placeholder} readOnly={readOnly} className={`standard-input ${readOnly || disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-dashed' : ''}`} />
+            <div className={`flex flex-col gap-1 ${className}`}>
+                {label && <label className="text-xs font-semibold text-gray-500 uppercase">{label} {required && <span className="text-red-500">*</span>}</label>}
+                <input type={type} value={value} onChange={onChange} disabled={disabled} placeholder={placeholder} readOnly={readOnly} className={`standard-input rounded-lg ${readOnly || disabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-dashed' : ''}`} />
             </div>
         );
 
@@ -121,22 +89,22 @@
             const filteredOptions = safeOptions.filter(opt => String(opt).toLowerCase().includes(filter.toLowerCase()));
 
             return (
-                <div className="flex flex-col gap-1.5 relative w-full" ref={wrapperRef}>
+                <div className="flex flex-col gap-1 relative w-full" ref={wrapperRef}>
                     <div className="flex justify-between items-center">
-                        {label && <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{label}</label>}
-                        {status && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${status.type === 'error' ? 'text-red-600 bg-red-50' : 'text-gray-600 bg-gray-100'}`}>{status.text}</span>}
+                        {label && <label className="text-xs font-semibold text-gray-500 uppercase">{label}</label>}
+                        {status && <span className={`text-[10px] px-1 rounded ${status.type === 'error' ? 'text-red-600 bg-red-50' : 'text-gray-600 bg-gray-100'}`}>{status.text}</span>}
                     </div>
                     <div className="relative">
-                        <input type="text" value={value || ""} readOnly={strict || readOnly} className={`standard-input ${strict || readOnly ? 'cursor-pointer' : ''}`} placeholder={placeholder} onClick={() => { if (!readOnly) { setShow(!show); setFilter(""); } }} onChange={!strict && !readOnly ? (e) => onChange(e.target.value) : undefined} />
-                        {strict && !readOnly && <div className="absolute right-3 top-3 text-gray-400 pointer-events-none"><Icons.Settings size={14} /></div>}
+                        <input type="text" value={value || ""} readOnly={strict || readOnly} className={`standard-input rounded-lg ${strict || readOnly ? 'cursor-pointer' : ''}`} placeholder={placeholder} onClick={() => { if (!readOnly) { setShow(!show); setFilter(""); } }} onChange={!strict && !readOnly ? (e) => onChange(e.target.value) : undefined} />
+                        {strict && !readOnly && <div className="absolute right-2 top-2.5 text-gray-400 pointer-events-none"><Icons.Settings size={14} /></div>}
                     </div>
                     {show && !readOnly && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 backdrop-blur-xl border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in" style={{animationDuration: '0.2s'}}>
-                            <div className="p-2 border-b border-gray-100"><input autoFocus type="text" className="w-full text-sm p-2 outline-none bg-gray-50 rounded-lg" placeholder="Search options..." value={filter} onChange={e => setFilter(e.target.value)} /></div>
-                            <div className="max-h-56 overflow-y-auto p-1">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                            <div className="p-2 border-b border-gray-100"><input autoFocus type="text" className="w-full text-xs p-1 outline-none" placeholder="Search..." value={filter} onChange={e => setFilter(e.target.value)} /></div>
+                            <div className="max-h-48 overflow-y-auto">
                                 {filteredOptions.length > 0 ? filteredOptions.slice(0, 50).map((opt, i) => (
-                                    <div key={i} className="px-3 py-2 hover:bg-blue-50 hover:text-blue-700 rounded-lg cursor-pointer text-sm text-gray-700 transition-colors" onClick={() => { onChange(opt); setShow(false); }}>{opt}</div>
-                                )) : <div className="p-4 text-xs text-center text-gray-400">No options found</div>}
+                                    <div key={i} className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700" onClick={() => { onChange(opt); setShow(false); }}>{opt}</div>
+                                )) : <div className="p-2 text-xs text-center text-gray-400">No options found</div>}
                             </div>
                         </div>
                     )}
@@ -164,44 +132,43 @@
             const filteredBiz = user.accessibleBusinesses.filter(b => b.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
             return (
-                <div className={`flex flex-col ${isLobby ? 'min-h-screen bg-[#f5f5f7]' : 'w-full mt-4 animate-fade-in'}`}>
+                <div className={`flex flex-col ${isLobby ? 'min-h-screen bg-gray-50' : 'w-full mt-4'}`}>
                     {isLobby && (
-                        <nav className="bg-white/80 backdrop-blur-xl border-b border-gray-200 sticky top-0 z-50">
-                            <div className="max-w-[1400px] mx-auto px-6 py-4 flex justify-between items-center">
-                                <div className="flex items-center gap-2 font-bold tracking-tight text-lg text-gray-900"><Icons.ShieldCheck /> FBR Digital Invoicing</div>
-                                <Button onClick={onLogout} variant="ghost" className="text-sm px-4 py-2"><Icons.LogOut size={16}/> {user.isAdminImpersonating ? 'Exit Admin View' : 'Logout'}</Button>
+                        <nav className="bg-black text-white shadow-lg sticky top-0 z-50">
+                            <div className="max-w-[1600px] mx-auto px-4 py-3 flex justify-between items-center">
+                                <div className="flex items-center gap-2 font-bold"><Icons.ShieldCheck /> FBR Invoice System</div>
+                                <Button onClick={onLogout} variant="danger" className="text-xs py-1"><Icons.LogOut size={16}/> {user.isAdminImpersonating ? 'Return to Admin' : 'Logout'}</Button>
                             </div>
                         </nav>
                     )}
-                    <main className={`max-w-[1200px] mx-auto w-full ${isLobby ? 'p-8 mt-8 animate-fade-in' : ''}`}>
-                        <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
+                    <main className={`max-w-[1600px] mx-auto w-full ${isLobby ? 'p-6 mt-4' : ''}`}>
+                        <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
                             <div>
-                                <h2 className="text-3xl font-bold tracking-tight text-gray-900">Select Dashboard</h2>
-                                <p className="text-gray-500 mt-2 text-sm">Choose the business account you want to manage today.</p>
+                                <h2 className="text-3xl font-bold text-gray-900">Select a Business</h2>
+                                <p className="text-gray-500 mt-1">Search and select the business account you want to manage today.</p>
                             </div>
-                            <div className="relative w-full md:w-72">
-                                <input type="text" placeholder="Search businesses..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all shadow-sm" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-                                <span className="absolute left-3 top-3 text-gray-400"><Icons.Search size={16} /></span>
+                            <div className="relative w-64">
+                                <input type="text" placeholder="Search businesses..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                                <span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span>
                             </div>
                         </div>
                         <div className="flex flex-col gap-4">
-                            {filteredBiz.length > 0 ? filteredBiz.map((b, i) => (
-                                <Card key={b.id} onClick={() => { if(b.id !== user.activeBusinessId || isLobby) onSelect(b.id); }} className={`p-5 flex justify-between items-center gap-4 transition-all duration-300 animate-fade-in ${b.id === user.activeBusinessId && !isLobby ? 'border-blue-500 ring-4 ring-blue-50' : 'hover:border-gray-300'}`} style={{animationDelay: `${i * 0.05}s`}}>
-                                    <div className="flex items-center gap-5">
-                                        <div className={`p-3.5 rounded-xl transition-colors ${b.id === user.activeBusinessId && !isLobby ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'}`}><Icons.Briefcase size={22}/></div>
+                            {filteredBiz.length > 0 ? filteredBiz.map(b => (
+                                <Card key={b.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 transition-colors cursor-pointer group ${b.id === user.activeBusinessId && !isLobby ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-black bg-white hover:bg-gray-50 hover:shadow-md'}`} onClick={() => { if(b.id !== user.activeBusinessId || isLobby) onSelect(b.id); }}>
+                                    <div className="flex-1 flex items-center gap-4">
+                                        <div className="bg-gray-100 p-3 rounded-lg"><Icons.Briefcase className="text-gray-500" size={24}/></div>
                                         <div>
-                                            <h3 className="font-semibold text-lg text-gray-900 tracking-tight flex items-center gap-3">
-                                                {b.name} 
-                                                {b.id === user.activeBusinessId && !isLobby && <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Active</span>}
-                                            </h3>
-                                            <p className="text-xs text-gray-500 mt-1">Access Role: <span className="font-medium text-gray-700 capitalize">{b.accessLevel}</span></p>
+                                            <h3 className="font-bold text-xl text-gray-900 group-hover:text-black">{b.name} {b.id === user.activeBusinessId && !isLobby && <span className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded ml-2 uppercase tracking-wide">Current</span>}</h3>
+                                            <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
                                         </div>
                                     </div>
                                     {(!isLobby && b.id === user.activeBusinessId) ? null : (
-                                        <div className="text-gray-400 opacity-50 group-hover:opacity-100 transition-opacity"><Icons.ChevronRight size={20} /></div>
+                                        <div className="flex items-center text-gray-400 group-hover:text-black transition-colors pr-2">
+                                            <Icons.ChevronRight size={24} />
+                                        </div>
                                     )}
                                 </Card>
-                            )) : <div className="text-center py-12 text-sm text-gray-400 bg-white rounded-2xl border border-gray-100 border-dashed">No businesses match your search.</div>}
+                            )) : <div className="text-center py-8 text-gray-400">No businesses match your search.</div>}
                         </div>
                     </main>
                 </div>
@@ -300,7 +267,7 @@
                 } catch (err) { window.location.href = window.location.pathname + '?logout=' + Date.now(); }
             };
 
-            if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-[#f5f5f7]"><div className="text-gray-400 text-sm font-medium animate-pulse">Loading Environment...</div></div>;
+            if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading System...</div>;
             if (!user) return <LoginScreen onLogin={handleLogin} />;
             
             if (user.needsBusinessSelection) {
@@ -334,19 +301,12 @@
             };
 
             return (
-                <div className="min-h-screen flex flex-col items-center justify-center bg-[#f5f5f7] p-4">
-                    <div className="w-full max-w-sm mb-8 text-center animate-fade-in">
-                        <div className="w-16 h-16 bg-black rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg"><Icons.ShieldCheck className="text-white" size={32} /></div>
-                        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Sign in to FBR Invoicing</h1>
+                <div className="min-h-screen flex items-center justify-center bg-white">
+                    <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-xl w-full max-w-md">
+                        <div className="text-center mb-6"><h1 className="text-2xl font-bold text-gray-900">FBR Invoice System</h1><p className="text-sm text-gray-500">Authorized Portal</p></div>
+                        {error && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm text-center border">{error}</div>}
+                        <div className="space-y-4"><Input label="Username" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} /><Input label="Password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /><Button onClick={handleSubmit} disabled={loading} className="w-full py-3">{loading ? 'Loading...' : 'Login'}</Button></div>
                     </div>
-                    <Card className="w-full max-w-sm p-8 shadow-xl animate-fade-in" style={{animationDelay: '0.1s'}}>
-                        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm text-center border border-red-100 font-medium">{error}</div>}
-                        <div className="space-y-5">
-                            <Input label="Username" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} />
-                            <Input label="Password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
-                            <Button onClick={handleSubmit} disabled={loading} className="w-full mt-2 py-3 text-sm">{loading ? 'Authenticating...' : 'Continue'}</Button>
-                        </div>
-                    </Card>
                 </div>
             );
         };
@@ -366,6 +326,9 @@
             const [adminError, setAdminError] = useState("");
             const [bizSearch, setBizSearch] = useState("");
             const [userSearch, setUserSearch] = useState("");
+            
+            const [bizToAdd, setBizToAdd] = useState("");
+            const [roleToAdd, setRoleToAdd] = useState("view");
 
             const fetchData = async () => {
                 const token = sessionStorage.getItem('fbr_token');
@@ -405,173 +368,134 @@
             const filteredUsers = users.filter(u => (u.username || "").toLowerCase().includes(userSearch.toLowerCase()));
 
             return (
-                <div className="min-h-screen bg-[#f5f5f7] pb-20">
-                    <nav className="bg-white/80 backdrop-blur-xl border-b border-gray-200 sticky top-0 z-40 px-6 py-3 transition-all duration-300">
-                        <div className="max-w-[1400px] mx-auto flex justify-between items-center">
-                            <div className="flex items-center gap-3 font-bold tracking-tight text-lg"><Icons.ShieldCheck /> Super Admin</div>
-                            <div className="flex items-center gap-6">
-                                <div className="flex bg-gray-100/80 p-1 rounded-xl">
-                                    <button onClick={() => changeTab('businesses')} className={`px-5 py-1.5 text-sm font-medium rounded-lg transition-all duration-300 ${activeTab === 'businesses' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-black'}`}>Businesses</button>
-                                    <button onClick={() => changeTab('users')} className={`px-5 py-1.5 text-sm font-medium rounded-lg transition-all duration-300 ${activeTab === 'users' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-black'}`}>System Users</button>
+                <div className="min-h-screen bg-gray-50">
+                    <nav className="bg-black text-white shadow-lg sticky top-0 z-50">
+                        <div className="max-w-[1600px] mx-auto px-4 py-3 flex justify-between items-center">
+                            <div className="flex items-center gap-2 font-bold"><Icons.ShieldCheck /> Super Admin</div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex bg-gray-800 rounded p-1">
+                                    <button onClick={() => changeTab('businesses')} className={`px-4 py-1 text-sm rounded transition-colors ${activeTab === 'businesses' ? 'bg-white text-black font-bold shadow' : 'text-gray-300 hover:text-white'}`}>Businesses</button>
+                                    <button onClick={() => changeTab('users')} className={`px-4 py-1 text-sm rounded transition-colors ${activeTab === 'users' ? 'bg-white text-black font-bold shadow' : 'text-gray-300 hover:text-white'}`}>System Users</button>
                                 </div>
-                                <Button onClick={onLogout} variant="ghost" className="px-2 py-2 text-sm"><Icons.LogOut size={18}/> Logout</Button>
+                                <Button onClick={onLogout} variant="danger" className="py-1 text-sm"><Icons.LogOut /> Logout</Button>
                             </div>
                         </div>
                     </nav>
 
-                    <main className="max-w-[1400px] mx-auto px-6 mt-10">
-                        <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4 animate-fade-in">
-                            <div>
-                                <h2 className="text-3xl font-bold tracking-tight text-gray-900">{activeTab === 'businesses' ? 'Registered Businesses' : 'User Accounts'}</h2>
-                            </div>
-                            <div className="flex items-center gap-4 w-full md:w-auto">
-                                <div className="relative w-full md:w-64">
-                                    <input type="text" placeholder={activeTab === 'businesses' ? "Search businesses..." : "Search users..."} className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm" value={activeTab === 'businesses' ? bizSearch : userSearch} onChange={e => activeTab === 'businesses' ? setBizSearch(e.target.value) : setUserSearch(e.target.value)} />
-                                    <span className="absolute left-3 top-3 text-gray-400"><Icons.Search size={16} /></span>
-                                </div>
-                                {activeTab === 'businesses' ? <Button onClick={() => { setEditingBiz({ businessName: '', ntn: '', strn: '', address: '', province: 'Sindh', integrationMode: 'sandbox', sandboxToken: '', productionToken: '', taxRates: { salesTax: 18, furtherTax: 4, extraTax: 0 }, allowRetailFed: false }); setShowBizModal(true); }}><Icons.Plus /> Create</Button> : <Button onClick={() => { setEditingUser({ username: '', password: '', role: 'user', access: [] }); setAdminError(''); }}><Icons.Plus /> Create</Button>}
+                    <main className="max-w-[1600px] mx-auto p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800">{activeTab === 'businesses' ? 'Registered Businesses' : 'User Accounts'}</h2>
+                            <div className="flex items-center gap-4">
+                                <div className="relative w-64"><input type="text" placeholder={activeTab === 'businesses' ? "Search businesses..." : "Search users..."} className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={activeTab === 'businesses' ? bizSearch : userSearch} onChange={e => activeTab === 'businesses' ? setBizSearch(e.target.value) : setUserSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div>
+                                {activeTab === 'businesses' ? <Button onClick={() => { setEditingBiz({ businessName: '', ntn: '', strn: '', address: '', province: 'Sindh', integrationMode: 'sandbox', sandboxToken: '', productionToken: '', taxRates: { salesTax: 18, furtherTax: 4, extraTax: 0 }, allowRetailFed: false }); setShowBizModal(true); }} variant="primary"><Icons.Plus /> Create Business</Button> : <Button onClick={() => { setEditingUser({ username: '', password: '', role: 'user', access: [] }); setAdminError(''); }} variant="primary"><Icons.Plus /> Create User</Button>}
                             </div>
                         </div>
 
                         {showBizModal && editingBiz && (
-                            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 print-modal-wrapper">
-                                <div className="bg-white p-8 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in">
-                                    <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4"><h3 className="text-2xl font-bold tracking-tight text-gray-900">{editingBiz.id ? `Manage Business: ${editingBiz.businessName}` : 'Create New Business'}</h3><button onClick={() => setShowBizModal(false)} className="text-gray-400 hover:text-black transition-colors"><Icons.X size={24} /></button></div>
-                                    {adminError && <div className="mb-6 p-4 bg-red-50 text-red-600 font-medium text-sm rounded-xl border border-red-100">{adminError}</div>}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="space-y-5">
-                                            <h4 className="font-bold text-sm text-gray-400 uppercase tracking-wider">Profile & Status</h4>
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                                <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                                    <div className="flex justify-between items-center mb-6 border-b pb-4"><h3 className="text-2xl font-bold text-gray-800">{editingBiz.id ? `Manage Business: ${editingBiz.businessName}` : 'Create New Business'}</h3><button onClick={() => setShowBizModal(false)} className="text-gray-400 hover:text-black transition-colors"><Icons.X size={24} /></button></div>
+                                    {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border border-red-200">{adminError}</div>}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-4">
+                                            <h4 className="font-bold text-gray-700 border-b pb-2">Profile & Status</h4>
                                             {editingBiz.id && (
-                                                <div className="bg-gray-50 p-5 rounded-xl flex flex-col gap-5 border border-gray-200">
-                                                    <div className="flex justify-between items-center"><div><div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Billing Status</div><div className={`text-sm font-semibold ${editingBiz.isRevoked ? 'text-red-600' : 'text-emerald-600'}`}>{editingBiz.isRevoked ? 'Access Revoked' : 'Active'}</div></div><Button onClick={() => setEditingBiz({ ...editingBiz, isRevoked: !editingBiz.isRevoked })} variant={editingBiz.isRevoked ? "primary" : "danger"} className="text-xs px-3 py-1.5">{editingBiz.isRevoked ? "Restore Access" : "Revoke Account"}</Button></div>
-                                                    <div className="border-t border-gray-200 pt-4"><div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Subscription Expiry</div><Input type="date" value={(editingBiz.expiryDate || new Date().toISOString()).split('T')[0]} onChange={e => setEditingBiz({ ...editingBiz, expiryDate: new Date(e.target.value).toISOString() })} /><div className="flex gap-2 mt-3"><button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 30); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border border-gray-200 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-50">+ 30 Days</button><button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 365); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border border-gray-200 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-50">+ 1 Year</button></div></div>
+                                                <div className="bg-gray-50 p-4 rounded flex flex-col gap-4 border border-gray-200">
+                                                    <div className="flex justify-between items-center"><div><div className="font-bold">Billing Status</div><div className={`text-sm ${editingBiz.isRevoked ? 'text-red-600' : 'text-blue-600'}`}>{editingBiz.isRevoked ? 'Access Revoked' : 'Active'}</div></div><Button onClick={() => setEditingBiz({ ...editingBiz, isRevoked: !editingBiz.isRevoked })} variant={editingBiz.isRevoked ? "primary" : "danger"} className="text-xs">{editingBiz.isRevoked ? "Restore Access" : "Revoke (Non-Payment)"}</Button></div>
+                                                    <div className="border-t pt-3"><div className="font-bold mb-2 text-sm">Subscription Expiry</div><Input type="date" value={(editingBiz.expiryDate || new Date().toISOString()).split('T')[0]} onChange={e => setEditingBiz({ ...editingBiz, expiryDate: new Date(e.target.value).toISOString() })} /><div className="flex gap-2 mt-2"><button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 30); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border px-2 py-1 rounded">+30 Days</button><button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 365); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border px-2 py-1 rounded">+1 Year</button></div></div>
                                                 </div>
                                             )}
                                             <Input label="Business Name" value={editingBiz.businessName} onChange={e => setEditingBiz({ ...editingBiz, businessName: e.target.value })} required />
-                                            <div className="grid grid-cols-2 gap-3"><Input label="NTN" value={editingBiz.ntn} onChange={e => setEditingBiz({ ...editingBiz, ntn: e.target.value })} /><Input label="STRN" value={editingBiz.strn} onChange={e => setEditingBiz({ ...editingBiz, strn: e.target.value })} /></div>
+                                            <div className="grid grid-cols-2 gap-2"><Input label="NTN" value={editingBiz.ntn} onChange={e => setEditingBiz({ ...editingBiz, ntn: e.target.value })} /><Input label="STRN" value={editingBiz.strn} onChange={e => setEditingBiz({ ...editingBiz, strn: e.target.value })} /></div>
                                             <Input label="Address" value={editingBiz.address} onChange={e => setEditingBiz({ ...editingBiz, address: e.target.value })} />
                                             <SearchableDropdown label="Province" value={editingBiz.province} options={PROVINCES} onChange={val => setEditingBiz({ ...editingBiz, province: val })} />
                                         </div>
-                                        <div className="space-y-5">
-                                            <h4 className="font-bold text-sm text-gray-400 uppercase tracking-wider">FBR Configuration</h4>
-                                            <select className="standard-input rounded-xl w-full" value={editingBiz.integrationMode} onChange={e => setEditingBiz({ ...editingBiz, integrationMode: e.target.value })}><option value="sandbox">Sandbox Mode</option><option value="production">Production Mode</option></select>
-                                            <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-200/50"><Input label="Sandbox Auth Token" value={editingBiz.sandboxToken || ''} onChange={e => setEditingBiz({ ...editingBiz, sandboxToken: e.target.value })} className="bg-white" /></div>
-                                            <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200/50"><Input label="Production Auth Token" value={editingBiz.productionToken || ''} onChange={e => setEditingBiz({ ...editingBiz, productionToken: e.target.value })} className="bg-white" /></div>
-                                            
-                                            <div className="flex items-center gap-3 pt-2">
-                                                <input type="checkbox" id="allowRetailFed" checked={editingBiz.allowRetailFed || false} onChange={e => setEditingBiz({ ...editingBiz, allowRetailFed: e.target.checked })} className="w-5 h-5 rounded border-gray-300 text-black focus:ring-black cursor-pointer" />
-                                                <label htmlFor="allowRetailFed" className="text-sm font-medium cursor-pointer">Enable Retail Price & FED Fields</label>
-                                            </div>
-
-                                            <h4 className="font-bold text-sm text-gray-400 uppercase tracking-wider pt-2 border-t border-gray-100">Default Rates</h4>
-                                            <div className="grid grid-cols-3 gap-3"><Input label="S.Tax %" type="number" value={editingBiz.taxRates?.salesTax || 18} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), salesTax: parseFloat(e.target.value) } })} /><Input label="Fur.Tax %" type="number" value={editingBiz.taxRates?.furtherTax || 4} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), furtherTax: parseFloat(e.target.value) } })} /><Input label="Ext.Tax %" type="number" value={editingBiz.taxRates?.extraTax || 0} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), extraTax: parseFloat(e.target.value) } })} /></div>
+                                        <div className="space-y-4">
+                                            <h4 className="font-bold text-gray-700 border-b pb-2">FBR Configuration</h4>
+                                            <select className="w-full border p-2 rounded text-sm outline-none" value={editingBiz.integrationMode} onChange={e => setEditingBiz({ ...editingBiz, integrationMode: e.target.value })}><option value="sandbox">Sandbox Mode</option><option value="production">Production Mode</option></select>
+                                            <div className="bg-yellow-50 p-3 rounded border border-yellow-200"><h5 className="font-bold text-xs mb-2">Sandbox (Simulation)</h5><Input label="Sandbox Auth Token" value={editingBiz.sandboxToken || ''} onChange={e => setEditingBiz({ ...editingBiz, sandboxToken: e.target.value })} /></div>
+                                            <div className="bg-gray-100 p-3 rounded border border-gray-200"><h5 className="font-bold text-xs mb-2">Production (Live)</h5><Input label="Production Auth Token" value={editingBiz.productionToken || ''} onChange={e => setEditingBiz({ ...editingBiz, productionToken: e.target.value })} /></div>
+                                            <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Feature Control</h4>
+                                            <div className="flex items-center gap-2"><input type="checkbox" id="allowRetailFed" checked={editingBiz.allowRetailFed || false} onChange={e => setEditingBiz({ ...editingBiz, allowRetailFed: e.target.checked })} /><label htmlFor="allowRetailFed" className="text-sm">Allow Retail Price & FED Fields</label></div>
+                                            <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Default Rates</h4>
+                                            <div className="grid grid-cols-3 gap-2"><Input label="Sales Tax %" type="number" value={editingBiz.taxRates?.salesTax || 18} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), salesTax: parseFloat(e.target.value) } })} /><Input label="Further Tax %" type="number" value={editingBiz.taxRates?.furtherTax || 4} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), furtherTax: parseFloat(e.target.value) } })} /><Input label="Extra Tax %" type="number" value={editingBiz.taxRates?.extraTax || 0} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), extraTax: parseFloat(e.target.value) } })} /></div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end gap-3 mt-10"><Button onClick={() => setShowBizModal(false)} variant="secondary" className="px-6">Cancel</Button><Button onClick={saveBusiness} className="px-8"><Icons.Save /> Save</Button></div>
+                                    <div className="flex justify-end gap-3 mt-8 border-t pt-4"><Button onClick={() => setShowBizModal(false)} variant="secondary">Cancel</Button><Button onClick={saveBusiness}>Save Business</Button></div>
                                 </div>
                             </div>
                         )}
 
                         {editingUser && (
-                            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 print-modal-wrapper">
-                                <div className="bg-white p-8 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in">
-                                    <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4"><h3 className="text-2xl font-bold tracking-tight text-gray-900">{editingUser.id ? `Manage User: ${editingUser.username}` : 'Create New User'}</h3><button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-black transition-colors"><Icons.X size={24} /></button></div>
-                                    {adminError && <div className="mb-6 p-4 bg-red-50 text-red-600 font-medium text-sm rounded-xl border border-red-100">{adminError}</div>}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                        <div className="space-y-5">
-                                            <h4 className="font-bold text-sm text-gray-400 uppercase tracking-wider">1. Account Details</h4>
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                                <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                                    <div className="flex justify-between items-center mb-6 border-b pb-4"><h3 className="text-xl font-bold flex items-center gap-2"><Icons.User /> {editingUser.id ? `Manage User: ${editingUser.username}` : 'Create New User'}</h3><button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-black transition-colors"><Icons.X /></button></div>
+                                    {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border">{adminError}</div>}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-4">
+                                            <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide border-b pb-2">1. Account Details</h4>
                                             <Input label="Username" value={editingUser.username} onChange={e => setEditingUser({ ...editingUser, username: e.target.value })} required />
                                             <Input label={editingUser.id ? "New Password (Optional)" : "Password"} type="password" value={editingUser.password || ''} onChange={e => setEditingUser({ ...editingUser, password: e.target.value })} placeholder={editingUser.id ? "Leave blank to keep current" : ""} />
                                             {editingUser.id && (
-                                                <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex justify-between items-center mt-6">
-                                                    <div><div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Login Access</div><div className={`text-sm font-bold ${editingUser.isRevoked ? 'text-red-600' : 'text-emerald-600'}`}>{editingUser.isRevoked ? 'Disabled' : 'Enabled'}</div></div>
-                                                    <Button variant={editingUser.isRevoked ? "primary" : "danger"} className="text-xs px-4" onClick={() => setEditingUser({...editingUser, isRevoked: !editingUser.isRevoked})}>{editingUser.isRevoked ? "Enable Login" : "Disable Login"}</Button>
+                                                <div className="bg-gray-50 p-4 rounded border border-gray-200 flex justify-between items-center mt-4">
+                                                    <div><div className="text-xs font-bold text-gray-500 uppercase">Login Access</div><div className={`text-sm font-bold ${editingUser.isRevoked ? 'text-red-600' : 'text-green-600'}`}>{editingUser.isRevoked ? 'Disabled' : 'Enabled'}</div></div>
+                                                    <Button variant={editingUser.isRevoked ? "primary" : "danger"} className="text-xs" onClick={() => setEditingUser({...editingUser, isRevoked: !editingUser.isRevoked})}>{editingUser.isRevoked ? "Enable Login" : "Disable Login"}</Button>
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="space-y-5">
-                                            <h4 className="font-bold text-sm text-gray-400 uppercase tracking-wider">2. Business Assignment</h4>
-                                            
-                                            <div className="flex flex-col gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
-                                                <SearchableDropdown label="Find Business" value={""} options={businesses.filter(b => !editingUser.access?.some(a => a.businessId === b.id)).map(b => b.businessName)} onChange={(val) => {
-                                                    const b = businesses.find(x => x.businessName === val);
-                                                    if (b) setEditingUser(p => ({ ...p, access: [...(p.access || []), { businessId: b.id, businessName: b.businessName, accessLevel: 'edit' }] }));
-                                                }} strict={false} placeholder="Type to add business..." />
+                                        <div className="space-y-4">
+                                            <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide border-b pb-2">2. Business Access</h4>
+                                            <div className="text-xs text-gray-500">Search and add businesses to this user's account.</div>
+                                            <div className="flex items-end gap-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                                <div className="flex-1"><SearchableDropdown label="Find Business" value={bizToAdd} options={businesses.filter(b => !editingUser.access?.some(a => a.businessId === b.id)).map(b => b.businessName)} onChange={setBizToAdd} strict={false} /></div>
+                                                <div><label className="text-xs font-semibold text-gray-500 uppercase">Role</label><select className="standard-input rounded-lg bg-white" value={roleToAdd} onChange={e => setRoleToAdd(e.target.value)}><option value="admin">Full Admin</option><option value="edit">Edit Data</option><option value="view">View Only</option></select></div>
+                                                <Button onClick={() => { const b = businesses.find(x => x.businessName === bizToAdd); if (b) { setEditingUser(p => ({ ...p, access: [...(p.access || []), { businessId: b.id, businessName: b.businessName, accessLevel: roleToAdd }] })); setBizToAdd(""); } }}>Add</Button>
                                             </div>
-                                            
-                                            <div className="space-y-3 max-h-[300px] overflow-y-auto pt-2">
-                                                {(!editingUser.access || editingUser.access.length === 0) ? <div className="text-center p-8 text-sm text-gray-400 border border-gray-200 border-dashed rounded-xl">No businesses assigned.</div> : 
+                                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                                {(!editingUser.access || editingUser.access.length === 0) ? <div className="text-center p-4 text-xs text-gray-400 border border-dashed rounded">No businesses assigned.</div> : 
                                                     editingUser.access.map(a => (
-                                                        <div key={a.businessId} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white shadow-sm">
-                                                            <div className="flex-1 pr-4">
-                                                                <div className="text-sm font-bold text-gray-900">{a.businessName}</div>
-                                                                <div className="mt-2">
-                                                                    <select className="text-xs border border-gray-200 bg-gray-50 px-2 py-1 rounded-md outline-none focus:border-blue-500 font-medium" value={a.accessLevel} onChange={e => setEditingUser(p => ({ ...p, access: p.access.map(x => x.businessId === a.businessId ? { ...x, accessLevel: e.target.value } : x) }))}>
-                                                                        <option value="admin">Full Admin</option>
-                                                                        <option value="edit">Edit Data</option>
-                                                                        <option value="view">View Only</option>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-                                                            <button onClick={() => setEditingUser(p => ({...p, access: p.access.filter(x => x.businessId !== a.businessId)}))} className="text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 p-2 rounded-lg transition-colors"><Icons.Trash2 size={16}/></button>
+                                                        <div key={a.businessId} className="flex items-center justify-between p-3 border rounded shadow-sm bg-white">
+                                                            <div><div className="text-sm font-bold text-gray-900">{a.businessName}</div><div className="text-[10px] text-gray-500 uppercase mt-1">Role: <span className="text-blue-600 font-bold">{a.accessLevel}</span></div></div>
+                                                            <button onClick={() => setEditingUser(p => ({...p, access: p.access.filter(x => x.businessId !== a.businessId)}))} className="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded"><Icons.Trash2 size={16}/></button>
                                                         </div>
                                                     ))
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end gap-3 mt-10 border-t border-gray-100 pt-6"><Button onClick={() => setEditingUser(null)} variant="secondary" className="px-6">Cancel</Button><Button onClick={saveUser} className="px-8"><Icons.Save /> Save User</Button></div>
+                                    <div className="flex justify-end gap-3 mt-8 border-t pt-4"><Button onClick={() => setEditingUser(null)} variant="secondary">Cancel</Button><Button onClick={saveUser}><Icons.Save /> Save User</Button></div>
                                 </div>
                             </div>
                         )}
 
                         {activeTab === 'businesses' && (
-                            <div className="flex flex-col gap-4 animate-fade-in" style={{animationDelay: '0.1s'}}>
+                            <div className="flex flex-col gap-4">
                                 {filteredBiz.length > 0 ? filteredBiz.map(biz => {
                                     const daysLeft = Math.ceil((new Date(biz.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
                                     return (
-                                        <Card key={biz.id} className="p-5 flex flex-col md:flex-row justify-between items-center gap-4">
-                                            <div className="flex items-center gap-5 flex-1">
-                                                <div className={`p-3.5 rounded-xl ${biz.isRevoked ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}><Icons.Briefcase size={22}/></div>
-                                                <div>
-                                                    <div className="font-bold text-lg tracking-tight text-gray-900 flex items-center gap-3">
-                                                        {biz.businessName} 
-                                                        {biz.isRevoked && <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-bold uppercase tracking-wider">Revoked</span>}
-                                                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold tracking-wider uppercase ${biz.integrationMode === 'production' ? 'bg-black text-white' : 'bg-amber-100 text-amber-800'}`}>{biz.integrationMode}</span>
-                                                    </div>
-                                                    <div className="text-sm text-gray-500 mt-1">NTN: <span className="font-medium">{biz.ntn || 'N/A'}</span> • {biz.province}</div>
-                                                </div>
+                                        <Card key={biz.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 ${biz.isRevoked ? 'border-red-600 opacity-75 bg-red-50' : 'border-black hover:shadow-md transition-shadow'}`}>
+                                            <div className="flex-1">
+                                                <div className="font-bold text-lg text-gray-900 flex items-center gap-3">{biz.businessName} {biz.isRevoked && <span className="text-[10px] bg-red-600 text-white px-2 py-1 rounded tracking-wide">REVOKED</span>}<span className={`text-[10px] px-2 py-1 rounded tracking-wide uppercase ${biz.integrationMode === 'production' ? 'bg-gray-800 text-white' : 'bg-yellow-200 text-yellow-800'}`}>{biz.integrationMode}</span></div>
+                                                <div className="text-sm text-gray-500 mt-1">NTN: {biz.ntn || 'N/A'} • {biz.province}</div>
                                             </div>
-                                            <div className="flex items-center gap-6">
-                                                <div className={`text-sm font-semibold flex items-center gap-1.5 ${daysLeft < 7 ? 'text-red-600' : 'text-gray-500'}`}><Icons.Calendar size={16}/> {daysLeft} Days</div>
-                                                <Button onClick={() => { setEditingBiz(biz); setShowBizModal(true); }} variant="secondary" className="text-sm px-5 py-2">Settings</Button>
-                                            </div>
+                                            <div className="flex items-center gap-6"><div className={`text-sm font-bold flex items-center gap-1 ${daysLeft < 7 ? 'text-red-600' : 'text-gray-600'}`}><Icons.Calendar size={14}/> {daysLeft} Days Left</div><Button onClick={() => { setEditingBiz(biz); setShowBizModal(true); }} variant="secondary" className="text-sm">Manage Profile & Billing</Button></div>
                                         </Card>
                                     );
-                                }) : <div className="text-center py-12 text-sm text-gray-400 border border-dashed rounded-2xl">No businesses match your search.</div>}
+                                }) : <div className="text-center py-8 text-gray-400">No businesses match your search.</div>}
                             </div>
                         )}
 
                         {activeTab === 'users' && (
-                            <div className="flex flex-col gap-4 animate-fade-in" style={{animationDelay: '0.1s'}}>
+                            <div className="flex flex-col gap-4">
                                 {filteredUsers.length > 0 ? filteredUsers.map(u => (
-                                    <Card key={u.id} className={`p-5 flex flex-col md:flex-row justify-between items-center gap-4 ${u.isRevoked ? 'opacity-60 grayscale-[50%]' : ''}`}>
-                                        <div className="flex items-center gap-5 flex-1">
-                                            <div className="p-3.5 rounded-xl bg-blue-50 text-blue-600"><Icons.User size={22}/></div>
-                                            <div>
-                                                <div className="font-bold text-lg tracking-tight text-gray-900 flex items-center gap-3">
-                                                    {u.username} 
-                                                    {u.isRevoked && <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-bold uppercase tracking-wider">Disabled</span>}
-                                                </div>
-                                                <div className="text-sm text-gray-500 mt-1">Assigned to <span className="font-bold text-gray-900">{u.access?.length || 0}</span> businesses.</div>
-                                            </div>
+                                    <Card key={u.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 ${u.isRevoked ? 'opacity-60 border-red-600 bg-red-50' : 'border-blue-600 hover:shadow-md transition-shadow'}`}>
+                                        <div className="flex-1">
+                                            <div className="font-bold text-lg text-gray-900 flex items-center gap-3"><Icons.User size={20}/> {u.username} {u.isRevoked && <span className="text-[10px] bg-red-600 text-white px-2 py-1 rounded tracking-wide">LOGIN DISABLED</span>}</div>
+                                            <div className="text-sm text-gray-500 mt-1">Assigned to <span className="font-bold text-black">{u.access?.length || 0}</span> businesses.</div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <Button onClick={() => onImpersonate(u.id)} variant="ghost" className="text-sm border border-gray-200 bg-white shadow-sm" disabled={u.isRevoked}><Icons.Eye size={16}/> Login As</Button>
-                                            <Button onClick={() => setEditingUser(u)} variant="secondary" className="text-sm px-5 py-2">Manage</Button>
-                                        </div>
+                                        <div className="flex items-center gap-3"><Button onClick={() => onImpersonate(u.id)} variant="secondary" className="text-sm bg-white" disabled={u.isRevoked}><Icons.Eye size={16}/> Login As</Button><Button onClick={() => setEditingUser(u)} variant="primary" className="text-sm">Manage User</Button></div>
                                     </Card>
-                                )) : <div className="text-center py-12 text-sm text-gray-400 border border-dashed rounded-2xl">No users match your search.</div>}
+                                )) : <div className="text-center py-8 text-gray-400">No users match your search.</div>}
                             </div>
                         )}
                     </main>
@@ -582,13 +506,13 @@
         const ClientDashboard = ({ user, setUser, onLogout, onSwitch }) => {
             const isRevoked = user.businessStatus?.isRevoked;
             const daysLeft = Math.ceil((new Date(user.businessStatus?.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
-            if (isRevoked) { return (<div className="min-h-screen flex items-center justify-center bg-gray-50 p-6"><div className="bg-white p-10 rounded-3xl shadow-xl max-w-md w-full text-center"><Icons.AlertCircle size={56} className="mx-auto text-red-500 mb-6" /><h1 className="text-2xl font-bold tracking-tight text-gray-900 mb-3">Access Suspended</h1><p className="text-gray-500 mb-8 text-sm">Your access to <b>{user.settings?.businessName}</b> has been paused. Contact your administrator.</p><Button onClick={onLogout} className="w-full py-3">Return to Portal</Button></div></div>); }
+            if (isRevoked) { return (<div className="min-h-screen flex items-center justify-center bg-gray-50 p-6"><div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full border-t-4 border-red-600 text-center"><Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" /><h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1><p className="text-gray-600 mb-6">Your access to <b>{user.settings?.businessName}</b> has been suspended.</p><Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700">Return to Portal</Button></div></div>); }
 
             const [activeTab, setActiveTab] = useState(() => window.location.hash.replace('#', '') || 'invoice');
             useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
             const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
 
-            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "SN001", items: [], discount: 0, remarks: "", transportType: "", vehicleNo: "", departureTime: "" });
+            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: "", refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "SN001", items: [], discount: 0, remarks: "", transportType: "", vehicleNo: "", departureTime: "" });
             
             const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
@@ -602,7 +526,6 @@
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
             
-            // STRICT RETAIL BOOLEAN PARSING: Unifies the global toggle for both Inventory and Invoices
             const allowSetting = user.settings?.allowRetailFed;
             const forceRetailFed = allowSetting === true || allowSetting === 1 || String(allowSetting) === "true" || String(allowSetting) === "1";
             const showRetailFed = forceRetailFed || (activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType)));
@@ -745,13 +668,16 @@
 
             const renderInvoiceTemplate = () => {
                 let qrUrl = ""; try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 120 }).toDataURL(); } catch (e) {}
+                
+                // Determine if we need to show retail columns for this specific printed invoice
                 const printShowRetail = lastInv?.items?.some(i => isRetailFedSale(i.saleType)) || showRetailFed;
 
                 return (
-                    <div className="bg-white w-full max-w-5xl rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] relative print:w-full print:max-w-none print:max-h-none print:shadow-none print-modal-wrapper">
+                    <div className="bg-white w-full max-w-5xl rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] relative print:w-full print:max-w-none print:max-h-none print:shadow-none">
                         <button onClick={() => setShowReceipt(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-50 no-print" style={{ zIndex: 9999 }}><Icons.X /></button>
                         
                         <div id="printable-area" className="p-8 text-black bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
+                            {/* PIXEL PERFECT HEADER */}
                             <div className="flex justify-between items-start mb-6">
                                 <div>
                                     {user.settings?.logo && <img src={user.settings.logo} className="h-16 mb-2 object-contain" />}
@@ -774,6 +700,7 @@
 
                             <h2 className="text-center font-bold text-lg mb-4 uppercase tracking-widest border-y-2 border-black py-1">Digital Sales Invoice</h2>
 
+                            {/* META DATA */}
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div className="border border-black p-2 text-xs">
                                     <table className="w-full">
@@ -797,6 +724,7 @@
                                 </div>
                             </div>
 
+                            {/* ITEMS TABLE */}
                             <div className="mb-4">
                                 <table className="w-full text-[10px] border-collapse border border-black">
                                     <thead className="bg-gray-100">
@@ -822,6 +750,7 @@
                                             const furAmt = val * (parseFloat(item.furtherTax) / 100 || 0);
                                             const exAmt = isRet ? (val * (parseFloat(item.extraTax) / 100 || 0)) : 0;
                                             const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
+                                            
                                             const amtExclSt = val + fedAmt + exAmt; 
                                             const lineTotal = amtExclSt + stAmt + furAmt;
 
@@ -845,6 +774,7 @@
                                 </table>
                             </div>
 
+                            {/* NOTES & TOTALS */}
                             <div className="grid grid-cols-2 gap-4 mb-4 text-xs">
                                 <div>
                                     {lastInv?.remarks && <div className="mb-2 font-bold">Note: <span className="font-normal">{lastInv.remarks}</span></div>}
@@ -894,98 +824,73 @@
             const userCanEdit = user.accessLevel !== 'view';
 
             return (
-                <div className="min-h-screen bg-[#f5f5f7] pb-20">
-                    <nav className="bg-white/80 backdrop-blur-xl border-b border-gray-200 sticky top-0 z-40 px-6 py-3 transition-all duration-300">
-                        <div className="max-w-[1400px] mx-auto flex justify-between items-center">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-gray-100 p-2 rounded-xl text-blue-600">{user.settings?.logo ? <img src={user.settings.logo} className="w-6 h-6 object-contain" /> : <Icons.FileText size={24} />}</div>
-                                <div><h1 className="font-bold text-gray-900 tracking-tight leading-tight">Hi {user.username || 'User'}</h1><span className="text-gray-500 text-xs font-medium uppercase tracking-wider">{user.settings?.businessName}</span></div>
-                            </div>
+                <div className="min-h-screen pb-20 relative bg-gray-50">
+                    <nav className="bg-black text-white shadow-lg sticky top-0 z-40">
+                        <div className="max-w-[1600px] mx-auto px-4 py-3 flex justify-between items-center">
                             <div className="flex items-center gap-3">
-                                <div className="flex bg-gray-100/80 p-1 rounded-xl">
-                                    {tabs.map(t => (<button key={t} onClick={() => changeTab(t)} className={`px-4 py-1.5 text-sm font-medium capitalize rounded-lg transition-all duration-300 ${activeTab === t ? 'bg-white text-black shadow-sm scale-100' : 'text-gray-500 hover:text-black'}`}>{t}</button>))}
-                                </div>
-                                <button onClick={onLogout} className="ml-2 bg-gray-200 hover:bg-red-100 hover:text-red-600 text-gray-700 p-2 rounded-xl transition-all"><Icons.LogOut size={18}/></button>
+                                <div className="bg-white/10 p-2 rounded">{user.settings?.logo ? <img src={user.settings.logo} className="w-5 h-5 object-contain" /> : <Icons.FileText size={20} />}</div>
+                                <div><h1 className="font-bold leading-none">Hi {user.username || 'User'}</h1><span className="text-gray-400 text-xs">{user.settings?.businessName}</span></div>
+                            </div>
+                            <div className="flex gap-2 text-sm">
+                                {tabs.map(t => (<button key={t} onClick={() => changeTab(t)} className={`px-3 py-1.5 rounded capitalize transition-all duration-200 ${activeTab === t ? 'bg-white text-black font-bold shadow' : 'hover:bg-gray-800 text-gray-300'}`}>{t}</button>))}
+                                <button onClick={onLogout} className="bg-gray-800 hover:bg-red-600 p-2 rounded ml-2"><Icons.LogOut /></button>
                             </div>
                         </div>
                     </nav>
 
                     {daysLeft <= 7 && <div className={`w-full text-center py-2 text-xs font-bold uppercase tracking-wider ${daysLeft <= 0 ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'}`}>{daysLeft <= 0 ? "SUBSCRIPTION EXPIRED" : `Expiring in ${daysLeft} days`}</div>}
                     
-                    <main className="max-w-[1400px] mx-auto p-6 mt-6">
-                        {msg && <div className={`mb-6 p-4 rounded-xl flex gap-3 border ${msg.type === 'error' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100 font-medium'}`}>{msg.type === 'error' ? <Icons.AlertCircle /> : <Icons.CheckCircle />} {msg.text} <button onClick={() => setMsg(null)} className="ml-auto">✕</button></div>}
+                    <main className="max-w-[1600px] mx-auto p-6">
+                        {msg && <div className={`mb-6 p-4 rounded-lg flex gap-3 border ${msg.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-800 border-gray-300'}`}>{msg.type === 'error' ? <Icons.AlertCircle /> : <Icons.CheckCircle />} {msg.text} <button onClick={() => setMsg(null)} className="ml-auto">✕</button></div>}
 
-                        {activeTab === 'businesses' && (
-                            <div className="animate-fade-in">
-                                <div className="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
-                                    <div><h2 className="text-3xl font-bold tracking-tight text-gray-900">Switch Business Dashboard</h2><p className="text-gray-500 mt-1 text-sm">Select the business account you want to manage.</p></div>
-                                    <div className="relative w-64"><input type="text" placeholder="Search businesses..." className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all shadow-sm" value={bizSwitchSearch} onChange={e => setBizSwitchSearch(e.target.value)} /><span className="absolute left-3 top-2.5 text-gray-400"><Icons.Search size={16} /></span></div>
-                                </div>
-                                <div className="flex flex-col gap-4">
-                                    {user.accessibleBusinesses.filter(b => b.name.toLowerCase().includes(bizSwitchSearch.toLowerCase())).map(b => (
-                                        <Card key={b.id} onClick={() => { if(b.id !== user.activeBusinessId) { sessionStorage.setItem('activeTab', 'invoice'); onSwitch(b.id); } }} className={`p-5 flex justify-between items-center gap-4 transition-all duration-300 ${b.id === user.activeBusinessId ? 'border-blue-500 ring-4 ring-blue-50' : 'hover:border-gray-300'}`}>
-                                            <div className="flex items-center gap-5">
-                                                <div className={`p-3.5 rounded-xl transition-colors ${b.id === user.activeBusinessId ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'}`}><Icons.Briefcase size={22}/></div>
-                                                <div>
-                                                    <h3 className="font-semibold text-lg text-gray-900 tracking-tight flex items-center gap-3">{b.name} {b.id === user.activeBusinessId && <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Active</span>}</h3>
-                                                    <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-gray-700 capitalize">{b.accessLevel}</span></p>
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        {activeTab === 'businesses' && <BusinessList user={user} onSelect={(id) => { sessionStorage.setItem('activeTab', 'invoice'); onSwitch(id); }} />}
 
                         {activeTab === 'invoice' && (
-                            <div className="space-y-6 animate-fade-in" style={{animationDelay: '0.1s'}}>
-                                <Card className="p-8">
-                                    <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4"><h2 className="text-2xl font-bold text-gray-900 tracking-tight">New Invoice</h2><div className="w-64"><SearchableDropdown value={invoice.type} options={dynamicDocTypes} onChange={v => setInvoice({ ...invoice, type: v })} /></div></div>
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                            <div className="space-y-6">
+                                <Card className="p-6">
+                                    <div className="flex justify-between items-start mb-6"><h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Icons.ShoppingCart /> New Invoice</h2><div className="flex gap-2"><SearchableDropdown value={invoice.type} options={dynamicDocTypes} onChange={v => setInvoice({ ...invoice, type: v })} placeholder="Type" /></div></div>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded border border-gray-200">
                                         <Input label="Date" type="date" value={invoice.invoiceDate} onChange={e => setInvoice({ ...invoice, invoiceDate: e.target.value })} />
                                         <Input label={invoice.type === "Sale Invoice" ? "Invoice No" : "Document No"} value={invoice.invoiceNumber} onChange={e => setInvoice({ ...invoice, invoiceNumber: e.target.value })} />
                                         {invoice.type !== "Sale Invoice" && <Input label="Ref Invoice #" value={invoice.refInvoiceNumber} onChange={e => setInvoice({ ...invoice, refInvoiceNumber: e.target.value })} placeholder="Required" required />}
-                                        <SearchableDropdown label="Origin Province" value={invoice.originationProvince} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, originationProvince: v })} />
+                                        <SearchableDropdown label="Origin" value={invoice.originationProvince} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, originationProvince: v })} />
                                         <SearchableDropdown label="Customer Name" value={invoice.customerName} options={(user.customers || []).filter(c => c).map(c => c.name)} placeholder="Search Customer..." onChange={onSelectCustomerName} strict={false} />
                                         <div className="relative">
                                             <Input label="Reg No / NTN" value={invoice.customerNTN} onChange={e => setInvoice({ ...invoice, customerNTN: e.target.value })} />
-                                            <button onClick={() => checkCustomerStatus(invoice.customerNTN, true)} disabled={loading} className="absolute right-0 top-0 text-[10px] font-bold uppercase tracking-wider bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-black mt-[1.25rem] mr-1">Verify</button>
+                                            <button onClick={() => checkCustomerStatus(invoice.customerNTN, true)} disabled={loading} className="absolute right-0 top-0 text-[10px] bg-black text-white px-2 py-1 rounded hover:bg-gray-800 mt-1 mr-1">Verify</button>
                                         </div>
                                         <SearchableDropdown label="Destination" value={invoice.customerDestination} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, customerDestination: v })} />
                                         <div className="md:col-span-2"><Input label="Customer Address" value={invoice.customerAddress} onChange={e => setInvoice({ ...invoice, customerAddress: e.target.value })} /></div>
                                         {user.settings.integrationMode !== 'production' && <SearchableDropdown label="Scenario ID (Sandbox)" value={invoice.scenarioId} options={SCENARIOS} onChange={v => setInvoice({ ...invoice, scenarioId: v })} />}
                                     </div>
 
-                                    {/* --- TRANSPORT & REMARKS --- */}
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 pt-6 border-t border-gray-100">
-                                        <div className="md:col-span-2"><Input label="Invoice Remarks / Notes" value={invoice.remarks || ''} onChange={e => setInvoice({ ...invoice, remarks: e.target.value })} placeholder="Optional note for invoice" /></div>
-                                        <Input label="Transport Type" value={invoice.transportType || ''} onChange={e => setInvoice({ ...invoice, transportType: e.target.value })} placeholder="e.g. Mazda" />
-                                        <Input label="Vehicle Reg No." value={invoice.vehicleNo || ''} onChange={e => setInvoice({ ...invoice, vehicleNo: e.target.value })} placeholder="e.g. JX-5276" />
-                                    </div>
-
-                                    {/* --- SPACIOUS LINE ITEM ENTRY FORM --- */}
-                                    <div className="mb-8 border border-blue-100 rounded-2xl overflow-hidden bg-blue-50/30">
-                                        <div className="bg-blue-50/80 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
-                                            <span className="font-bold text-blue-900 tracking-tight">Line Item Entry</span>
-                                            {showRetailFed && <span className="text-[10px] bg-blue-200 text-blue-800 px-2 py-1 rounded-md font-bold uppercase tracking-widest">Retail & FED Enabled</span>}
+                                    {/* --- NEW: SPACIOUS MULTI-ROW LINE ITEM FORM --- */}
+                                    <div className="mb-6 border border-blue-200 rounded-lg overflow-hidden shadow-sm">
+                                        <div className="bg-blue-50 px-4 py-3 font-bold text-blue-900 border-b border-blue-200 flex justify-between">
+                                            <span>Line Item Entry Form</span>
+                                            {showRetailFed && <span className="text-[10px] bg-yellow-200 text-yellow-800 px-2 py-1 rounded uppercase tracking-wide">Retail & FED Enabled</span>}
                                         </div>
-                                        <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-                                            {/* Row 1 */}
-                                            <div className="md:col-span-5"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={(user.inventory || []).filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = (user.inventory || []).find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
-                                            <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
-                                            <div className="md:col-span-2"><SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={SALE_TYPES} onChange={v => setLineItemForm({...lineItemForm, saleType: v})} /></div>
+                                        <div className="p-5 bg-white">
+                                            {/* Row 1: Core Identity */}
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 items-end">
+                                                <div className="md:col-span-5"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={(user.inventory || []).filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = (user.inventory || []).find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
+                                                <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
+                                                <div className="md:col-span-2"><SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={SALE_TYPES} onChange={v => setLineItemForm({...lineItemForm, saleType: v})} /></div>
+                                            </div>
                                             
-                                            {/* Row 2 */}
-                                            <div className="md:col-span-2"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
-                                            <div className="md:col-span-2"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
-                                            <div className="md:col-span-2"><Input label="Unit Price" type="number" value={lineItemForm.price} onChange={e => setLineItemForm({...lineItemForm, price: e.target.value})} /></div>
-                                            <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={lineItemForm.taxRate} onChange={e => setLineItemForm({...lineItemForm, taxRate: e.target.value})} /></div>
-                                            <div className="md:col-span-2"><Input label="Fur.Tax %" type="number" value={lineItemForm.furtherTax} onChange={e => setLineItemForm({...lineItemForm, furtherTax: e.target.value})} /></div>
-                                            <div className="md:col-span-2"><Input label="Discount Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
-                                            
-                                            {/* Row 3 (Conditional FBR Fields) */}
+                                            {/* Row 2: Quantities & Pricing */}
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 items-end bg-gray-50 p-4 rounded border border-gray-100">
+                                                <div className="md:col-span-2"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
+                                                <div className="md:col-span-2"><Input label="Unit Price" type="number" value={lineItemForm.price} onChange={e => setLineItemForm({...lineItemForm, price: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={lineItemForm.taxRate} onChange={e => setLineItemForm({...lineItemForm, taxRate: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="Further Tax %" type="number" value={lineItemForm.furtherTax} onChange={e => setLineItemForm({...lineItemForm, furtherTax: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="Discount Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
+                                            </div>
+
+                                            {/* Row 3: FBR Specifics (Conditional) */}
                                             {showRetailFed && (
-                                                <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-12 gap-6 bg-white p-5 rounded-xl border border-gray-200 shadow-sm mt-2">
+                                                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 items-end bg-yellow-50 p-4 rounded border border-yellow-200">
                                                     <div className="md:col-span-3"><Input label="Retail Price" type="number" value={lineItemForm.retailPrice} onChange={e => setLineItemForm({...lineItemForm, retailPrice: e.target.value})} /></div>
                                                     <div className="md:col-span-3"><Input label="Extra Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
                                                     <div className="md:col-span-3"><Input label="FED Amount" type="number" value={lineItemForm.fedPayable} onChange={e => setLineItemForm({...lineItemForm, fedPayable: e.target.value})} /></div>
@@ -993,48 +898,50 @@
                                                 </div>
                                             )}
 
-                                            {/* Row 4 */}
-                                            <div className="md:col-span-3"><Input label="SRO Schedule No." value={lineItemForm.sroScheduleNo} onChange={e => setLineItemForm({...lineItemForm, sroScheduleNo: e.target.value})} /></div>
-                                            <div className="md:col-span-3"><Input label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} onChange={e => setLineItemForm({...lineItemForm, sroItemSerialNo: e.target.value})} /></div>
-                                            {!showRetailFed && <div className="md:col-span-3"><Input label="ST WHT Amount" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>}
-                                            
-                                            <div className={`col-span-12 flex justify-end gap-3 mt-4`}>
-                                                {lineItemForm.id && <Button onClick={() => setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0})} variant="secondary" className="px-6">Cancel</Button>}
-                                                <Button onClick={pushItemToInvoice} className="w-full md:w-auto px-8"><Icons.Plus /> {lineItemForm.id ? 'Update Line Item' : 'Add to Invoice'}</Button>
+                                            {/* Row 4: SRO Data & Submit */}
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end border-t border-gray-100 pt-4">
+                                                <div className="md:col-span-3"><Input label="SRO Schedule No." value={lineItemForm.sroScheduleNo} onChange={e => setLineItemForm({...lineItemForm, sroScheduleNo: e.target.value})} /></div>
+                                                <div className="md:col-span-3"><Input label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} onChange={e => setLineItemForm({...lineItemForm, sroItemSerialNo: e.target.value})} /></div>
+                                                {!showRetailFed && <div className="md:col-span-2"><Input label="ST WHT Amount" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>}
+                                                <div className={`col-span-12 ${!showRetailFed ? 'md:col-span-4' : 'md:col-span-6'} flex justify-end gap-2`}>
+                                                    {lineItemForm.id && <Button onClick={() => setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0})} variant="secondary">Cancel</Button>}
+                                                    <Button onClick={pushItemToInvoice} className="w-full md:w-auto px-8"><Icons.Plus /> {lineItemForm.id ? 'Update Line Item' : 'Add Line Item'}</Button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="table-container border border-gray-100 rounded-2xl overflow-hidden shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+                                    {/* STRICT NO-WRAP INVOICE TABLE */}
+                                    <div className="table-container border border-gray-200 rounded-lg">
                                         <table className="fbr-table">
-                                            <thead>
+                                            <thead className="bg-black text-white text-xs uppercase tracking-wide">
                                                 <tr>
                                                     <th className="desc-col">Description</th><th className="hs-col">HS Code</th><th>Type</th><th>Qty/UoM</th><th>Price</th>{showRetailFed && <th>Ret.P</th>}<th>S.Tax%</th><th>S.Tax Amt</th>{showRetailFed && <th>Ex.Tax Amt</th>}<th>Fur.Tax Amt</th>{showRetailFed && <th>FED Amt</th>}<th>WHT</th><th>SRO Sch/Ser</th><th className="text-center">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {invoice.items.length === 0 ? <tr><td colSpan="15" className="p-12 text-center text-gray-400 border-b-0 italic">No items added to invoice yet.</td></tr> : invoice.items.map(item => {
+                                                {invoice.items.length === 0 ? <tr><td colSpan="15" className="p-8 text-center text-gray-400 border-b-0">No items added to invoice.</td></tr> : invoice.items.map(item => {
                                                     const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
                                                     const val = (isRet ? r : p) * q; const stAmt = val * (parseFloat(item.taxRate || 0) / 100); const exAmt = isRet ? (val * (parseFloat(item.extraTax || 0) / 100)) : 0; const furAmt = val * (parseFloat(item.furtherTax || 0) / 100); const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
                                                     return (
-                                                        <tr key={item.id}>
-                                                            <td className="font-semibold text-gray-900 desc-col">{item.desc} {item.discount > 0 && <span className="block text-[10px] text-red-500 font-normal uppercase tracking-wider mt-1">Discount: {item.discount}</span>}</td>
-                                                            <td className="text-gray-500 hs-col">{item.hsCode?.split(' - ')[0]}</td>
-                                                            <td className="text-gray-500">{item.saleType}</td>
-                                                            <td className="font-medium text-gray-900">{q} <span className="text-gray-500 font-normal">{item.uom}</span></td>
-                                                            <td>{formatCurrency(p)}</td>
-                                                            {showRetailFed && <td>{isRet ? formatCurrency(r) : '-'}</td>}
-                                                            <td>{item.taxRate}%</td>
-                                                            <td className="font-medium text-gray-900">{formatCurrency(stAmt)}</td>
-                                                            {showRetailFed && <td>{isRet ? formatCurrency(exAmt) : '-'}</td>}
-                                                            <td>{formatCurrency(furAmt)}</td>
-                                                            {showRetailFed && <td>{isRet ? formatCurrency(fedAmt) : '-'}</td>}
-                                                            <td>{formatCurrency(item.wht)}</td>
-                                                            <td className="text-gray-400">{item.sroScheduleNo || '-'}/{item.sroItemSerialNo || '-'}</td>
+                                                        <tr key={item.id} className="hover:bg-gray-50">
+                                                            <td className="font-bold text-xs desc-col">{item.desc} {item.discount > 0 && <span className="block text-[10px] text-red-500 font-normal">Disc: {item.discount}</span>}</td>
+                                                            <td className="text-xs text-gray-500 hs-col">{item.hsCode?.split(' - ')[0]}</td>
+                                                            <td className="text-xs text-gray-500">{item.saleType}</td>
+                                                            <td className="text-xs">{q} {item.uom}</td>
+                                                            <td className="text-xs">{formatCurrency(p)}</td>
+                                                            {showRetailFed && <td className="text-xs">{isRet ? formatCurrency(r) : '-'}</td>}
+                                                            <td className="text-xs">{item.taxRate}%</td>
+                                                            <td className="text-xs">{formatCurrency(stAmt)}</td>
+                                                            {showRetailFed && <td className="text-xs">{isRet ? formatCurrency(exAmt) : '-'}</td>}
+                                                            <td className="text-xs">{formatCurrency(furAmt)}</td>
+                                                            {showRetailFed && <td className="text-xs">{isRet ? formatCurrency(fedAmt) : '-'}</td>}
+                                                            <td className="text-xs">{formatCurrency(item.wht)}</td>
+                                                            <td className="text-xs text-gray-500">{item.sroScheduleNo || '-'}/{item.sroItemSerialNo || '-'}</td>
                                                             <td className="text-center">
-                                                                <div className="flex justify-center gap-3">
-                                                                    <button onClick={() => setLineItemForm(item)} className="text-gray-400 hover:text-black transition-colors"><Icons.Edit size={16} /></button>
-                                                                    <button onClick={() => setInvoice(p => ({ ...p, items: p.items.filter(i => i.id !== item.id) }))} className="text-red-300 hover:text-red-600 transition-colors"><Icons.Trash2 size={16} /></button>
+                                                                <div className="flex justify-center gap-2">
+                                                                    <button onClick={() => setLineItemForm(item)} className="text-gray-600 hover:text-black"><Icons.Edit size={16} /></button>
+                                                                    <button onClick={() => setInvoice(p => ({ ...p, items: p.items.filter(i => i.id !== item.id) }))} className="text-red-500"><Icons.Trash2 size={16} /></button>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -1043,24 +950,24 @@
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="p-6 bg-gray-50 flex justify-end rounded-b-2xl border-t border-gray-100">
-                                        <div className="flex gap-10 text-right">
-                                            <div><div className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mb-1">Subtotal</div><div className="font-semibold text-gray-700">{formatCurrency(totals.subtotal)}</div></div>
-                                            <div><div className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mb-1">Sales Tax</div><div className="font-semibold text-gray-900">{formatCurrency(totals.gst)}</div></div>
-                                            {showRetailFed && <div><div className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mb-1">Extra Tax</div><div className="font-semibold text-gray-900">{formatCurrency(totals.extra)}</div></div>}
-                                            <div><div className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mb-1">Further Tax</div><div className="font-semibold text-gray-900">{formatCurrency(totals.further)}</div></div>
-                                            {showRetailFed && <div><div className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mb-1">FED</div><div className="font-semibold text-gray-900">{formatCurrency(totals.fed)}</div></div>}
-                                            <div><div className="text-blue-400 text-[11px] font-bold uppercase tracking-wider mb-1">ST Withheld</div><div className="font-semibold text-blue-600">-{formatCurrency(totals.wht)}</div></div>
-                                            <div className="pl-6 border-l border-gray-200"><div className="text-gray-900 text-[11px] font-bold uppercase tracking-wider mb-1">Grand Total</div><div className="font-bold text-2xl tracking-tight">{formatCurrency(totals.total)}</div></div>
+                                    <div className="p-4 bg-gray-50 flex justify-end border border-t-0 border-gray-200 rounded-b-lg">
+                                        <div className="flex gap-8 text-right text-sm">
+                                            <div><div className="text-gray-500 text-xs">Subtotal</div><div className="font-bold">{formatCurrency(totals.subtotal)}</div></div>
+                                            <div><div className="text-gray-500 text-xs">Sales Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.gst)}</div></div>
+                                            {showRetailFed && <div><div className="text-gray-500 text-xs">Extra Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.extra)}</div></div>}
+                                            <div><div className="text-gray-500 text-xs">Further Tax</div><div className="font-bold text-gray-900">{formatCurrency(totals.further)}</div></div>
+                                            {showRetailFed && <div><div className="text-gray-500 text-xs">FED</div><div className="font-bold text-gray-900">{formatCurrency(totals.fed)}</div></div>}
+                                            <div><div className="text-gray-500 text-xs text-blue-600">ST Withheld</div><div className="font-bold text-blue-600">-{formatCurrency(totals.wht)}</div></div>
+                                            <div className="pl-4 border-l border-gray-300"><div className="text-gray-500 text-xs">Total</div><div className="font-bold text-xl">{formatCurrency(totals.total)}</div></div>
                                         </div>
                                     </div>
                                     
-                                    <div className="mt-8 flex justify-end gap-4">
-                                        <Button onClick={() => setLastInv({ ...invoice, ...totals, id: invoice.invoiceNumber }) || setShowReceipt(true)} variant="secondary" className="px-6"><Icons.Printer /> Print Preview</Button>
+                                    <div className="mt-6 flex justify-end gap-3">
+                                        <Button onClick={() => setLastInv({ ...invoice, ...totals, id: invoice.invoiceNumber }) || setShowReceipt(true)} variant="secondary"><Icons.Printer /> Print Preview</Button>
                                         {userCanEdit && (
                                             <>
-                                                <Button onClick={() => callFbrApi(true)} variant="secondary" disabled={loading || invoice.items.length === 0} className="px-6"><Icons.ShieldCheck /> Validate Only</Button>
-                                                <Button onClick={() => callFbrApi(false)} disabled={loading || invoice.items.length === 0} className="px-8"><Icons.Save /> Submit to FBR</Button>
+                                                <Button onClick={() => callFbrApi(true)} variant="secondary" disabled={loading || invoice.items.length === 0}><Icons.ShieldCheck /> Validate</Button>
+                                                <Button onClick={() => callFbrApi(false)} disabled={loading || invoice.items.length === 0}><Icons.Save /> Submit to FBR</Button>
                                             </>
                                         )}
                                     </div>
@@ -1069,11 +976,11 @@
                         )}
 
                         {activeTab === 'inventory' && (
-                            <div className="w-full animate-fade-in" style={{animationDelay: '0.1s'}}>
+                            <div className="w-full">
                                 {userCanEdit && (
-                                    <Card className="p-8 mb-8">
-                                        <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-6 flex items-center gap-2"><Icons.Box /> {editingInvId ? 'Edit Item' : 'Add Item'}</h2>
-                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end bg-white">
+                                    <Card className="p-6 mb-6">
+                                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Icons.Box /> {editingInvId ? 'Edit Item' : 'Add Item'}</h2>
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-gray-50 p-4 border border-gray-200 rounded-lg">
                                             {/* Row 1 */}
                                             <div className="md:col-span-4"><Input label="Product Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} /></div>
                                             <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
@@ -1087,10 +994,10 @@
                                             
                                             {/* Row 3 (Conditional) */}
                                             {showRetailFed && (
-                                                <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-12 gap-6 bg-gray-50 p-5 rounded-2xl border border-gray-100 mt-2">
-                                                    <div className="md:col-span-4"><Input label="Retail Price" type="number" value={newItem.retailPrice} onChange={e => setNewItem({ ...newItem, retailPrice: e.target.value })} className="bg-white" /></div>
-                                                    <div className="md:col-span-4"><Input label="Extra Tax %" type="number" value={newItem.extraTax} onChange={e => setNewItem({ ...newItem, extraTax: e.target.value })} className="bg-white" /></div>
-                                                    <div className="md:col-span-4"><Input label="FED Amount" type="number" value={newItem.fedPayable} onChange={e => setNewItem({ ...newItem, fedPayable: e.target.value })} className="bg-white" /></div>
+                                                <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-12 gap-4 bg-yellow-50 p-3 rounded border border-yellow-200">
+                                                    <div className="md:col-span-4"><Input label="Retail Price" type="number" value={newItem.retailPrice} onChange={e => setNewItem({ ...newItem, retailPrice: e.target.value })} /></div>
+                                                    <div className="md:col-span-4"><Input label="Extra Tax %" type="number" value={newItem.extraTax} onChange={e => setNewItem({ ...newItem, extraTax: e.target.value })} /></div>
+                                                    <div className="md:col-span-4"><Input label="FED Amount" type="number" value={newItem.fedPayable} onChange={e => setNewItem({ ...newItem, fedPayable: e.target.value })} /></div>
                                                 </div>
                                             )}
 
@@ -1099,8 +1006,8 @@
                                             <div className="md:col-span-4"><Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
                                             <div className="md:col-span-4"><Input label="ST WHT Amount" type="number" value={newItem.wht} onChange={e => setNewItem({ ...newItem, wht: e.target.value })} /></div>
                                             
-                                            <div className="md:col-span-12 flex justify-end gap-3 mt-6 border-t border-gray-100 pt-6">
-                                                {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-6">Cancel</Button>}
+                                            <div className="md:col-span-12 flex justify-end gap-2 mt-4 border-t border-gray-200 pt-4">
+                                                {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-4">Cancel</Button>}
                                                 <Button onClick={() => { if (editingInvId) { saveUser({ inventory: (user.inventory || []).map(i => i.id === editingInvId ? { ...i, ...newItem } : i) }); setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } else addInventory(); }} className="px-8"><Icons.Save size={16} /> {editingInvId ? 'Update Item' : 'Save Item'}</Button>
                                             </div>
                                         </div>
@@ -1109,45 +1016,38 @@
 
                                 {/* FULL VISUAL INVENTORY TABLE */}
                                 <Card className="p-0 overflow-hidden">
-                                    <div className="flex justify-between items-center p-6 bg-white border-b border-gray-100">
-                                        <div className="font-bold text-gray-900 tracking-tight">Inventory Items</div>
-                                        <div className="relative w-72">
-                                            <input type="text" placeholder="Search inventory..." className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all" value={invSearch} onChange={e => setInvSearch(e.target.value)} />
-                                            <span className="absolute left-3 top-2.5 text-gray-400"><Icons.Search size={16} /></span>
-                                        </div>
-                                    </div>
                                     <div className="table-container">
                                         <table className="fbr-table text-left text-sm w-full">
-                                            <thead>
+                                            <thead className="bg-black text-white text-xs uppercase tracking-wide">
                                                 <tr>
-                                                    <th>Name</th><th>HS Code</th><th>Type</th><th>UoM</th><th>Price</th>
-                                                    {showRetailFed && <th className="text-amber-600">Ret.Price</th>}
-                                                    <th>S.Tax%</th><th>Fur.Tax%</th>
-                                                    {showRetailFed && <th className="text-amber-600">Ex.Tax%</th>}
-                                                    {showRetailFed && <th className="text-amber-600">FED</th>}
-                                                    <th>WHT</th><th>SRO Sch/Ser</th>
-                                                    {userCanEdit && <th className="text-center">Action</th>}
+                                                    <th className="p-3">Name</th><th className="p-3">HS Code</th><th className="p-3">Type</th><th className="p-3">UoM</th><th className="p-3">Price</th>
+                                                    {showRetailFed && <th className="p-3 text-yellow-300">Ret.Price</th>}
+                                                    <th className="p-3">S.Tax%</th><th className="p-3">Fur.Tax%</th>
+                                                    {showRetailFed && <th className="p-3 text-yellow-300">Ex.Tax%</th>}
+                                                    {showRetailFed && <th className="p-3 text-yellow-300">FED</th>}
+                                                    <th className="p-3">WHT</th><th className="p-3">SRO Sch/Ser</th>
+                                                    {userCanEdit && <th className="p-3 text-center">Action</th>}
                                                 </tr>
                                             </thead>
-                                            <tbody>
-                                                {filteredInventory.length === 0 ? <tr><td colSpan="15" className="p-12 text-center text-gray-400 italic">No items added to inventory.</td></tr> : filteredInventory.map(i => (
-                                                    <tr key={i.id}>
-                                                        <td className="font-semibold text-gray-900">{i.name}</td>
-                                                        <td className="text-gray-500">{i.hsCode?.split(' - ')[0]}</td>
-                                                        <td className="text-gray-500">{i.saleType}</td>
-                                                        <td className="font-medium">{i.uom}</td>
-                                                        <td>{formatCurrency(i.price)}</td>
-                                                        {showRetailFed && <td className="font-semibold text-amber-700">{formatCurrency(i.retailPrice)}</td>}
-                                                        <td>{i.taxRate}%</td>
-                                                        <td>{i.furtherTax}%</td>
-                                                        {showRetailFed && <td className="text-amber-700">{i.extraTax}%</td>}
-                                                        {showRetailFed && <td className="text-amber-700">{i.fedPayable}</td>}
-                                                        <td>{i.wht}</td>
-                                                        <td className="text-gray-400">{i.sroScheduleNo || '-'}/{i.sroItemSerialNo || '-'}</td>
-                                                        {userCanEdit && <td className="text-center">
-                                                            <div className="flex justify-center gap-3">
-                                                                <button onClick={() => { setNewItem(i); setEditingInvId(i.id); }} className="text-gray-400 hover:text-black transition-colors"><Icons.Edit size={16}/></button>
-                                                                <button onClick={() => deleteInventory(i.id)} className="text-red-300 hover:text-red-600 transition-colors"><Icons.Trash2 size={16}/></button>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {filteredInventory.length === 0 ? <tr><td colSpan="15" className="p-8 text-center text-gray-400 border-b-0">No items added to inventory.</td></tr> : filteredInventory.map(i => (
+                                                    <tr key={i.id} className="hover:bg-gray-50">
+                                                        <td className="p-3 font-bold text-xs">{i.name}</td>
+                                                        <td className="p-3 text-xs text-gray-500">{i.hsCode?.split(' - ')[0]}</td>
+                                                        <td className="p-3 text-xs text-gray-500">{i.saleType}</td>
+                                                        <td className="p-3 text-xs">{i.uom}</td>
+                                                        <td className="p-3 text-xs">{formatCurrency(i.price)}</td>
+                                                        {showRetailFed && <td className="p-3 text-xs font-bold text-yellow-700">{formatCurrency(i.retailPrice)}</td>}
+                                                        <td className="p-3 text-xs">{i.taxRate}%</td>
+                                                        <td className="p-3 text-xs">{i.furtherTax}%</td>
+                                                        {showRetailFed && <td className="p-3 text-xs text-yellow-700">{i.extraTax}%</td>}
+                                                        {showRetailFed && <td className="p-3 text-xs text-yellow-700">{i.fedPayable}</td>}
+                                                        <td className="p-3 text-xs">{i.wht}</td>
+                                                        <td className="p-3 text-xs text-gray-500">{i.sroScheduleNo || '-'}/{i.sroItemSerialNo || '-'}</td>
+                                                        {userCanEdit && <td className="p-3 text-center">
+                                                            <div className="flex justify-center gap-2">
+                                                                <button onClick={() => { setNewItem(i); setEditingInvId(i.id); }} className="text-gray-600 hover:text-black"><Icons.Edit size={16}/></button>
+                                                                <button onClick={() => deleteInventory(i.id)} className="text-red-500 hover:text-red-700"><Icons.Trash2 size={16}/></button>
                                                             </div>
                                                         </td>}
                                                     </tr>
@@ -1160,102 +1060,45 @@
                         )}
 
                         {activeTab === 'customers' && (
-                            <div className="w-full animate-fade-in" style={{animationDelay: '0.1s'}}>
+                            <div className="w-full">
                                 {userCanEdit && (
-                                    <Card className="p-8 mb-8">
-                                        <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-6 flex items-center gap-2"><Icons.Users /> {editingCustId ? 'Edit Customer' : 'Add Customer'}</h2>
-                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+                                    <Card className="p-6 mb-6">
+                                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Icons.Users /> {editingCustId ? 'Edit Customer' : 'Add Customer'}</h2>
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                                             <div className="md:col-span-3"><Input label="Customer Name" value={newCust.name} onChange={e => setNewCust({ ...newCust, name: e.target.value })} /></div>
-                                            <div className="md:col-span-2 relative"><Input label="NTN" value={newCust.ntn} onChange={e => setNewCust({ ...newCust, ntn: e.target.value })} /><button onClick={() => checkCustomerStatus(newCust.ntn)} className="absolute right-0 top-0 text-[10px] font-bold uppercase tracking-wider bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-black mt-[1.25rem] mr-1">Verify</button></div>
+                                            <div className="md:col-span-2 relative"><Input label="NTN" value={newCust.ntn} onChange={e => setNewCust({ ...newCust, ntn: e.target.value })} /><button onClick={() => checkCustomerStatus(newCust.ntn)} className="absolute right-0 top-0 text-[10px] bg-black text-white px-2 py-1 rounded hover:bg-gray-800 mt-1 mr-1">Verify</button></div>
                                             <div className="md:col-span-2"><SearchableDropdown label="Reg Type" value={newCust.regType || 'Unregistered'} options={['Unregistered', 'Registered']} onChange={val => setNewCust({ ...newCust, regType: val })} strict={true} /></div>
                                             <div className="md:col-span-2"><SearchableDropdown label="Destination" value={newCust.destination} options={dynamicProvinces} onChange={val => setNewCust({ ...newCust, destination: val })} /></div>
-                                            <div className="md:col-span-3 flex gap-3 items-end">
-                                                <div className="flex-1"><Input label="Address" value={newCust.address} onChange={e => setNewCust({ ...newCust, address: e.target.value })} /></div>
-                                                <Button onClick={addCustomer} className="px-6">{editingCustId ? 'Update' : 'Add'}</Button>
-                                            </div>
+                                            <div className="md:col-span-2"><Input label="Address" value={newCust.address} onChange={e => setNewCust({ ...newCust, address: e.target.value })} /></div>
+                                            <div className="md:col-span-1"><Button onClick={addCustomer}>{editingCustId ? 'Update' : 'Add'}</Button></div>
                                         </div>
                                     </Card>
                                 )}
                                 <Card className="p-0 overflow-hidden">
-                                    <div className="flex justify-between items-center p-6 bg-white border-b border-gray-100">
-                                        <div className="font-bold text-gray-900 tracking-tight">Customer Directory</div>
-                                        <div className="relative w-72">
-                                            <input type="text" placeholder="Search customers..." className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all" value={custSearch} onChange={e => setCustSearch(e.target.value)} />
-                                            <span className="absolute left-3 top-2.5 text-gray-400"><Icons.Search size={16} /></span>
-                                        </div>
-                                    </div>
-                                    <div className="table-container">
-                                        <table className="fbr-table text-left text-sm w-full">
-                                            <thead><tr><th>Name</th><th>NTN</th><th>Reg Type</th><th>Destination</th><th>Address</th>{userCanEdit && <th className="text-right">Action</th>}</tr></thead>
-                                            <tbody>{filteredCustomers.length === 0 ? <tr><td colSpan="10" className="p-12 text-center text-gray-400 italic">No customers found.</td></tr> : filteredCustomers.map(c => (
-                                                <tr key={c.id}>
-                                                    <td className="font-semibold text-gray-900">{c.name}</td>
-                                                    <td className="text-gray-500 font-mono">{c.ntn}</td>
-                                                    <td><span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${c.regType === 'Registered' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}`}>{c.regType || 'Unregistered'}</span></td>
-                                                    <td className="text-gray-700">{c.destination}</td>
-                                                    <td className="text-gray-400 truncate max-w-[200px]">{c.address}</td>
-                                                    {userCanEdit && <td className="text-right">
-                                                        <div className="flex justify-end gap-3">
-                                                            <button onClick={() => editCustomer(c)} className="text-gray-400 hover:text-black transition-colors"><Icons.Edit size={16} /></button>
-                                                            <button onClick={() => deleteCustomer(c.id)} className="text-red-300 hover:text-red-600 transition-colors"><Icons.Trash2 size={16} /></button>
-                                                        </div>
-                                                    </td>}
-                                                </tr>
-                                            ))}</tbody>
-                                        </table>
-                                    </div>
+                                    <div className="flex justify-between items-center p-4 bg-gray-100 border-b border-gray-200"><div className="font-bold text-gray-900">Customer List</div><div className="relative w-64"><input type="text" placeholder="Search..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={custSearch} onChange={e => setCustSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div></div>
+                                    <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Name</th><th className="p-3">NTN</th><th className="p-3">Reg Type</th><th className="p-3">Destination</th><th className="p-3">Address</th>{userCanEdit && <th className="p-3 text-right">Action</th>}</tr></thead><tbody className="divide-y divide-gray-100">{filteredCustomers.map(c => (<tr key={c.id} className="hover:bg-gray-50"><td className="p-3 font-bold">{c.name}</td><td className="p-3">{c.ntn}</td><td className="p-3 text-xs"><span className={`px-2 py-1 rounded ${c.regType === 'Registered' ? 'bg-black text-white' : 'bg-gray-200 text-gray-800'}`}>{c.regType || 'Unregistered'}</span></td><td className="p-3">{c.destination}</td><td className="p-3 text-gray-500">{c.address}</td>{userCanEdit && <td className="p-3 text-right"><div className="flex justify-end gap-2"><button onClick={() => editCustomer(c)} className="text-gray-600 hover:text-black"><Icons.Edit /></button><button onClick={() => deleteCustomer(c.id)} className="text-red-500"><Icons.Trash2 /></button></div></td>}</tr>))}</tbody></table>
                                 </Card>
                             </div>
                         )}
 
+                        {/* --- EXPANDED HISTORY TABLE --- */}
                         {activeTab === 'history' && (
-                            <Card className="p-0 overflow-hidden w-full animate-fade-in" style={{animationDelay: '0.1s'}}>
-                                <div className="flex justify-between items-center p-6 bg-white border-b border-gray-100">
-                                    <div className="font-bold text-gray-900 tracking-tight">Invoice History</div>
-                                    <div className="relative w-72">
-                                        <input type="text" placeholder="Search by FBR # or Customer..." className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all" value={histSearch} onChange={e => setHistSearch(e.target.value)} />
-                                        <span className="absolute left-3 top-2.5 text-gray-400"><Icons.Search size={16} /></span>
-                                    </div>
-                                </div>
+                            <Card className="p-0 overflow-hidden w-full">
+                                <div className="flex justify-between items-center p-4 bg-gray-100 border-b border-gray-200"><div className="font-bold text-gray-900">Recent Invoices</div><div className="relative w-64"><input type="text" placeholder="Search..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={histSearch} onChange={e => setHistSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div></div>
                                 <div className="table-container">
-                                    <table className="w-full text-left text-sm fbr-table">
-                                        <thead><tr><th>FBR Invoice #</th><th>Date</th><th>Customer</th><th>NTN</th><th className="text-right">Subtotal</th><th className="text-right">Sales Tax</th><th className="text-right">FED</th><th className="text-right">Fur.Tax</th><th className="text-right">WHT</th><th className="text-right">Grand Total</th><th className="text-center">Action</th></tr></thead>
-                                        <tbody>
-                                            {filteredHistory.length === 0 ? <tr><td colSpan="12" className="p-12 text-center text-gray-400 italic">No invoices submitted yet.</td></tr> : filteredHistory.map(inv => (
-                                                <tr key={inv.id}>
-                                                    <td className="font-mono text-xs font-bold text-blue-600">{inv.fbrInvoiceNumber}</td>
-                                                    <td className="text-gray-500 text-xs">{inv.invoiceDate || inv.date}</td>
-                                                    <td className="font-semibold text-gray-900 text-xs">{inv.customerName}</td>
-                                                    <td className="text-gray-400 font-mono text-xs">{inv.customerNTN}</td>
-                                                    <td className="text-right text-gray-500 text-xs">{formatCurrency(inv.subtotal)}</td>
-                                                    <td className="text-right text-gray-500 text-xs">{formatCurrency(inv.gst)}</td>
-                                                    <td className="text-right text-gray-500 text-xs">{formatCurrency(inv.fed)}</td>
-                                                    <td className="text-right text-gray-500 text-xs">{formatCurrency(inv.further)}</td>
-                                                    <td className="text-right text-blue-500 text-xs">{formatCurrency(inv.wht)}</td>
-                                                    <td className="text-right font-bold text-gray-900">{formatCurrency(inv.total)}</td>
-                                                    <td className="text-center">
-                                                        <div className="flex justify-center gap-3">
-                                                            <button onClick={() => { setLastInv(inv); setShowReceipt(true); }} className="text-gray-400 hover:text-black transition-colors" title="Print"><Icons.Printer size={16} /></button>
-                                                            <button onClick={() => downloadInvoice(inv)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Download JSON"><Icons.Download size={16} /></button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                    <table className="w-full text-left text-sm fbr-table"><thead className="bg-black text-white uppercase text-xs tracking-wide"><tr><th className="p-3">FBR Invoice #</th><th className="p-3">Date</th><th className="p-3">Customer</th><th className="p-3">NTN</th><th className="p-3 text-right">Subtotal</th><th className="p-3 text-right">Sales Tax</th><th className="p-3 text-right">FED</th><th className="p-3 text-right">Fur.Tax</th><th className="p-3 text-right">WHT</th><th className="p-3 text-right">Grand Total</th><th className="p-3 text-center">Action</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredHistory.map(inv => (<tr key={inv.id} className="hover:bg-gray-50"><td className="p-3 text-xs font-bold text-red-600">{inv.fbrInvoiceNumber}</td><td className="p-3 text-xs text-gray-500">{inv.invoiceDate || inv.date}</td><td className="p-3 text-xs font-bold">{inv.customerName}</td><td className="p-3 text-xs text-gray-500">{inv.customerNTN}</td><td className="p-3 text-xs text-right text-gray-600">{formatCurrency(inv.subtotal)}</td><td className="p-3 text-xs text-right text-gray-600">{formatCurrency(inv.gst)}</td><td className="p-3 text-xs text-right text-gray-600">{formatCurrency(inv.fed)}</td><td className="p-3 text-xs text-right text-gray-600">{formatCurrency(inv.further)}</td><td className="p-3 text-xs text-right text-blue-600">{formatCurrency(inv.wht)}</td><td className="p-3 text-xs text-right font-bold text-black">{formatCurrency(inv.total)}</td><td className="p-3 text-center"><div className="flex justify-center gap-2"><button onClick={() => { setLastInv(inv); setShowReceipt(true); }} className="text-gray-600 hover:text-black" title="Print"><Icons.Printer /></button><button onClick={() => downloadInvoice(inv)} className="text-gray-600 hover:text-black" title="Download"><Icons.Download /></button></div></td></tr>))}</tbody></table>
                                 </div>
                             </Card>
                         )}
 
                         {activeTab === 'settings' && (
-                            <div className="w-full max-w-4xl mx-auto animate-fade-in" style={{animationDelay: '0.1s'}}>
-                                <Card className="p-10">
-                                    <h2 className="text-3xl font-bold text-gray-900 tracking-tight mb-8">Business Settings</h2>
-                                    <div className="space-y-8">
-                                        <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                                            <h3 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-6">Contact Information</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <Input label="Contact Phone" value={user?.settings?.phone || ''} onChange={e => { const newU = {...user, settings: {...user.settings, phone: e.target.value}}; setUser(newU); saveUser({ settings: newU.settings }); }} className="bg-white" />
+                            <div className="w-full"><Card className="p-8"><h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><Icons.Settings /> Client Configuration</h2>
+                                <div className="space-y-6">
+                                    {/* Edit Phone and Email Locally */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-6">
+                                        <div><h3 className="font-bold text-sm mb-4">Contact Information</h3>
+                                            <div className="space-y-4">
+                                                <Input label="Contact Phone" value={user?.settings?.phone || ''} onChange={e => { const newU = {...user, settings: {...user.settings, phone: e.target.value}}; setUser(newU); saveUser({ settings: newU.settings }); }} />
                                                 <Input label="Contact Email" value={user?.settings?.email || ''} onChange={e => { const newU = {...user, settings: {...user.settings, email: e.target.value}}; setUser(newU); saveUser({ settings: newU.settings }); }} />
                                             </div>
                                         </div>
