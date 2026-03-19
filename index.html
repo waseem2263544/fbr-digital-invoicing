@@ -1,11 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FBR Invoice System | Fair Tax</title>
-
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -14,28 +12,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
     <style>
-        @media print {
-            body * { visibility: hidden; }
-            #printable-area, #printable-area * { visibility: visible; }
-            #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none !important; border-radius: 0 !important; overflow: visible !important; }
-            .no-print { display: none !important; }
-        }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #333; }
-        
-        .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .fbr-table { width: max-content; min-width: 100%; background: white; border-collapse: collapse; }
-        .fbr-table th, .fbr-table td { white-space: nowrap !important; padding: 8px 12px; vertical-align: middle; border-bottom: 1px solid #e2e8f0; }
-        .fbr-table .table-input { width: 100%; min-width: 90px; height: 2rem; border: none; border-bottom: 1px solid #cbd5e1; background: transparent; outline: none; font-size: 0.85rem; transition: border-color 0.2s; }
-        .fbr-table .table-input:focus { border-bottom-color: #000; background: #f8fafc; }
-        .fbr-table .desc-col { min-width: 250px; }
-        .fbr-table .hs-col { min-width: 180px; }
-        
-        .standard-input { height: 2.5rem; width: 100%; border: none; border-bottom: 1px solid #e2e8f0; border-radius: 0; padding-left: 0.5rem; font-size: 0.85rem; outline: none; background: transparent; transition: border-color 0.15s ease-in-out; }
-        .standard-input:focus { border-bottom-color: #000; background: #f8fafc; }
-        .standard-input:read-only { color: #6b7280; cursor: not-allowed; border-bottom-style: dashed; }
+        @media print { body * { visibility: hidden; } #printable-area, #printable-area * { visibility: visible; } #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none !important; border-radius: 0 !important; overflow: visible !important; } .no-print { display: none !important; } }
+        ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; } ::-webkit-scrollbar-thumb:hover { background: #333; }
+        .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; } .fbr-table { width: max-content; min-width: 100%; background: white; border-collapse: collapse; } .fbr-table th, .fbr-table td { white-space: nowrap !important; padding: 8px 12px; vertical-align: middle; border-bottom: 1px solid #e2e8f0; } .fbr-table .desc-col { min-width: 250px; } .fbr-table .hs-col { min-width: 180px; }
+        .standard-input { height: 2.5rem; width: 100%; border: none; border-bottom: 1px solid #e2e8f0; border-radius: 0; padding-left: 0.5rem; font-size: 0.85rem; outline: none; background: transparent; transition: border-color 0.15s ease-in-out; } .standard-input:focus { border-bottom-color: #000; background: #f8fafc; } .standard-input:read-only { color: #6b7280; cursor: not-allowed; border-bottom-style: dashed; }
     </style>
 </head>
 
@@ -45,24 +25,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, Component } = React;
 
-        const SYSTEM_CONFIG = {
-            BASE_URL: "https://gw.fbr.gov.pk",
-            PATHS: {
-                POST_INVOICE_SB: "/di_data/v1/di/postinvoicedata_sb",
-                POST_INVOICE_PROD: "/di_data/v1/di/postinvoicedata",
-                VALIDATE_INVOICE_SB: "/di_data/v1/di/validateinvoicedata_sb",
-                VALIDATE_INVOICE_PROD: "/di_data/v1/di/validateinvoicedata",
-                PROVINCES: "/pdi/v1/provinces",
-                DOCTYPECODE: "/pdi/v1/doctypecode",
-                SROITEMCODE: "/pdi/v1/sroitemcode",
-                TRANSTYPECODE: "/pdi/v1/transtypecode",
-                UOM: "/pdi/v1/uom",
-                HS_UOM: "/pdi/v2/HS_UOM",
-                ITEM_CODE: "/pdi/v1/itemdesccode",
-                GET_REG_TYPE: "/dist/v1/Get_Reg_Type"
-            }
-        };
-
+        const SYSTEM_CONFIG = { BASE_URL: "https://gw.fbr.gov.pk", PATHS: { POST_INVOICE_SB: "/di_data/v1/di/postinvoicedata_sb", POST_INVOICE_PROD: "/di_data/v1/di/postinvoicedata", VALIDATE_INVOICE_SB: "/di_data/v1/di/validateinvoicedata_sb", VALIDATE_INVOICE_PROD: "/di_data/v1/di/validateinvoicedata", PROVINCES: "/pdi/v1/provinces", DOCTYPECODE: "/pdi/v1/doctypecode", SROITEMCODE: "/pdi/v1/sroitemcode", TRANSTYPECODE: "/pdi/v1/transtypecode", UOM: "/pdi/v1/uom", HS_UOM: "/pdi/v2/HS_UOM", ITEM_CODE: "/pdi/v1/itemdesccode", GET_REG_TYPE: "/dist/v1/Get_Reg_Type" } };
         const SALE_TYPES = [ "Goods at standard rate (default)", "Goods at reduced rate", "Goods at zero-rate", "Petroleum Products", "Electricity Supply to Retailers", "SIM", "Gas to CNG stations", "Mobile Phones", "Processing/Conversion of Goods", "3rd Schedule Goods", "Goods (FED in ST Mode)", "Services (FED in ST Mode)", "Services", "Exempt goods", "DTRE goods", "Cotton ginners", "Electric Vehicle", "Cement /Concrete Block", "Telecommunication services", "Steel melting and re-rolling", "Ship breaking", "Potassium Chlorate", "CNG Sales", "Goods as per SRO.297(I)/2023", "Toll Manufacturing", "Non-Adjustable Supplies" ];
         const DOCUMENT_TYPES = [ "Sale Invoice", "Debit Note" ];
         const UOM_OPTIONS = [ "Numbers, pieces, units", "MT", "Bill of lading", "SET", "KWH", "40KG", "Liter", "SqY", "Bag", "KG", "MMBTU", "Meter", "Carat", "Cubic Metre", "Dozen", "Gram", "Gallon", "Kilogram", "Pound", "Timber logs", "Packs", "Pair", "Square Foot", "Square Metre", "Thousand Unit", "Mega Watt", "Foot", "Barrels", "NO", "Others", "1000kWh" ];
@@ -70,42 +33,15 @@
         const SCENARIOS = [ "SN001", "SN002", "SN003", "SN004", "SN005", "SN006", "SN007", "SN008", "SN009", "SN010", "SN011", "SN012", "SN013", "SN014", "SN015", "SN016", "SN017", "SN018", "SN019", "SN020", "SN021", "SN022", "SN023", "SN024", "SN025", "SN026", "SN027", "SN028" ];
         const FBR_ERRORS = { "0000": "Successful", "0001": "Invalid NTN/Reg. No. format", "0004": "Seller Reg No. doesn't match", "0005": "Buyer Name is empty/invalid", "0007": "Sale Type not allowed/invalid", "0009": "Provide UOM in KG", "0010": "Quantity/Electricity Units missing", "0011": "Provide Value of Sales Excl. ST", "0039": "STWH invoice fields must be same as sale invoice", "0041": "Invoice number cannot be empty", "0042": "Invoice date cannot be empty", "0044": "HS Code cannot be empty", "0053": "Buyer Registration Type is invalid", "0070": "User is not registered, STWH is allowed only for registered user", "0073": "Provide Sale Origination Province of Supplier", "0074": "Provide Destination of Supply", "0077": "SRO/Schedule Number cannot be empty", "0078": "Item serial number cannot be empty", "0082": "The Seller is not registered for sales tax", "0106": "The Buyer is not registered for sales tax", "0401": "Unauthorized access: Seller NTN/CNIC token is invalid", "0402": "Unauthorized access: Buyer NTN/CNIC token is invalid" };
 
-        class ErrorBoundary extends Component {
-            constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-            static getDerivedStateFromError(error) { return { hasError: true, error }; }
-            render() {
-                if (this.state.hasError) return (<div className="min-h-screen flex items-center justify-center"><div className="bg-white p-8 rounded-lg shadow-xl"><h1 className="text-xl font-bold mb-2">Error Occurred</h1><button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="bg-black text-white px-4 py-2 rounded">Reset App Data</button></div></div>);
-                return this.props.children;
-            }
-        }
+        class ErrorBoundary extends Component { constructor(props) { super(props); this.state = { hasError: false, error: null }; } static getDerivedStateFromError(error) { return { hasError: true, error }; } render() { if (this.state.hasError) return (<div className="min-h-screen flex items-center justify-center"><div className="bg-white p-8 rounded-lg shadow-xl"><h1 className="text-xl font-bold mb-2">Error Occurred</h1><button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="bg-black text-white px-4 py-2 rounded">Reset App Data</button></div></div>); return this.props.children; } }
 
         const IconBase = ({ size = 20, children, ...props }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg> );
         const Icons = {
-            FileText: (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></IconBase>,
-            Settings: (props) => <IconBase {...props}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></IconBase>,
-            Plus: (props) => <IconBase {...props}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></IconBase>,
-            Trash2: (props) => <IconBase {...props}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></IconBase>,
-            Save: (props) => <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></IconBase>,
-            Printer: (props) => <IconBase {...props}><polyline points="6 9 6 0 18 0 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></IconBase>,
-            CheckCircle: (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></IconBase>,
-            AlertCircle: (props) => <IconBase {...props}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></IconBase>,
-            X: (props) => <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></IconBase>,
-            ShieldCheck: (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></IconBase>,
-            ShoppingCart: (props) => <IconBase {...props}><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></IconBase>,
-            User: (props) => <IconBase {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></IconBase>,
-            LogOut: (props) => <IconBase {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></IconBase>,
-            Box: (props) => <IconBase {...props}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></IconBase>,
-            Users: (props) => <IconBase {...props}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></IconBase>,
-            Search: (props) => <IconBase {...props}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></IconBase>,
-            Calendar: (props) => <IconBase {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></IconBase>,
-            Edit: (props) => <IconBase {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></IconBase>,
-            Download: (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconBase>,
-            Eye: (props) => <IconBase {...props}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></IconBase>,
-            Briefcase: (props) => <IconBase {...props}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></IconBase>
+            FileText: (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></IconBase>, Settings: (props) => <IconBase {...props}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></IconBase>, Plus: (props) => <IconBase {...props}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></IconBase>, Trash2: (props) => <IconBase {...props}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></IconBase>, Save: (props) => <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></IconBase>, Printer: (props) => <IconBase {...props}><polyline points="6 9 6 0 18 0 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></IconBase>, CheckCircle: (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></IconBase>, AlertCircle: (props) => <IconBase {...props}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></IconBase>, X: (props) => <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></IconBase>, ShieldCheck: (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></IconBase>, ShoppingCart: (props) => <IconBase {...props}><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></IconBase>, User: (props) => <IconBase {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></IconBase>, LogOut: (props) => <IconBase {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></IconBase>, Box: (props) => <IconBase {...props}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></IconBase>, Users: (props) => <IconBase {...props}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></IconBase>, Search: (props) => <IconBase {...props}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></IconBase>, Calendar: (props) => <IconBase {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></IconBase>, Edit: (props) => <IconBase {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></IconBase>, Download: (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconBase>, Eye: (props) => <IconBase {...props}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></IconBase>, Briefcase: (props) => <IconBase {...props}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></IconBase>
         };
 
         const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false, title }) => {
-            const variants = { primary: "bg-black text-white hover:bg-gray-800 disabled:bg-gray-400", secondary: "bg-white text-gray-800 border border-gray-300 hover:bg-gray-50", danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200" };
+            const variants = { primary: "bg-black text-white hover:bg-gray-800 disabled:bg-gray-400", secondary: "bg-white text-gray-800 border border-gray-300 hover:bg-gray-50", danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200", ghost: "bg-transparent text-gray-600 hover:bg-gray-100 border-none" };
             return <button title={title} onClick={onClick} disabled={disabled} className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 ${variants[variant]} ${className}`}>{children}</button>;
         };
 
@@ -122,16 +58,9 @@
             const [show, setShow] = useState(false);
             const [filter, setFilter] = useState("");
             const wrapperRef = useRef(null);
-
-            useEffect(() => {
-                const handleClickOutside = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setShow(false); };
-                document.addEventListener("mousedown", handleClickOutside);
-                return () => document.removeEventListener("mousedown", handleClickOutside);
-            }, []);
-
+            useEffect(() => { const handleClickOutside = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setShow(false); }; document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside); }, []);
             const safeOptions = Array.isArray(options) ? options : [];
             const filteredOptions = safeOptions.filter(opt => String(opt).toLowerCase().includes(filter.toLowerCase()));
-
             return (
                 <div className="flex flex-col gap-1 relative w-full" ref={wrapperRef}>
                     <div className="flex justify-between items-center">
@@ -165,16 +94,12 @@
             if (options.body) { try { proxyPayload.payload = JSON.parse(options.body); } catch { proxyPayload.payload = options.body; } }
             const sessionToken = sessionStorage.getItem('fbr_token');
             if (!sessionToken) return { ok: false, status: 401, json: async () => ({ error: "Missing token" }) };
-            
-            const res = await fetch('https://app.tallied.pk/api/fbr/proxy', {
-                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}` }, body: JSON.stringify(proxyPayload)
-            });
+            const res = await fetch('https://app.tallied.pk/api/fbr/proxy', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}` }, body: JSON.stringify(proxyPayload) });
             if (!res.ok) return res;
             const proxyData = await res.json();
             return { ok: proxyData.ok, status: proxyData.status, json: async () => proxyData.data };
         };
 
-        // --- NEW: THEMED LOBBY DASHBOARD ---
         const BusinessSelectionScreen = ({ user, onSelect, onLogout }) => (
             <div className="min-h-screen bg-gray-50 flex flex-col">
                 <nav className="bg-black text-white shadow-lg sticky top-0 z-50">
@@ -183,24 +108,19 @@
                         <Button onClick={onLogout} variant="danger" className="text-xs py-1"><Icons.LogOut size={16}/> {user.isAdminImpersonating ? 'Return to Admin' : 'Logout'}</Button>
                     </div>
                 </nav>
-                <main className="max-w-4xl mx-auto w-full p-6 mt-8">
+                <main className="max-w-[1600px] mx-auto w-full p-6 mt-8">
                     <div className="mb-6 border-b border-gray-200 pb-4">
                         <h2 className="text-3xl font-bold text-gray-900">Select a Dashboard</h2>
                         <p className="text-gray-500 mt-1">Choose the business account you want to manage today.</p>
                     </div>
-                    <div className="flex flex-col gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {user.accessibleBusinesses.map(b => (
-                            <Card key={b.id} className="p-0 overflow-hidden hover:border-black transition-colors">
-                                <button onClick={() => onSelect(b.id)} className="w-full p-5 flex justify-between items-center bg-white hover:bg-gray-50 transition-colors text-left group">
-                                    <div className="flex items-center gap-4">
-                                        <div className="bg-gray-100 p-3 rounded-lg group-hover:bg-blue-50 transition-colors"><Icons.Briefcase className="text-gray-500 group-hover:text-blue-600" size={24}/></div>
-                                        <div>
-                                            <h3 className="font-bold text-xl text-gray-900 group-hover:text-black">{b.name}</h3>
-                                            <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
-                                        </div>
-                                    </div>
-                                    <div className="bg-gray-100 p-2 rounded-full group-hover:bg-black group-hover:text-white transition-colors">
-                                        <Icons.Plus size={20} className="rotate-45 transform group-hover:rotate-0 transition-transform" />
+                            <Card key={b.id} className="p-0 overflow-hidden hover:border-black transition-colors cursor-pointer">
+                                <button onClick={() => onSelect(b.id)} className="w-full p-5 flex items-center bg-white hover:bg-gray-50 transition-colors text-left group gap-4">
+                                    <div className="bg-gray-100 p-3 rounded-lg group-hover:bg-blue-50 transition-colors"><Icons.Briefcase className="text-gray-500 group-hover:text-blue-600" size={24}/></div>
+                                    <div>
+                                        <h3 className="font-bold text-xl text-gray-900 group-hover:text-black">{b.name}</h3>
+                                        <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
                                     </div>
                                 </button>
                             </Card>
@@ -258,6 +178,7 @@
                     if (res.ok) {
                         const data = await res.json();
                         sessionStorage.setItem('fbr_token', data.token);
+                        sessionStorage.setItem('activeTab', 'invoice'); // Always go to invoice tab
                         await handleLogin(data.user);
                     } else { alert("Failed to switch business context."); }
                 } catch (e) { alert("Network Error"); }
@@ -301,19 +222,12 @@
 
             if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading System...</div>;
             if (!user) return <LoginScreen onLogin={handleLogin} />;
-            
-            if (user.needsBusinessSelection) {
-                return <BusinessSelectionScreen user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} />;
-            }
-
+            if (user.needsBusinessSelection) return <BusinessSelectionScreen user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} />;
             if (user.role !== 'admin' && (!user.settings || !user.businessStatus)) return <LoginScreen onLogin={handleLogin} />;
 
             return (
                 <ErrorBoundary>
-                    {user.role === 'admin' ?
-                        <AdminDashboard onLogout={handleLogout} onImpersonate={handleImpersonate} /> :
-                        <ClientDashboard user={user} setUser={handleLogin} onLogout={handleLogout} onSwitch={handleBusinessSwitch} />
-                    }
+                    {user.role === 'admin' ? <AdminDashboard onLogout={handleLogout} onImpersonate={handleImpersonate} /> : <ClientDashboard user={user} setUser={handleLogin} onLogout={handleLogout} onSwitch={handleBusinessSwitch} />}
                 </ErrorBoundary>
             );
         }
@@ -322,34 +236,23 @@
             const [form, setForm] = useState({ username: '', password: '' });
             const [error, setError] = useState('');
             const [loading, setLoading] = useState(false);
-
             const handleSubmit = async () => {
                 if (!form.username || !form.password) return setError("Fill all fields");
                 setLoading(true);
                 try {
-                    const res = await fetch('https://app.tallied.pk/api/login', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form)
-                    });
+                    const res = await fetch('https://app.tallied.pk/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
                     const data = await res.json();
                     if (res.ok) { sessionStorage.setItem('fbr_token', data.token); onLogin(data.user); } 
                     else setError(data.error || "Invalid credentials");
                 } catch (e) { setError("Network Error"); }
                 setLoading(false);
             };
-
             return (
                 <div className="min-h-screen flex items-center justify-center bg-white">
                     <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-xl w-full max-w-md">
-                        <div className="text-center mb-6">
-                            <h1 className="text-2xl font-bold text-gray-900">FBR Invoice System</h1>
-                            <p className="text-sm text-gray-500">Authorized Portal</p>
-                        </div>
+                        <div className="text-center mb-6"><h1 className="text-2xl font-bold text-gray-900">FBR Invoice System</h1><p className="text-sm text-gray-500">Authorized Portal</p></div>
                         {error && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm text-center border">{error}</div>}
-                        <div className="space-y-4">
-                            <Input label="Username" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} />
-                            <Input label="Password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
-                            <Button onClick={handleSubmit} disabled={loading} className="w-full py-3">{loading ? 'Loading...' : 'Login'}</Button>
-                        </div>
+                        <div className="space-y-4"><Input label="Username" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} /><Input label="Password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /><Button onClick={handleSubmit} disabled={loading} className="w-full py-3">{loading ? 'Loading...' : 'Login'}</Button></div>
                     </div>
                 </div>
             );
@@ -358,18 +261,18 @@
         const AdminDashboard = ({ onLogout, onImpersonate }) => {
             const [businesses, setBusinesses] = useState([]);
             const [users, setUsers] = useState([]);
-            const [activeTab, setActiveTab] = useState('businesses'); 
-            
+            // Safe Hash Routing
+            const [activeTab, setActiveTab] = useState(() => window.location.hash.replace('#', '') || 'businesses');
+            useEffect(() => { const handleHash = () => setActiveTab(window.location.hash.replace('#', '') || 'businesses'); window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
+            const changeTab = (t) => window.location.hash = t;
+
             const [showBizModal, setShowBizModal] = useState(false);
             const [editingBiz, setEditingBiz] = useState(null); 
-            
             const [editingUser, setEditingUser] = useState(null);
-            
             const [adminError, setAdminError] = useState("");
             const [bizSearch, setBizSearch] = useState("");
             const [userSearch, setUserSearch] = useState("");
-
-            // NEW: Searchable Assignment States
+            
             const [bizToAdd, setBizToAdd] = useState("");
             const [roleToAdd, setRoleToAdd] = useState("view");
 
@@ -382,37 +285,27 @@
                 if (bRes.ok) setBusinesses(await bRes.json());
                 if (uRes.ok) setUsers(await uRes.json());
             };
-
             useEffect(() => { fetchData(); }, [activeTab]);
 
             const saveBusiness = async () => {
-                setAdminError("");
-                if (!editingBiz.businessName) return setAdminError("Business Name is required");
+                setAdminError(""); if (!editingBiz.businessName) return setAdminError("Business Name is required");
                 const url = editingBiz.id ? `https://app.tallied.pk/api/admin/businesses/${editingBiz.id}` : 'https://app.tallied.pk/api/admin/businesses';
                 const method = editingBiz.id ? 'PUT' : 'POST';
                 try {
                     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify(editingBiz) });
-                    if (res.ok) { setShowBizModal(false); setEditingBiz(null); fetchData(); }
-                    else setAdminError((await res.json()).error || "Error saving business");
+                    if (res.ok) { setShowBizModal(false); setEditingBiz(null); fetchData(); } else setAdminError((await res.json()).error || "Error saving business");
                 } catch (e) { setAdminError("Network Error"); }
             };
 
             const saveUser = async () => {
-                setAdminError("");
-                if (!editingUser.username) return setAdminError("Username is required.");
+                setAdminError(""); if (!editingUser.username) return setAdminError("Username is required.");
                 const isNew = !editingUser.id;
                 if (isNew && (!editingUser.password || editingUser.password.length < 6)) return setAdminError("Password (min 6 chars) required for new users.");
-                
                 const url = isNew ? 'https://app.tallied.pk/api/admin/users' : `https://app.tallied.pk/api/admin/users/${editingUser.id}`;
                 const method = isNew ? 'POST' : 'PUT';
-                
                 try {
                     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify(editingUser) });
-                    if (res.ok) { 
-                        setEditingUser(null); fetchData(); 
-                        if(!isNew) alert("User profile updated!");
-                    }
-                    else setAdminError((await res.json()).error || "Error saving user");
+                    if (res.ok) { setEditingUser(null); fetchData(); if(!isNew) alert("User profile updated!"); } else setAdminError((await res.json()).error || "Error saving user");
                 } catch (e) { setAdminError("Network Error"); }
             };
 
@@ -426,8 +319,8 @@
                             <div className="flex items-center gap-2 font-bold"><Icons.ShieldCheck /> Super Admin</div>
                             <div className="flex items-center gap-4">
                                 <div className="flex bg-gray-800 rounded p-1">
-                                    <button onClick={() => setActiveTab('businesses')} className={`px-4 py-1 text-sm rounded transition-colors ${activeTab === 'businesses' ? 'bg-white text-black font-bold shadow' : 'text-gray-300 hover:text-white'}`}>Businesses</button>
-                                    <button onClick={() => setActiveTab('users')} className={`px-4 py-1 text-sm rounded transition-colors ${activeTab === 'users' ? 'bg-white text-black font-bold shadow' : 'text-gray-300 hover:text-white'}`}>System Users</button>
+                                    <button onClick={() => changeTab('businesses')} className={`px-4 py-1 text-sm rounded transition-colors ${activeTab === 'businesses' ? 'bg-white text-black font-bold shadow' : 'text-gray-300 hover:text-white'}`}>Businesses</button>
+                                    <button onClick={() => changeTab('users')} className={`px-4 py-1 text-sm rounded transition-colors ${activeTab === 'users' ? 'bg-white text-black font-bold shadow' : 'text-gray-300 hover:text-white'}`}>System Users</button>
                                 </div>
                                 <Button onClick={onLogout} variant="danger" className="py-1 text-sm"><Icons.LogOut /> Logout</Button>
                             </div>
@@ -438,38 +331,23 @@
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold text-gray-800">{activeTab === 'businesses' ? 'Registered Businesses' : 'User Accounts'}</h2>
                             <div className="flex items-center gap-4">
-                                <div className="relative w-64">
-                                    <input type="text" placeholder={activeTab === 'businesses' ? "Search businesses..." : "Search users..."} className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={activeTab === 'businesses' ? bizSearch : userSearch} onChange={e => activeTab === 'businesses' ? setBizSearch(e.target.value) : setUserSearch(e.target.value)} />
-                                    <span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span>
-                                </div>
-                                {activeTab === 'businesses' ? 
-                                    <Button onClick={() => { setEditingBiz({ businessName: '', ntn: '', strn: '', address: '', province: 'Sindh', integrationMode: 'sandbox', sandboxToken: '', productionToken: '', taxRates: { salesTax: 18, furtherTax: 4, extraTax: 0 }, allowRetailFed: false }); setShowBizModal(true); }} variant="primary"><Icons.Plus /> Create Business</Button> 
-                                :   <Button onClick={() => { setEditingUser({ username: '', password: '', role: 'user', access: [] }); setAdminError(''); }} variant="primary"><Icons.Plus /> Create User</Button>}
+                                <div className="relative w-64"><input type="text" placeholder={activeTab === 'businesses' ? "Search businesses..." : "Search users..."} className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={activeTab === 'businesses' ? bizSearch : userSearch} onChange={e => activeTab === 'businesses' ? setBizSearch(e.target.value) : setUserSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div>
+                                {activeTab === 'businesses' ? <Button onClick={() => { setEditingBiz({ businessName: '', ntn: '', strn: '', address: '', province: 'Sindh', integrationMode: 'sandbox', sandboxToken: '', productionToken: '', taxRates: { salesTax: 18, furtherTax: 4, extraTax: 0 }, allowRetailFed: false }); setShowBizModal(true); }} variant="primary"><Icons.Plus /> Create Business</Button> : <Button onClick={() => { setEditingUser({ username: '', password: '', role: 'user', access: [] }); setAdminError(''); }} variant="primary"><Icons.Plus /> Create User</Button>}
                             </div>
                         </div>
 
-                        {/* --- BUSINESS EDIT MODAL --- */}
                         {showBizModal && editingBiz && (
                             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                                 <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                                    <div className="flex justify-between items-center mb-6 border-b pb-4">
-                                        <h3 className="text-2xl font-bold text-gray-800">{editingBiz.id ? `Manage Business: ${editingBiz.businessName}` : 'Create New Business'}</h3>
-                                        <button onClick={() => setShowBizModal(false)} className="text-gray-400 hover:text-black transition-colors"><Icons.X size={24} /></button>
-                                    </div>
+                                    <div className="flex justify-between items-center mb-6 border-b pb-4"><h3 className="text-2xl font-bold text-gray-800">{editingBiz.id ? `Manage Business: ${editingBiz.businessName}` : 'Create New Business'}</h3><button onClick={() => setShowBizModal(false)} className="text-gray-400 hover:text-black transition-colors"><Icons.X size={24} /></button></div>
                                     {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border border-red-200">{adminError}</div>}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-4">
                                             <h4 className="font-bold text-gray-700 border-b pb-2">Profile & Status</h4>
                                             {editingBiz.id && (
                                                 <div className="bg-gray-50 p-4 rounded flex flex-col gap-4 border border-gray-200">
-                                                    <div className="flex justify-between items-center">
-                                                        <div><div className="font-bold">Billing Status</div><div className={`text-sm ${editingBiz.isRevoked ? 'text-red-600' : 'text-blue-600'}`}>{editingBiz.isRevoked ? 'Access Revoked' : 'Active'}</div></div>
-                                                        <Button onClick={() => setEditingBiz({ ...editingBiz, isRevoked: !editingBiz.isRevoked })} variant={editingBiz.isRevoked ? "primary" : "danger"} className="text-xs">{editingBiz.isRevoked ? "Restore Access" : "Revoke (Non-Payment)"}</Button>
-                                                    </div>
-                                                    <div className="border-t pt-3">
-                                                        <div className="font-bold mb-2 text-sm">Subscription Expiry</div>
-                                                        <Input type="date" value={(editingBiz.expiryDate || new Date().toISOString()).split('T')[0]} onChange={e => setEditingBiz({ ...editingBiz, expiryDate: new Date(e.target.value).toISOString() })} />
-                                                    </div>
+                                                    <div className="flex justify-between items-center"><div><div className="font-bold">Billing Status</div><div className={`text-sm ${editingBiz.isRevoked ? 'text-red-600' : 'text-blue-600'}`}>{editingBiz.isRevoked ? 'Access Revoked' : 'Active'}</div></div><Button onClick={() => setEditingBiz({ ...editingBiz, isRevoked: !editingBiz.isRevoked })} variant={editingBiz.isRevoked ? "primary" : "danger"} className="text-xs">{editingBiz.isRevoked ? "Restore Access" : "Revoke (Non-Payment)"}</Button></div>
+                                                    <div className="border-t pt-3"><div className="font-bold mb-2 text-sm">Subscription Expiry</div><Input type="date" value={(editingBiz.expiryDate || new Date().toISOString()).split('T')[0]} onChange={e => setEditingBiz({ ...editingBiz, expiryDate: new Date(e.target.value).toISOString() })} /><div className="flex gap-2 mt-2"><button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 30); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border px-2 py-1 rounded">+30 Days</button><button onClick={() => { const d = new Date(); d.setDate(d.getDate() + 365); setEditingBiz({ ...editingBiz, expiryDate: d.toISOString() }) }} className="text-xs bg-white border px-2 py-1 rounded">+1 Year</button></div></div>
                                                 </div>
                                             )}
                                             <Input label="Business Name" value={editingBiz.businessName} onChange={e => setEditingBiz({ ...editingBiz, businessName: e.target.value })} required />
@@ -485,90 +363,44 @@
                                             <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Feature Control</h4>
                                             <div className="flex items-center gap-2"><input type="checkbox" id="allowRetailFed" checked={editingBiz.allowRetailFed || false} onChange={e => setEditingBiz({ ...editingBiz, allowRetailFed: e.target.checked })} /><label htmlFor="allowRetailFed" className="text-sm">Allow Retail Price & FED Fields</label></div>
                                             <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Default Rates</h4>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                <Input label="Sales Tax %" type="number" value={editingBiz.taxRates?.salesTax || 18} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), salesTax: parseFloat(e.target.value) } })} />
-                                                <Input label="Further Tax %" type="number" value={editingBiz.taxRates?.furtherTax || 4} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), furtherTax: parseFloat(e.target.value) } })} />
-                                                <Input label="Extra Tax %" type="number" value={editingBiz.taxRates?.extraTax || 0} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), extraTax: parseFloat(e.target.value) } })} />
-                                            </div>
+                                            <div className="grid grid-cols-3 gap-2"><Input label="Sales Tax %" type="number" value={editingBiz.taxRates?.salesTax || 18} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), salesTax: parseFloat(e.target.value) } })} /><Input label="Further Tax %" type="number" value={editingBiz.taxRates?.furtherTax || 4} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), furtherTax: parseFloat(e.target.value) } })} /><Input label="Extra Tax %" type="number" value={editingBiz.taxRates?.extraTax || 0} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), extraTax: parseFloat(e.target.value) } })} /></div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end gap-3 mt-8 border-t pt-4">
-                                        <Button onClick={() => setShowBizModal(false)} variant="secondary">Cancel</Button>
-                                        <Button onClick={saveBusiness}>Save Business</Button>
-                                    </div>
+                                    <div className="flex justify-end gap-3 mt-8 border-t pt-4"><Button onClick={() => setShowBizModal(false)} variant="secondary">Cancel</Button><Button onClick={saveBusiness}>Save Business</Button></div>
                                 </div>
                             </div>
                         )}
 
-                        {/* --- USER MANAGE MODAL (WITH SEARCHABLE ALLOCATION) --- */}
                         {editingUser && (
                             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                                 <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                                    <div className="flex justify-between items-center mb-6 border-b pb-4">
-                                        <h3 className="text-xl font-bold flex items-center gap-2"><Icons.User /> {editingUser.id ? `Manage User: ${editingUser.username}` : 'Create New User'}</h3>
-                                        <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-black transition-colors"><Icons.X /></button>
-                                    </div>
-                                    
+                                    <div className="flex justify-between items-center mb-6 border-b pb-4"><h3 className="text-xl font-bold flex items-center gap-2"><Icons.User /> {editingUser.id ? `Manage User: ${editingUser.username}` : 'Create New User'}</h3><button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-black transition-colors"><Icons.X /></button></div>
                                     {adminError && <div className="mb-4 p-3 bg-red-50 text-red-600 font-bold text-sm rounded border">{adminError}</div>}
-                                    
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         <div className="space-y-4">
                                             <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide border-b pb-2">1. Account Details</h4>
                                             <Input label="Username" value={editingUser.username} onChange={e => setEditingUser({ ...editingUser, username: e.target.value })} required />
                                             <Input label={editingUser.id ? "New Password (Optional)" : "Password"} type="password" value={editingUser.password || ''} onChange={e => setEditingUser({ ...editingUser, password: e.target.value })} placeholder={editingUser.id ? "Leave blank to keep current" : ""} />
-                                            
                                             {editingUser.id && (
                                                 <div className="bg-gray-50 p-4 rounded border border-gray-200 flex justify-between items-center mt-4">
-                                                    <div>
-                                                        <div className="text-xs font-bold text-gray-500 uppercase">Login Access</div>
-                                                        <div className={`text-sm font-bold ${editingUser.isRevoked ? 'text-red-600' : 'text-green-600'}`}>{editingUser.isRevoked ? 'Disabled' : 'Enabled'}</div>
-                                                    </div>
-                                                    <Button variant={editingUser.isRevoked ? "primary" : "danger"} className="text-xs" onClick={() => setEditingUser({...editingUser, isRevoked: !editingUser.isRevoked})}>
-                                                        {editingUser.isRevoked ? "Enable Login" : "Disable Login"}
-                                                    </Button>
+                                                    <div><div className="text-xs font-bold text-gray-500 uppercase">Login Access</div><div className={`text-sm font-bold ${editingUser.isRevoked ? 'text-red-600' : 'text-green-600'}`}>{editingUser.isRevoked ? 'Disabled' : 'Enabled'}</div></div>
+                                                    <Button variant={editingUser.isRevoked ? "primary" : "danger"} className="text-xs" onClick={() => setEditingUser({...editingUser, isRevoked: !editingUser.isRevoked})}>{editingUser.isRevoked ? "Enable Login" : "Disable Login"}</Button>
                                                 </div>
                                             )}
                                         </div>
-
                                         <div className="space-y-4">
                                             <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide border-b pb-2">2. Business Access</h4>
                                             <div className="text-xs text-gray-500">Search and add businesses to this user's account.</div>
-                                            
                                             <div className="flex items-end gap-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                                <div className="flex-1">
-                                                    <SearchableDropdown 
-                                                        label="Find Business" 
-                                                        value={bizToAdd} 
-                                                        options={businesses.filter(b => !editingUser.access?.some(a => a.businessId === b.id)).map(b => b.businessName)} 
-                                                        onChange={setBizToAdd} 
-                                                        strict={false} 
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-semibold text-gray-500 uppercase">Role</label>
-                                                    <select className="standard-input rounded-lg bg-white" value={roleToAdd} onChange={e => setRoleToAdd(e.target.value)}>
-                                                        <option value="admin">Full Admin</option>
-                                                        <option value="edit">Edit Data</option>
-                                                        <option value="view">View Only</option>
-                                                    </select>
-                                                </div>
-                                                <Button onClick={() => {
-                                                    const b = businesses.find(x => x.businessName === bizToAdd);
-                                                    if (b) {
-                                                        setEditingUser(p => ({ ...p, access: [...(p.access || []), { businessId: b.id, businessName: b.businessName, accessLevel: roleToAdd }] }));
-                                                        setBizToAdd("");
-                                                    }
-                                                }}>Add</Button>
+                                                <div className="flex-1"><SearchableDropdown label="Find Business" value={bizToAdd} options={businesses.filter(b => !editingUser.access?.some(a => a.businessId === b.id)).map(b => b.businessName)} onChange={setBizToAdd} strict={false} /></div>
+                                                <div><label className="text-xs font-semibold text-gray-500 uppercase">Role</label><select className="standard-input rounded-lg bg-white" value={roleToAdd} onChange={e => setRoleToAdd(e.target.value)}><option value="admin">Full Admin</option><option value="edit">Edit Data</option><option value="view">View Only</option></select></div>
+                                                <Button onClick={() => { const b = businesses.find(x => x.businessName === bizToAdd); if (b) { setEditingUser(p => ({ ...p, access: [...(p.access || []), { businessId: b.id, businessName: b.businessName, accessLevel: roleToAdd }] })); setBizToAdd(""); } }}>Add</Button>
                                             </div>
-                                            
                                             <div className="space-y-2 max-h-[300px] overflow-y-auto">
                                                 {(!editingUser.access || editingUser.access.length === 0) ? <div className="text-center p-4 text-xs text-gray-400 border border-dashed rounded">No businesses assigned.</div> : 
                                                     editingUser.access.map(a => (
                                                         <div key={a.businessId} className="flex items-center justify-between p-3 border rounded shadow-sm bg-white">
-                                                            <div>
-                                                                <div className="text-sm font-bold text-gray-900">{a.businessName}</div>
-                                                                <div className="text-[10px] text-gray-500 uppercase mt-1">Role: <span className="text-blue-600 font-bold">{a.accessLevel}</span></div>
-                                                            </div>
+                                                            <div><div className="text-sm font-bold text-gray-900">{a.businessName}</div><div className="text-[10px] text-gray-500 uppercase mt-1">Role: <span className="text-blue-600 font-bold">{a.accessLevel}</span></div></div>
                                                             <button onClick={() => setEditingUser(p => ({...p, access: p.access.filter(x => x.businessId !== a.businessId)}))} className="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded"><Icons.Trash2 size={16}/></button>
                                                         </div>
                                                     ))
@@ -576,15 +408,11 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end gap-3 mt-8 border-t pt-4">
-                                        <Button onClick={() => setEditingUser(null)} variant="secondary">Cancel</Button>
-                                        <Button onClick={saveUser}><Icons.Save /> Save User</Button>
-                                    </div>
+                                    <div className="flex justify-end gap-3 mt-8 border-t pt-4"><Button onClick={() => setEditingUser(null)} variant="secondary">Cancel</Button><Button onClick={saveUser}><Icons.Save /> Save User</Button></div>
                                 </div>
                             </div>
                         )}
 
-                        {/* --- SINGLE COLUMN MODERN LISTS --- */}
                         {activeTab === 'businesses' && (
                             <div className="flex flex-col gap-4">
                                 {filteredBiz.length > 0 ? filteredBiz.map(biz => {
@@ -592,17 +420,10 @@
                                     return (
                                         <Card key={biz.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 ${biz.isRevoked ? 'border-red-600 opacity-75 bg-red-50' : 'border-black hover:shadow-md transition-shadow'}`}>
                                             <div className="flex-1">
-                                                <div className="font-bold text-lg text-gray-900 flex items-center gap-3">
-                                                    {biz.businessName} 
-                                                    {biz.isRevoked && <span className="text-[10px] bg-red-600 text-white px-2 py-1 rounded tracking-wide">REVOKED</span>}
-                                                    <span className={`text-[10px] px-2 py-1 rounded tracking-wide uppercase ${biz.integrationMode === 'production' ? 'bg-gray-800 text-white' : 'bg-yellow-200 text-yellow-800'}`}>{biz.integrationMode}</span>
-                                                </div>
+                                                <div className="font-bold text-lg text-gray-900 flex items-center gap-3">{biz.businessName} {biz.isRevoked && <span className="text-[10px] bg-red-600 text-white px-2 py-1 rounded tracking-wide">REVOKED</span>}<span className={`text-[10px] px-2 py-1 rounded tracking-wide uppercase ${biz.integrationMode === 'production' ? 'bg-gray-800 text-white' : 'bg-yellow-200 text-yellow-800'}`}>{biz.integrationMode}</span></div>
                                                 <div className="text-sm text-gray-500 mt-1">NTN: {biz.ntn || 'N/A'} • {biz.province}</div>
                                             </div>
-                                            <div className="flex items-center gap-6">
-                                                <div className={`text-sm font-bold flex items-center gap-1 ${daysLeft < 7 ? 'text-red-600' : 'text-gray-600'}`}><Icons.Calendar size={14}/> {daysLeft} Days Left</div>
-                                                <Button onClick={() => { setEditingBiz(biz); setShowBizModal(true); }} variant="secondary" className="text-sm">Manage Profile & Billing</Button>
-                                            </div>
+                                            <div className="flex items-center gap-6"><div className={`text-sm font-bold flex items-center gap-1 ${daysLeft < 7 ? 'text-red-600' : 'text-gray-600'}`}><Icons.Calendar size={14}/> {daysLeft} Days Left</div><Button onClick={() => { setEditingBiz(biz); setShowBizModal(true); }} variant="secondary" className="text-sm">Manage Profile & Billing</Button></div>
                                         </Card>
                                     );
                                 }) : <div className="text-center py-8 text-gray-400">No businesses match your search.</div>}
@@ -614,16 +435,10 @@
                                 {filteredUsers.length > 0 ? filteredUsers.map(u => (
                                     <Card key={u.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 ${u.isRevoked ? 'opacity-60 border-red-600 bg-red-50' : 'border-blue-600 hover:shadow-md transition-shadow'}`}>
                                         <div className="flex-1">
-                                            <div className="font-bold text-lg text-gray-900 flex items-center gap-3">
-                                                <Icons.User size={20}/> {u.username}
-                                                {u.isRevoked && <span className="text-[10px] bg-red-600 text-white px-2 py-1 rounded tracking-wide">LOGIN DISABLED</span>}
-                                            </div>
+                                            <div className="font-bold text-lg text-gray-900 flex items-center gap-3"><Icons.User size={20}/> {u.username} {u.isRevoked && <span className="text-[10px] bg-red-600 text-white px-2 py-1 rounded tracking-wide">LOGIN DISABLED</span>}</div>
                                             <div className="text-sm text-gray-500 mt-1">Assigned to <span className="font-bold text-black">{u.access?.length || 0}</span> businesses.</div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <Button onClick={() => onImpersonate(u.id)} variant="secondary" className="text-sm bg-white" disabled={u.isRevoked}><Icons.Eye size={16}/> Login As</Button>
-                                            <Button onClick={() => setEditingUser(u)} variant="primary" className="text-sm">Manage User</Button>
-                                        </div>
+                                        <div className="flex items-center gap-3"><Button onClick={() => onImpersonate(u.id)} variant="secondary" className="text-sm bg-white" disabled={u.isRevoked}><Icons.Eye size={16}/> Login As</Button><Button onClick={() => setEditingUser(u)} variant="primary" className="text-sm">Manage User</Button></div>
                                     </Card>
                                 )) : <div className="text-center py-8 text-gray-400">No users match your search.</div>}
                             </div>
@@ -636,53 +451,31 @@
         const ClientDashboard = ({ user, setUser, onLogout, onSwitch }) => {
             const isRevoked = user.businessStatus?.isRevoked;
             const daysLeft = Math.ceil((new Date(user.businessStatus?.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+            if (isRevoked) { return (<div className="min-h-screen flex items-center justify-center bg-gray-50 p-6"><div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full border-t-4 border-red-600 text-center"><Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" /><h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1><p className="text-gray-600 mb-6">Your access to <b>{user.settings?.businessName}</b> has been suspended.</p><Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700">Return to Portal</Button></div></div>); }
 
-            if (isRevoked) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-                        <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full border-t-4 border-red-600 text-center">
-                            <Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" />
-                            <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1>
-                            <p className="text-gray-600 mb-6">Your access to <b>{user.settings?.businessName}</b> has been suspended.</p>
-                            <Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700">Return to Portal</Button>
-                        </div>
-                    </div>
-                );
-            }
+            // Safe Hash Routing
+            const [activeTab, setActiveTab] = useState(() => window.location.hash.replace('#', '') || 'invoice');
+            useEffect(() => { const handleHash = () => setActiveTab(window.location.hash.replace('#', '') || 'invoice'); window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
+            const changeTab = (t) => { window.location.hash = t; };
 
-            const [activeTab, setActiveTab] = useState('invoice');
             const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "SN001", items: [], discount: 0 });
             
             const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
 
-            const [loading, setLoading] = useState(false);
-            const [msg, setMsg] = useState(null);
-            const [showReceipt, setShowReceipt] = useState(false);
-            const [lastInv, setLastInv] = useState(null);
-            const [hsCodes, setHsCodes] = useState([]);
-            const [editingCustId, setEditingCustId] = useState(null);
-            const [editingInvId, setEditingInvId] = useState(null);
+            const [loading, setLoading] = useState(false); const [msg, setMsg] = useState(null); const [showReceipt, setShowReceipt] = useState(false); const [lastInv, setLastInv] = useState(null); const [hsCodes, setHsCodes] = useState([]); const [editingCustId, setEditingCustId] = useState(null); const [editingInvId, setEditingInvId] = useState(null);
             const [newItem, setNewItem] = useState({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" });
             const [newCust, setNewCust] = useState({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
-            const [invSearch, setInvSearch] = useState("");
-            const [histSearch, setHistSearch] = useState("");
-            const [custSearch, setCustSearch] = useState("");
-            const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS);
-            const [invUomStatus, setInvUomStatus] = useState(null);
-            const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES);
-            const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES);
-            const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
+            const [invSearch, setInvSearch] = useState(""); const [histSearch, setHistSearch] = useState(""); const [custSearch, setCustSearch] = useState(""); const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS); const [invUomStatus, setInvUomStatus] = useState(null);
+            const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES); const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES); const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
             const showRetailFed = activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType));
             
-            // Dynamic Tabs (Adds 'Businesses' tab if they have > 1)
-            const tabs = user.accessibleBusinesses?.length > 1 ? ['invoice', 'inventory', 'customers', 'history', 'settings', 'businesses'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
+            const tabs = user.accessibleBusinesses?.length > 1 ? ['businesses', 'invoice', 'inventory', 'customers', 'history', 'settings'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
 
             useEffect(() => { if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province })); }, [user?.settings?.province]);
-
             useEffect(() => {
                 const fetchReferenceData = async () => {
                     const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
@@ -699,14 +492,7 @@
             useEffect(() => {
                 const isUnregistered = invoice.customerRegType === "Unregistered";
                 const ftRate = user.settings.taxRates?.furtherTax || 4;
-                setInvoice(prev => {
-                    const newItems = prev.items.map(item => {
-                        let newFTRate = parseFloat(item.furtherTax) || 0;
-                        if (isUnregistered) { if (newFTRate === 0) newFTRate = ftRate; } else { newFTRate = 0; }
-                        return { ...item, furtherTax: newFTRate };
-                    });
-                    return { ...prev, items: newItems };
-                });
+                setInvoice(prev => { const newItems = prev.items.map(item => { let newFTRate = parseFloat(item.furtherTax) || 0; if (isUnregistered) { if (newFTRate === 0) newFTRate = ftRate; } else { newFTRate = 0; } return { ...item, furtherTax: newFTRate }; }); return { ...prev, items: newItems }; });
                 setLineItemForm(prev => ({ ...prev, furtherTax: isUnregistered ? (parseFloat(prev.furtherTax) || ftRate) : 0 }));
             }, [invoice.customerRegType]);
 
@@ -716,18 +502,13 @@
                 const tryFetch = async (code) => {
                     const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.HS_UOM}?hs_code=${code}&annexure_id=3`, { method: 'GET', headers: { 'Authorization': token ? `Bearer ${token}` : '' } });
-                    if (res.status === 401) throw new Error("401");
-                    if (!res.ok) return null;
-                    const data = await res.json();
-                    if (Array.isArray(data)) { if (data.length > 0) return data.map(d => d.description); return []; }
-                    return null;
+                    if (res.status === 401) throw new Error("401"); if (!res.ok) return null;
+                    const data = await res.json(); if (Array.isArray(data)) { if (data.length > 0) return data.map(d => d.description); return []; } return null;
                 };
                 try {
                     setInvUomStatus({ text: "Fetching...", type: "info" });
-                    let uoms = await tryFetch(actualCode);
-                    if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; }
-                    const cleanCode = actualCode.replace(/[^0-9]/g, '');
-                    if (cleanCode !== actualCode) { uoms = await tryFetch(cleanCode); if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; } }
+                    let uoms = await tryFetch(actualCode); if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; }
+                    const cleanCode = actualCode.replace(/[^0-9]/g, ''); if (cleanCode !== actualCode) { uoms = await tryFetch(cleanCode); if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; } }
                     if (cleanCode.length === 8) { const formatted = `${cleanCode.slice(0, 4)}.${cleanCode.slice(4)}`; if (formatted !== actualCode) { uoms = await tryFetch(formatted); if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; } } }
                     setInvUomStatus({ text: "Not Found", type: "error" }); return dynamicUOMs;
                 } catch (e) { setInvUomStatus({ text: "Net Error", type: "error" }); return dynamicUOMs; }
@@ -749,11 +530,8 @@
 
             const saveUser = async (newData) => {
                 const u = { ...user, ...newData }; setUser(u);
-                try {
-                    sessionStorage.setItem('fbr_session', JSON.stringify(u)); 
-                    if (window.localforage) await window.localforage.setItem('fbr_session', u);
-                    await fetch('https://app.tallied.pk/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify({ user: u }) });
-                } catch (e) {}
+                try { sessionStorage.setItem('fbr_session', JSON.stringify(u)); if (window.localforage) await window.localforage.setItem('fbr_session', u);
+                await fetch('https://app.tallied.pk/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('fbr_token')}` }, body: JSON.stringify({ user: u }) }); } catch (e) {}
             };
 
             const pushItemToInvoice = () => {
@@ -768,17 +546,13 @@
             };
 
             const pickProductForInvoiceForm = (prod) => {
-                fetchAllowedUOMs(prod.hsCode).then(uoms => { 
-                    setLineItemForm(p => ({ 
-                        ...p, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0, fedPayable: prod.fedPayable, wht: prod.wht, allowedUOMs: uoms, isFromInventory: true 
-                    })); 
-                });
+                fetchAllowedUOMs(prod.hsCode).then(uoms => { setLineItemForm(p => ({ ...p, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0, fedPayable: prod.fedPayable, wht: prod.wht, allowedUOMs: uoms, isFromInventory: true })); });
             };
 
             const addCustomer = () => { if (!newCust.name) return; saveUser({ customers: editingCustId ? (user.customers || []).map(c => c.id === editingCustId ? { ...c, ...newCust } : c) : [...(user.customers || []), { id: Date.now(), ...newCust }] }); setNewCust({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' }); setEditingCustId(null); };
             const editCustomer = (c) => { setNewCust(c); setEditingCustId(c.id); };
             const deleteCustomer = (id) => saveUser({ customers: (user.customers || []).filter(c => c.id !== id) });
-            const addInventory = () => { if (newItem.name) { saveUser({ inventory: [...(user.inventory || []), { id: Date.now(), ...newItem, status: 'Active' }] }); setNewItem({ ...newItem, name: '', uom: "" }); } };
+            const addInventory = () => { if (newItem.name) { saveUser({ inventory: [...(user.inventory || []), { id: Date.now(), ...newItem, status: 'Active' }] }); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } };
             const deleteInventory = (id) => saveUser({ inventory: (user.inventory || []).filter(i => i.id !== id) });
             const downloadInvoice = (inv) => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inv, null, 2)); a.download = `invoice_${inv.fbrInvoiceNumber}.json`; document.body.appendChild(a); a.click(); a.remove(); };
 
@@ -786,11 +560,7 @@
             const filteredHistory = (user.history || []).filter(h => !histSearch || (h.fbrInvoiceNumber && h.fbrInvoiceNumber.toLowerCase().includes(histSearch.toLowerCase())) || (h.customerName && h.customerName.toLowerCase().includes(histSearch.toLowerCase())));
             const filteredCustomers = (user.customers || []).filter(c => c && (!custSearch || c.name.toLowerCase().includes(custSearch.toLowerCase()) || (c.ntn && c.ntn.includes(custSearch))));
 
-            const onSelectCustomerName = (val) => {
-                const existingCust = (user.customers || []).find(c => c && c.name === val);
-                if (existingCust) setInvoice(prev => ({ ...prev, customerName: existingCust.name, customerNTN: existingCust.ntn, customerDestination: existingCust.destination, customerAddress: existingCust.address }));
-                else setInvoice(prev => ({ ...prev, customerName: val }));
-            };
+            const onSelectCustomerName = (val) => { const existingCust = (user.customers || []).find(c => c && c.name === val); if (existingCust) setInvoice(prev => ({ ...prev, customerName: existingCust.name, customerNTN: existingCust.ntn, customerDestination: existingCust.destination, customerAddress: existingCust.address, customerRegType: existingCust.regType || 'Unregistered' })); else setInvoice(prev => ({ ...prev, customerName: val })); };
 
             const checkCustomerStatus = async (regNo, isInv = false) => {
                 if (!regNo || regNo.length < 7) return setMsg({ type: 'error', text: 'Invalid NTN' });
@@ -800,37 +570,23 @@
                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.GET_REG_TYPE}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' }, body: JSON.stringify({ Registration_No: regNo }) });
                     if (res.ok) {
                         const data = await res.json();
-                        if (data.statuscode === "00") {
-                            setMsg({ type: 'success', text: `Verified: ${data.REGISTRATION_TYPE}` });
-                            if (isInv) setInvoice(prev => ({ ...prev, customerRegType: data.REGISTRATION_TYPE })); else setNewCust(prev => ({ ...prev, regType: data.REGISTRATION_TYPE }));
-                        } else {
-                            setMsg({ type: 'error', text: `Error: ${FBR_ERRORS[data.statuscode] || 'Inactive'}` });
-                            if (isInv) setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" })); else setNewCust(prev => ({ ...prev, regType: "Unregistered" }));
-                        }
+                        if (data.statuscode === "00") { setMsg({ type: 'success', text: `Verified: ${data.REGISTRATION_TYPE}` }); if (isInv) setInvoice(prev => ({ ...prev, customerRegType: data.REGISTRATION_TYPE })); else setNewCust(prev => ({ ...prev, regType: data.REGISTRATION_TYPE })); } 
+                        else { setMsg({ type: 'error', text: `Error: ${FBR_ERRORS[data.statuscode] || 'Inactive'}` }); if (isInv) setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" })); else setNewCust(prev => ({ ...prev, regType: "Unregistered" })); }
                     } else setMsg({ type: 'error', text: 'API Failed' });
                 } catch (e) { setMsg({ type: 'error', text: 'Verification Error' }); }
             };
 
             const callFbrApi = async (isValidate = false) => {
                 if (isExpired) return setMsg({ type: 'error', text: 'Subscription Expired.' });
-                const mode = user.settings.integrationMode;
-                const token = mode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
+                const mode = user.settings.integrationMode; const token = mode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
                 if (!token) return setMsg({ type: 'error', text: 'Token Missing.' });
 
                 const payload = {
                     invoiceType: invoice.type, invoiceDate: invoice.invoiceDate, sellerNTNCNIC: String(user.settings.ntn || "").replace(/-/g, ""), sellerBusinessName: user.settings.businessName, sellerProvince: user.settings.province, sellerAddress: user.settings.address,
                     buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", buyerBusinessName: invoice.customerName, buyerProvince: invoice.customerDestination, buyerAddress: invoice.customerAddress, buyerRegistrationType: invoice.customerRegType, invoiceRefNo: invoice.refInvoiceNumber,
                     items: invoice.items.map(item => {
-                        const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0;
-                        const baseVal = (isRetailFedSale(item.saleType) ? r : p) * q;
-                        return {
-                            hsCode: item.hsCode, productDescription: item.desc, rate: `${item.taxRate}%`, uoM: item.uom || "Numbers, pieces, units", quantity: q,
-                            totalValues: +(baseVal + (baseVal * (parseFloat(item.taxRate) / 100 || 0)) + (baseVal * (parseFloat(item.furtherTax) / 100 || 0)) + (isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0)).toFixed(2),
-                            valueSalesExcludingST: +baseVal.toFixed(2), fixedNotifiedValueOrRetailPrice: +r.toFixed(2), salesTaxApplicable: +(baseVal * (parseFloat(item.taxRate) / 100 || 0)).toFixed(2),
-                            salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2), extraTax: +(isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0).toFixed(2),
-                            furtherTax: +(baseVal * (parseFloat(item.furtherTax) / 100 || 0)).toFixed(2), sroScheduleNo: item.sroScheduleNo || "", fedPayable: +(isRetailFedSale(item.saleType) ? (parseFloat(item.fedPayable) || 0) : 0).toFixed(2),
-                            discount: +(parseFloat(item.discount) || 0).toFixed(2), saleType: item.saleType, sroItemSerialNo: item.sroItemSerialNo || ""
-                        };
+                        const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0; const baseVal = (isRetailFedSale(item.saleType) ? r : p) * q;
+                        return { hsCode: item.hsCode, productDescription: item.desc, rate: `${item.taxRate}%`, uoM: item.uom || "Numbers, pieces, units", quantity: q, totalValues: +(baseVal + (baseVal * (parseFloat(item.taxRate) / 100 || 0)) + (baseVal * (parseFloat(item.furtherTax) / 100 || 0)) + (isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0)).toFixed(2), valueSalesExcludingST: +baseVal.toFixed(2), fixedNotifiedValueOrRetailPrice: +r.toFixed(2), salesTaxApplicable: +(baseVal * (parseFloat(item.taxRate) / 100 || 0)).toFixed(2), salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2), extraTax: +(isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0).toFixed(2), furtherTax: +(baseVal * (parseFloat(item.furtherTax) / 100 || 0)).toFixed(2), sroScheduleNo: item.sroScheduleNo || "", fedPayable: +(isRetailFedSale(item.saleType) ? (parseFloat(item.fedPayable) || 0) : 0).toFixed(2), discount: +(parseFloat(item.discount) || 0).toFixed(2), saleType: item.saleType, sroItemSerialNo: item.sroItemSerialNo || "" };
                     })
                 };
                 if (mode !== 'production') payload.scenarioId = invoice.scenarioId || "SN001";
@@ -844,53 +600,36 @@
                         if (data && data.Code && data.Code !== "0000") setMsg({ type: 'error', text: `${FBR_ERRORS[data.Code] || data.Message}` });
                         else {
                             setMsg({ type: 'success', text: isValidate ? "Validation Successful" : "Submitted Successfully" });
-                            if (!isValidate) {
-                                saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: data?.InvoiceNumber || `FBR-${Date.now()}` }, ...(user.history || [])] });
-                                setInvoice({ ...invoice, invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, items: [], discount: 0 });
-                            }
+                            if (!isValidate) { saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: data?.InvoiceNumber || `FBR-${Date.now()}` }, ...(user.history || [])] }); setInvoice({ ...invoice, invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, items: [], discount: 0 }); }
                         }
                     } else setMsg({ type: 'error', text: `API Failed: ${res.statusText}` });
                 } catch (e) {
                     setMsg({ type: 'success', text: isValidate ? "Valid (Demo Mode)" : "Submitted (Demo Mode)" });
-                    if (!isValidate) {
-                        saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: `FBR-${Date.now()}` }, ...(user.history || [])] });
-                        setInvoice({ ...invoice, invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, items: [], discount: 0 });
-                    }
+                    if (!isValidate) { saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: `FBR-${Date.now()}` }, ...(user.history || [])] }); setInvoice({ ...invoice, invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, items: [], discount: 0 }); }
                 } finally { setLoading(false); }
             };
 
             const renderInvoiceTemplate = () => {
-                let qrUrl = "";
-                try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 150 }).toDataURL(); } catch (e) {}
+                let qrUrl = ""; try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 150 }).toDataURL(); } catch (e) {}
                 return (
                     <div className="bg-white w-full max-w-5xl rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] relative print:w-full print:max-w-none print:max-h-none print:shadow-none">
                         <button onClick={() => setShowReceipt(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-50 no-print" style={{ zIndex: 9999 }}><Icons.X /></button>
                         <div id="printable-area" className="p-8 text-black bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
                             <h1 className="text-center font-bold text-xl mb-6 tracking-widest">FBR DIGITAL INVOICING SYSTEM</h1>
                             <div className="grid grid-cols-2 gap-8 mb-6 text-sm">
-                                <div>
-                                    <h2 className="font-bold border-b border-black mb-2 uppercase tracking-wide">Seller Information</h2>
-                                    <div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">Business Name:</div><div>{user.settings?.businessName}</div><div className="font-semibold">Registration No.:</div><div>{user.settings?.ntn || user.settings?.strn}</div><div className="font-semibold">Province:</div><div>{user.settings?.province}</div></div>
-                                </div>
-                                <div>
-                                    <h2 className="font-bold border-b border-black mb-2 uppercase tracking-wide">Buyer Information</h2>
-                                    <div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">Business Name:</div><div>{lastInv?.customerName}</div><div className="font-semibold">Registration No.:</div><div>{lastInv?.customerNTN}</div><div className="font-semibold">Province:</div><div>{lastInv?.customerDestination}</div></div>
-                                </div>
+                                <div><h2 className="font-bold border-b border-black mb-2 uppercase tracking-wide">Seller Information</h2><div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">Business Name:</div><div>{user.settings?.businessName}</div><div className="font-semibold">Registration No.:</div><div>{user.settings?.ntn || user.settings?.strn}</div><div className="font-semibold">Province:</div><div>{user.settings?.province}</div></div></div>
+                                <div><h2 className="font-bold border-b border-black mb-2 uppercase tracking-wide">Buyer Information</h2><div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">Business Name:</div><div>{lastInv?.customerName}</div><div className="font-semibold">Registration No.:</div><div>{lastInv?.customerNTN}</div><div className="font-semibold">Province:</div><div>{lastInv?.customerDestination}</div></div></div>
                             </div>
                             <div className="mb-6 text-sm">
                                 <h2 className="font-bold border-b border-black mb-2 uppercase tracking-wide">Invoice Summary</h2>
-                                <div className="grid grid-cols-2 gap-x-8 gap-y-1">
-                                    <div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">FBR Invoice No.:</div><div>{lastInv?.fbrInvoiceNumber}</div><div className="font-semibold">Invoice Date:</div><div>{lastInv?.invoiceDate || lastInv?.date}</div></div>
-                                    <div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">Invoice Type:</div><div>{lastInv?.type || 'Sale Invoice'}</div><div className="font-semibold">Tax Period:</div><div>{(lastInv?.invoiceDate || lastInv?.date || '').replace(/-/g, '').substring(0, 6)}</div></div>
-                                </div>
+                                <div className="grid grid-cols-2 gap-x-8 gap-y-1"><div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">FBR Invoice No.:</div><div>{lastInv?.fbrInvoiceNumber}</div><div className="font-semibold">Invoice Date:</div><div>{lastInv?.invoiceDate || lastInv?.date}</div></div><div className="grid grid-cols-[130px_1fr] gap-1"><div className="font-semibold">Invoice Type:</div><div>{lastInv?.type || 'Sale Invoice'}</div><div className="font-semibold">Tax Period:</div><div>{(lastInv?.invoiceDate || lastInv?.date || '').replace(/-/g, '').substring(0, 6)}</div></div></div>
                             </div>
                             <div className="overflow-x-auto mb-6 border border-black">
                                 <table className="w-full text-[10px] border-collapse text-center">
                                     <thead><tr className="bg-gray-100"><th className="border border-black p-1">Sr. No.</th><th className="border border-black p-1">HS Code</th><th className="border border-black p-1 text-left">Product Description</th><th className="border border-black p-1">Sales Type</th><th className="border border-black p-1">Quantity</th><th className="border border-black p-1">UoM</th><th className="border border-black p-1">Rate</th><th className="border border-black p-1">Sales Value</th><th className="border border-black p-1">Retail Price</th><th className="border border-black p-1">Sales Tax</th><th className="border border-black p-1">Extra Tax</th><th className="border border-black p-1">Further Tax</th><th className="border border-black p-1">FED</th><th className="border border-black p-1">ST WHT</th><th className="border border-black p-1">SRO/Schedule No.</th><th className="border border-black p-1">Discount</th><th className="border border-black p-1">SRO Item Sr. No.</th></tr></thead>
                                     <tbody>
                                         {lastInv?.items?.map((item, idx) => {
-                                            const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
-                                            const val = (isRet ? r : p) * q;
+                                            const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType), val = (isRet ? r : p) * q;
                                             return (
                                                 <tr key={idx}>
                                                     <td className="border border-black p-1">{idx + 1}</td><td className="border border-black p-1">{item.hsCode?.split(' - ')[0]}</td><td className="border border-black p-1 text-left">{item.desc}</td><td className="border border-black p-1">{item.saleType}</td><td className="border border-black p-1">{q}</td><td className="border border-black p-1">{item.uom}</td><td className="border border-black p-1">{item.taxRate}%</td>
@@ -924,7 +663,7 @@
                                 <div><h1 className="font-bold leading-none">Hi {user.username || 'User'}</h1><span className="text-gray-400 text-xs">{user.settings?.businessName}</span></div>
                             </div>
                             <div className="flex gap-2 text-sm">
-                                {tabs.map(t => (<button key={t} onClick={() => setActiveTab(t)} className={`px-3 py-1.5 rounded capitalize transition-all duration-200 ${activeTab === t ? 'bg-white text-black font-bold' : 'hover:bg-gray-800 text-gray-300'}`}>{t}</button>))}
+                                {tabs.map(t => (<button key={t} onClick={() => changeTab(t)} className={`px-3 py-1.5 rounded capitalize transition-all duration-200 ${activeTab === t ? 'bg-white text-black font-bold shadow' : 'hover:bg-gray-800 text-gray-300'}`}>{t}</button>))}
                                 <button onClick={onLogout} className="bg-gray-800 hover:bg-red-600 p-2 rounded ml-2"><Icons.LogOut /></button>
                             </div>
                         </div>
@@ -940,20 +679,15 @@
                                 <h2 className="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">Switch Business Dashboard</h2>
                                 <div className="flex flex-col gap-4">
                                     {user.accessibleBusinesses.map(b => (
-                                        <Card key={b.id} className={`p-0 overflow-hidden transition-colors ${b.id === user.activeBusinessId ? 'border-blue-600 border-2' : 'hover:border-black'}`}>
-                                            <button onClick={() => onSwitch(b.id)} className={`w-full p-5 flex justify-between items-center text-left group ${b.id === user.activeBusinessId ? 'bg-blue-50' : 'bg-white hover:bg-gray-50'}`}>
+                                        <Card key={b.id} className={`p-0 overflow-hidden transition-colors ${b.id === user.activeBusinessId ? 'border-blue-600 border-2' : 'border-black hover:shadow-md'}`}>
+                                            <button onClick={() => { sessionStorage.setItem('activeTab', 'invoice'); onSwitch(b.id); }} className={`w-full p-5 flex justify-between items-center text-left group ${b.id === user.activeBusinessId ? 'bg-blue-50' : 'bg-white hover:bg-gray-50'}`}>
                                                 <div className="flex items-center gap-4">
                                                     <div className="bg-gray-100 p-3 rounded-lg"><Icons.Briefcase className="text-gray-500" size={24}/></div>
                                                     <div>
-                                                        <h3 className="font-bold text-xl text-gray-900">{b.name} {b.id === user.activeBusinessId && <span className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded ml-2 uppercase">Current</span>}</h3>
+                                                        <h3 className="font-bold text-xl text-gray-900">{b.name} {b.id === user.activeBusinessId && <span className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded ml-2 uppercase tracking-wide">Current</span>}</h3>
                                                         <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
                                                     </div>
                                                 </div>
-                                                {b.id !== user.activeBusinessId && (
-                                                    <div className="bg-gray-100 p-2 rounded-full group-hover:bg-black group-hover:text-white transition-colors">
-                                                        <Icons.Plus size={20} className="rotate-45 transform group-hover:rotate-0 transition-transform" />
-                                                    </div>
-                                                )}
                                             </button>
                                         </Card>
                                     ))}
@@ -1014,22 +748,17 @@
                                         </div>
                                     </div>
 
-                                    {/* STRICT NO-WRAP INVOICE TABLE */}
                                     <div className="table-container border border-gray-200 rounded-lg">
                                         <table className="fbr-table">
                                             <thead className="bg-black text-white text-xs uppercase tracking-wide">
                                                 <tr>
-                                                    <th className="desc-col">Description</th><th className="hs-col">HS Code</th><th>Type</th><th>Qty/UoM</th><th>Price</th>{showRetailFed && <th>Ret.P</th>}<th>S.Tax%</th><th>S.Tax Amt</th>{showRetailFed && <th>Ex.Tax Amt</th>}<th>Fur.Tax Amt</th>{showRetailFed && <th>FED Amt</th>}<th className="text-center">Action</th>
+                                                    <th className="desc-col">Description</th><th className="hs-col">HS Code</th><th>Type</th><th>Qty/UoM</th><th>Price</th>{showRetailFed && <th>Ret.P</th>}<th>S.Tax%</th><th>S.Tax Amt</th>{showRetailFed && <th>Ex.Tax Amt</th>}<th>Fur.Tax Amt</th>{showRetailFed && <th>FED Amt</th>}<th>WHT</th><th>SRO Sch/Ser</th><th className="text-center">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {invoice.items.length === 0 ? <tr><td colSpan="12" className="p-8 text-center text-gray-400 border-b-0">No items added to invoice.</td></tr> : invoice.items.map(item => {
+                                                {invoice.items.length === 0 ? <tr><td colSpan="15" className="p-8 text-center text-gray-400 border-b-0">No items added to invoice.</td></tr> : invoice.items.map(item => {
                                                     const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
-                                                    const val = (isRet ? r : p) * q;
-                                                    const stAmt = val * (parseFloat(item.taxRate || 0) / 100);
-                                                    const exAmt = isRet ? (val * (parseFloat(item.extraTax || 0) / 100)) : 0;
-                                                    const furAmt = val * (parseFloat(item.furtherTax || 0) / 100);
-                                                    const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
+                                                    const val = (isRet ? r : p) * q; const stAmt = val * (parseFloat(item.taxRate || 0) / 100); const exAmt = isRet ? (val * (parseFloat(item.extraTax || 0) / 100)) : 0; const furAmt = val * (parseFloat(item.furtherTax || 0) / 100); const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
                                                     return (
                                                         <tr key={item.id} className="hover:bg-gray-50">
                                                             <td className="font-bold text-xs desc-col">{item.desc} {item.discount > 0 && <span className="block text-[10px] text-red-500 font-normal">Disc: {item.discount}</span>}</td>
@@ -1043,6 +772,8 @@
                                                             {showRetailFed && <td className="text-xs">{isRet ? formatCurrency(exAmt) : '-'}</td>}
                                                             <td className="text-xs">{formatCurrency(furAmt)}</td>
                                                             {showRetailFed && <td className="text-xs">{isRet ? formatCurrency(fedAmt) : '-'}</td>}
+                                                            <td className="text-xs">{formatCurrency(item.wht)}</td>
+                                                            <td className="text-xs text-gray-500">{item.sroScheduleNo || '-'}/{item.sroItemSerialNo || '-'}</td>
                                                             <td className="text-center">
                                                                 <div className="flex justify-center gap-2">
                                                                     <button onClick={() => setLineItemForm(item)} className="text-gray-600 hover:text-black"><Icons.Edit size={16} /></button>
@@ -1096,8 +827,8 @@
                                             {isRetailFedSale(newItem.saleType) && <div className="md:col-span-1"><Input label="FED" type="number" value={newItem.fedPayable} onChange={e => setNewItem({ ...newItem, fedPayable: e.target.value })} /></div>}
                                             <div className="md:col-span-2 flex gap-2"><Input label="SRO Schedule No" value={newItem.sroScheduleNo} onChange={e => setNewItem({ ...newItem, sroScheduleNo: e.target.value })} /><Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
                                             <div className="md:col-span-12 flex justify-end gap-2 mt-4">
-                                                {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", taxRate: user.settings.taxRates?.salesTax || 18, saleType: "Goods at standard rate (default)", extraTax: user.settings.taxRates?.extraTax || 0, furtherTax: 0, retailPrice: 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-4">Cancel</Button>}
-                                                <Button onClick={() => { if (editingInvId) { saveUser({ inventory: (user.inventory || []).map(i => i.id === editingInvId ? { ...i, ...newItem } : i) }); setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", taxRate: user.settings.taxRates?.salesTax || 18, saleType: "Goods at standard rate (default)", extraTax: user.settings.taxRates?.extraTax || 0, furtherTax: 0, retailPrice: 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } else addInventory(); }} className="px-8"><Icons.Save size={16} /> Save</Button>
+                                                {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-4">Cancel</Button>}
+                                                <Button onClick={() => { if (editingInvId) { saveUser({ inventory: (user.inventory || []).map(i => i.id === editingInvId ? { ...i, ...newItem } : i) }); setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } else addInventory(); }} className="px-8"><Icons.Save size={16} /> Save</Button>
                                             </div>
                                         </div>
                                     </Card>
