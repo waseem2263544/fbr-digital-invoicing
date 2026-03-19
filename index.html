@@ -107,6 +107,7 @@
             return { ok: proxyData.ok, status: proxyData.status, json: async () => proxyData.data };
         };
 
+        // --- THE FULL-WIDTH LOBBY UI ---
         const BusinessSelectionScreen = ({ user, onSelect, onLogout }) => {
             const [searchQuery, setSearchQuery] = useState("");
             const filteredBiz = user.accessibleBusinesses.filter(b => b.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -140,8 +141,8 @@
                                             <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-6">
-                                        <Button variant="secondary" className="text-sm bg-white border-gray-300">Open Dashboard</Button>
+                                    <div className="flex items-center gap-6 text-gray-400 hover:text-black">
+                                        <span className="text-sm font-bold">Open Dashboard &rarr;</span>
                                     </div>
                                 </Card>
                             )) : <div className="text-center py-8 text-gray-400">No businesses match your search.</div>}
@@ -199,7 +200,7 @@
                     if (res.ok) {
                         const data = await res.json();
                         sessionStorage.setItem('fbr_token', data.token);
-                        window.location.hash = 'invoice';
+                        window.location.hash = 'invoice'; // Force Invoice Tab
                         await handleLogin(data.user);
                         window.location.reload();
                     } else { alert("Failed to switch business context."); }
@@ -502,7 +503,11 @@
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
-            const showRetailFed = user.settings?.allowRetailFed || (activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType)));
+            
+            // STRICT RETAIL BOOLEAN PARSING
+            const allowSetting = user.settings?.allowRetailFed;
+            const forceRetailFed = allowSetting === true || allowSetting === 1 || String(allowSetting) === "true" || String(allowSetting) === "1";
+            const showRetailFed = forceRetailFed || (activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType)));
             
             const tabs = user.accessibleBusinesses?.length > 1 ? ['businesses', 'invoice', 'inventory', 'customers', 'history', 'settings'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
 
@@ -713,7 +718,7 @@
                                 </div>
                                 <div className="flex flex-col gap-4">
                                     {user.accessibleBusinesses.filter(b => b.name.toLowerCase().includes(bizSwitchSearch.toLowerCase())).map(b => (
-                                        <Card key={b.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 transition-colors cursor-pointer ${b.id === user.activeBusinessId ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-black bg-white hover:shadow-md'}`} onClick={() => { if(b.id !== user.activeBusinessId) onSwitch(b.id); }}>
+                                        <Card key={b.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 transition-colors cursor-pointer ${b.id === user.activeBusinessId ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-black bg-white hover:shadow-md'}`} onClick={() => { if(b.id !== user.activeBusinessId) { sessionStorage.setItem('activeTab', 'invoice'); onSwitch(b.id); } }}>
                                             <div className="flex-1 flex items-center gap-4">
                                                 <div className="bg-gray-100 p-3 rounded-lg"><Icons.Briefcase className="text-gray-500" size={24}/></div>
                                                 <div>
@@ -722,7 +727,7 @@
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-6">
-                                                {b.id !== user.activeBusinessId && <Button variant="secondary" className="text-sm bg-white border-gray-300">Open Dashboard</Button>}
+                                                {b.id !== user.activeBusinessId && <span className="text-sm font-bold text-gray-400 hover:text-black transition-colors">Open Dashboard &rarr;</span>}
                                             </div>
                                         </Card>
                                     ))}
