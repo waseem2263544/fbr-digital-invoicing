@@ -37,7 +37,7 @@
 
         const IconBase = ({ size = 20, children, ...props }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg> );
         const Icons = {
-            FileText: (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></IconBase>, Settings: (props) => <IconBase {...props}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></IconBase>, Plus: (props) => <IconBase {...props}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></IconBase>, Trash2: (props) => <IconBase {...props}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></IconBase>, Save: (props) => <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></IconBase>, Printer: (props) => <IconBase {...props}><polyline points="6 9 6 0 18 0 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></IconBase>, CheckCircle: (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></IconBase>, AlertCircle: (props) => <IconBase {...props}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></IconBase>, X: (props) => <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></IconBase>, ShieldCheck: (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></IconBase>, ShoppingCart: (props) => <IconBase {...props}><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></IconBase>, User: (props) => <IconBase {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></IconBase>, LogOut: (props) => <IconBase {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></IconBase>, Box: (props) => <IconBase {...props}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></IconBase>, Users: (props) => <IconBase {...props}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></IconBase>, Search: (props) => <IconBase {...props}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></IconBase>, Calendar: (props) => <IconBase {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></IconBase>, Edit: (props) => <IconBase {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></IconBase>, Download: (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconBase>, Eye: (props) => <IconBase {...props}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></IconBase>, Briefcase: (props) => <IconBase {...props}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></IconBase>
+            FileText: (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></IconBase>, Settings: (props) => <IconBase {...props}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></IconBase>, Plus: (props) => <IconBase {...props}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></IconBase>, Trash2: (props) => <IconBase {...props}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></IconBase>, Save: (props) => <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></IconBase>, Printer: (props) => <IconBase {...props}><polyline points="6 9 6 0 18 0 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></IconBase>, CheckCircle: (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></IconBase>, AlertCircle: (props) => <IconBase {...props}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></IconBase>, X: (props) => <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></IconBase>, ShieldCheck: (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></IconBase>, ShoppingCart: (props) => <IconBase {...props}><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></IconBase>, User: (props) => <IconBase {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></IconBase>, LogOut: (props) => <IconBase {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></IconBase>, Box: (props) => <IconBase {...props}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></IconBase>, Users: (props) => <IconBase {...props}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></IconBase>, Search: (props) => <IconBase {...props}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></IconBase>, Calendar: (props) => <IconBase {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></IconBase>, Edit: (props) => <IconBase {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></IconBase>, Download: (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconBase>, Eye: (props) => <IconBase {...props}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></IconBase>, Briefcase: (props) => <IconBase {...props}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></IconBase>
         };
 
         const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false, title }) => {
@@ -47,10 +47,10 @@
 
         const Card = ({ children, className = '', onClick }) => <div onClick={onClick} className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>{children}</div>;
 
-        const Input = ({ label, value, onChange, type = "text", placeholder = "", required = false, className = "", readOnly = false }) => (
+        const Input = ({ label, value, onChange, type = "text", placeholder = "", required = false, className = "", readOnly = false, disabled = false }) => (
             <div className={`flex flex-col gap-1 ${className}`}>
                 {label && <label className="text-xs font-semibold text-gray-500 uppercase">{label} {required && <span className="text-red-500">*</span>}</label>}
-                <input type={type} value={value} onChange={onChange} placeholder={placeholder} readOnly={readOnly} className={`standard-input rounded-lg ${readOnly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} />
+                <input type={type} value={value} onChange={onChange} disabled={disabled} placeholder={placeholder} readOnly={readOnly} className={`standard-input rounded-lg ${readOnly || disabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-dashed' : ''}`} />
             </div>
         );
 
@@ -107,7 +107,6 @@
             return { ok: proxyData.ok, status: proxyData.status, json: async () => proxyData.data };
         };
 
-        // --- THE FULL-WIDTH LOBBY UI ---
         const BusinessSelectionScreen = ({ user, onSelect, onLogout }) => {
             const [searchQuery, setSearchQuery] = useState("");
             const filteredBiz = user.accessibleBusinesses.filter(b => b.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -131,18 +130,15 @@
                                 <span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span>
                             </div>
                         </div>
-                        <div className="flex flex-col gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filteredBiz.length > 0 ? filteredBiz.map(b => (
-                                <Card key={b.id} className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 border-black hover:shadow-md transition-shadow cursor-pointer bg-white hover:bg-gray-50" onClick={() => onSelect(b.id)}>
-                                    <div className="flex-1 flex items-center gap-4">
-                                        <div className="bg-gray-100 p-3 rounded-lg"><Icons.Briefcase className="text-gray-500" size={24}/></div>
+                                <Card key={b.id} className="p-0 overflow-hidden transition-colors cursor-pointer border-gray-200 hover:border-black hover:shadow-md" onClick={() => onSelect(b.id)}>
+                                    <div className="w-full p-6 flex items-center gap-4 text-left group bg-white">
+                                        <div className="bg-gray-100 p-3 rounded-lg group-hover:bg-blue-50 transition-colors"><Icons.Briefcase className="text-gray-500 group-hover:text-blue-600" size={24}/></div>
                                         <div>
                                             <h3 className="font-bold text-xl text-gray-900">{b.name}</h3>
                                             <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-6 text-gray-400 hover:text-black">
-                                        <span className="text-sm font-bold">Open Dashboard &rarr;</span>
                                     </div>
                                 </Card>
                             )) : <div className="text-center py-8 text-gray-400">No businesses match your search.</div>}
@@ -200,7 +196,7 @@
                     if (res.ok) {
                         const data = await res.json();
                         sessionStorage.setItem('fbr_token', data.token);
-                        window.location.hash = 'invoice'; // Force Invoice Tab
+                        window.location.hash = 'invoice';
                         await handleLogin(data.user);
                         window.location.reload();
                     } else { alert("Failed to switch business context."); }
@@ -393,7 +389,7 @@
                                             <div className="bg-yellow-50 p-3 rounded border border-yellow-200"><h5 className="font-bold text-xs mb-2">Sandbox (Simulation)</h5><Input label="Sandbox Auth Token" value={editingBiz.sandboxToken || ''} onChange={e => setEditingBiz({ ...editingBiz, sandboxToken: e.target.value })} /></div>
                                             <div className="bg-gray-100 p-3 rounded border border-gray-200"><h5 className="font-bold text-xs mb-2">Production (Live)</h5><Input label="Production Auth Token" value={editingBiz.productionToken || ''} onChange={e => setEditingBiz({ ...editingBiz, productionToken: e.target.value })} /></div>
                                             <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Feature Control</h4>
-                                            <div className="flex items-center gap-2"><input type="checkbox" id="allowRetailFed" checked={editingBiz.allowRetailFed || false} onChange={e => setEditingBiz({ ...editingBiz, allowRetailFed: e.target.checked })} /><label htmlFor="allowRetailFed" className="text-sm">Allow Retail Price & FED Fields</label></div>
+                                            <div className="flex items-center gap-2"><input type="checkbox" id="allowRetailFed" checked={editingBiz.allowRetailFed || false} onChange={e => setEditingBiz({ ...editingBiz, allowRetailFed: e.target.checked })} /><label htmlFor="allowRetailFed" className="text-sm">Allow Retail Price & FED Fields globally for this business.</label></div>
                                             <h4 className="font-bold text-gray-700 border-b pb-2 pt-2">Default Rates</h4>
                                             <div className="grid grid-cols-3 gap-2"><Input label="Sales Tax %" type="number" value={editingBiz.taxRates?.salesTax || 18} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), salesTax: parseFloat(e.target.value) } })} /><Input label="Further Tax %" type="number" value={editingBiz.taxRates?.furtherTax || 4} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), furtherTax: parseFloat(e.target.value) } })} /><Input label="Extra Tax %" type="number" value={editingBiz.taxRates?.extraTax || 0} onChange={e => setEditingBiz({ ...editingBiz, taxRates: { ...(editingBiz.taxRates || {}), extraTax: parseFloat(e.target.value) } })} /></div>
                                         </div>
@@ -504,10 +500,9 @@
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
             
-            // STRICT RETAIL BOOLEAN PARSING
+            // STRICT RETAIL BOOLEAN PARSING: Unifies the global toggle for both Inventory and Invoices
             const allowSetting = user.settings?.allowRetailFed;
-            const forceRetailFed = allowSetting === true || allowSetting === 1 || String(allowSetting) === "true" || String(allowSetting) === "1";
-            const showRetailFed = forceRetailFed || (activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType)));
+            const showRetailFed = allowSetting === true || allowSetting === 1 || String(allowSetting) === "true" || String(allowSetting) === "1";
             
             const tabs = user.accessibleBusinesses?.length > 1 ? ['businesses', 'invoice', 'inventory', 'customers', 'history', 'settings'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
 
@@ -716,18 +711,15 @@
                                     <div><h2 className="text-3xl font-bold text-gray-900">Switch Business Dashboard</h2><p className="text-gray-500 mt-1">Search and select the business account you want to manage.</p></div>
                                     <div className="relative w-64"><input type="text" placeholder="Search businesses..." className="px-3 py-2 border border-gray-300 rounded-lg outline-none w-full pl-8 text-sm" value={bizSwitchSearch} onChange={e => setBizSwitchSearch(e.target.value)} /><span className="absolute left-2 top-2.5 text-gray-400"><Icons.Search size={14} /></span></div>
                                 </div>
-                                <div className="flex flex-col gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {user.accessibleBusinesses.filter(b => b.name.toLowerCase().includes(bizSwitchSearch.toLowerCase())).map(b => (
-                                        <Card key={b.id} className={`p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 transition-colors cursor-pointer ${b.id === user.activeBusinessId ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-black bg-white hover:shadow-md'}`} onClick={() => { if(b.id !== user.activeBusinessId) { sessionStorage.setItem('activeTab', 'invoice'); onSwitch(b.id); } }}>
-                                            <div className="flex-1 flex items-center gap-4">
-                                                <div className="bg-gray-100 p-3 rounded-lg"><Icons.Briefcase className="text-gray-500" size={24}/></div>
+                                        <Card key={b.id} className={`p-0 overflow-hidden transition-colors cursor-pointer ${b.id === user.activeBusinessId ? 'border-blue-600 border-2 shadow-md' : 'border-gray-200 hover:border-black hover:shadow-md'}`} onClick={() => { if(b.id !== user.activeBusinessId) { sessionStorage.setItem('activeTab', 'invoice'); onSwitch(b.id); } }}>
+                                            <div className={`w-full p-6 flex items-center gap-4 text-left group ${b.id === user.activeBusinessId ? 'bg-blue-50' : 'bg-white hover:bg-gray-50'}`}>
+                                                <div className="bg-gray-100 p-3 rounded-lg group-hover:bg-blue-100 transition-colors"><Icons.Briefcase className="text-gray-500 group-hover:text-blue-600" size={24}/></div>
                                                 <div>
-                                                    <h3 className="font-bold text-xl text-gray-900">{b.name} {b.id === user.activeBusinessId && <span className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded ml-2 uppercase tracking-wide">Current</span>}</h3>
+                                                    <h3 className="font-bold text-xl text-gray-900 group-hover:text-black">{b.name} {b.id === user.activeBusinessId && <span className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded ml-2 uppercase tracking-wide">Current</span>}</h3>
                                                     <p className="text-xs text-gray-500 uppercase mt-1 font-semibold">Your Role: <span className="text-blue-600">{b.accessLevel}</span></p>
                                                 </div>
-                                            </div>
-                                            <div className="flex items-center gap-6">
-                                                {b.id !== user.activeBusinessId && <span className="text-sm font-bold text-gray-400 hover:text-black transition-colors">Open Dashboard &rarr;</span>}
                                             </div>
                                         </Card>
                                     ))}
@@ -769,7 +761,7 @@
                                             <div className="col-span-1"><Input label="Fur.Tax %" type="number" value={lineItemForm.furtherTax} onChange={e => setLineItemForm({...lineItemForm, furtherTax: e.target.value})} /></div>
                                             <div className="col-span-1"><Input label="Disc. Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
                                             
-                                            {isRetailFedSale(lineItemForm.saleType) && (
+                                            {showRetailFed && (
                                                 <>
                                                     <div className="col-span-1"><Input label="Ret.Price" type="number" value={lineItemForm.retailPrice} onChange={e => setLineItemForm({...lineItemForm, retailPrice: e.target.value})} /></div>
                                                     <div className="col-span-1"><Input label="Ex.Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
@@ -781,7 +773,7 @@
                                             <div className="col-span-1"><Input label="SRO Sch#" value={lineItemForm.sroScheduleNo} onChange={e => setLineItemForm({...lineItemForm, sroScheduleNo: e.target.value})} /></div>
                                             <div className="col-span-1"><Input label="SRO Ser#" value={lineItemForm.sroItemSerialNo} onChange={e => setLineItemForm({...lineItemForm, sroItemSerialNo: e.target.value})} /></div>
                                             
-                                            <div className={`col-span-12 flex justify-end gap-2 mt-2 ${!isRetailFedSale(lineItemForm.saleType) ? 'md:col-span-3' : 'md:col-span-12'}`}>
+                                            <div className={`col-span-12 flex justify-end gap-2 mt-2 ${!showRetailFed ? 'md:col-span-3' : 'md:col-span-12'}`}>
                                                 {lineItemForm.id && <Button onClick={() => setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0})} variant="secondary">Cancel</Button>}
                                                 <Button onClick={pushItemToInvoice} className="w-full md:w-auto"><Icons.Plus /> {lineItemForm.id ? 'Update Line Item' : 'Add Line Item'}</Button>
                                             </div>
@@ -857,19 +849,30 @@
                                 {userCanEdit && (
                                     <Card className="p-6 mb-6">
                                         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Icons.Box /> {editingInvId ? 'Edit Item' : 'Add Item'}</h2>
-                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                                            <div className="md:col-span-2"><Input label="Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} /></div>
-                                            <div className="md:col-span-2"><SearchableDropdown label="Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
-                                            <div className="md:col-span-2"><SearchableDropdown label="HS" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
-                                            <div className="md:col-span-1"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
-                                            <div className="md:col-span-1"><Input label="Price" type="number" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} /></div>
-                                            {isRetailFedSale(newItem.saleType) && <div className="md:col-span-1"><Input label="Ret. Price" type="number" value={newItem.retailPrice} onChange={e => setNewItem({ ...newItem, retailPrice: e.target.value })} /></div>}
-                                            <div className="md:col-span-1"><Input label="Tax Rate %" type="number" value={newItem.taxRate} onChange={e => setNewItem({ ...newItem, taxRate: e.target.value })} /></div>
-                                            {isRetailFedSale(newItem.saleType) && <div className="md:col-span-1"><Input label="FED" type="number" value={newItem.fedPayable} onChange={e => setNewItem({ ...newItem, fedPayable: e.target.value })} /></div>}
-                                            <div className="md:col-span-2 flex gap-2"><Input label="SRO Schedule No" value={newItem.sroScheduleNo} onChange={e => setNewItem({ ...newItem, sroScheduleNo: e.target.value })} /><Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
-                                            <div className="md:col-span-12 flex justify-end gap-2 mt-4">
+                                        
+                                        {/* INVENTORY 12-COLUMN MULTI-ROW GRID */}
+                                        <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 bg-white items-end border border-blue-200 rounded-lg">
+                                            <div className="md:col-span-3"><Input label="Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} /></div>
+                                            <div className="md:col-span-4"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
+                                            <div className="md:col-span-3"><SearchableDropdown label="Sales Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
+                                            <div className="md:col-span-2"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
+                                            
+                                            <div className="md:col-span-2"><Input label="Price" type="number" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} /></div>
+                                            <div className="md:col-span-2"><Input label="Tax Rate %" type="number" value={newItem.taxRate} onChange={e => setNewItem({ ...newItem, taxRate: e.target.value })} /></div>
+                                            
+                                            {showRetailFed && (
+                                                <>
+                                                    <div className="md:col-span-2"><Input label="Ret. Price" type="number" value={newItem.retailPrice} onChange={e => setNewItem({ ...newItem, retailPrice: e.target.value })} /></div>
+                                                    <div className="md:col-span-2"><Input label="FED" type="number" value={newItem.fedPayable} onChange={e => setNewItem({ ...newItem, fedPayable: e.target.value })} /></div>
+                                                </>
+                                            )}
+                                            
+                                            <div className="md:col-span-2"><Input label="SRO Schedule" value={newItem.sroScheduleNo} onChange={e => setNewItem({ ...newItem, sroScheduleNo: e.target.value })} /></div>
+                                            <div className="md:col-span-2"><Input label="SRO Serial" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
+                                            
+                                            <div className="md:col-span-12 flex justify-end gap-2 mt-2 border-t border-gray-100 pt-4">
                                                 {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-4">Cancel</Button>}
-                                                <Button onClick={() => { if (editingInvId) { saveUser({ inventory: (user.inventory || []).map(i => i.id === editingInvId ? { ...i, ...newItem } : i) }); setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } else addInventory(); }} className="px-8"><Icons.Save size={16} /> Save</Button>
+                                                <Button onClick={() => { if (editingInvId) { saveUser({ inventory: (user.inventory || []).map(i => i.id === editingInvId ? { ...i, ...newItem } : i) }); setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } else addInventory(); }} className="px-8"><Icons.Save size={16} /> {editingInvId ? 'Update Item' : 'Save Item'}</Button>
                                             </div>
                                         </div>
                                     </Card>
