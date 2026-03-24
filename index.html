@@ -44,7 +44,7 @@
         const DOCUMENT_TYPES = [ "Sale Invoice", "Debit Note" ];
         const UOM_OPTIONS = [ "Numbers, pieces, units", "MT", "Bill of lading", "SET", "KWH", "40KG", "Liter", "SqY", "Bag", "KG", "MMBTU", "Meter", "Carat", "Cubic Metre", "Dozen", "Gram", "Gallon", "Kilogram", "Pound", "Timber logs", "Packs", "Pair", "Square Foot", "Square Metre", "Thousand Unit", "Mega Watt", "Foot", "Barrels", "NO", "Others", "1000kWh" ];
         const PROVINCES = [ "Azad Jammu and Kashmir", "Balochistan", "Capital Territory", "FATA/PATA", "Gilgit Baltistan", "Khyber Pakhtunkhwa", "Punjab", "Sindh" ];
-        
+        const SCENARIOS = [ "SN001", "SN002", "SN003", "SN004", "SN005", "SN006", "SN007", "SN008", "SN009", "SN010", "SN011", "SN012", "SN013", "SN014", "SN015", "SN016", "SN017", "SN018", "SN019", "SN020", "SN021", "SN022", "SN023", "SN024", "SN025", "SN026", "SN027", "SN028" ];
         const FBR_ERRORS = { "0000": "Successful", "0001": "Invalid NTN/Reg. No. format", "0004": "Seller Reg No. doesn't match", "0005": "Buyer Name is empty/invalid", "0007": "Sale Type not allowed/invalid", "0009": "Provide UOM in KG", "0010": "Quantity/Electricity Units missing", "0011": "Provide Value of Sales Excl. ST", "0039": "STWH invoice fields must be same as sale invoice", "0041": "Invoice number cannot be empty", "0042": "Invoice date cannot be empty", "0044": "HS Code cannot be empty", "0053": "Buyer Registration Type is invalid", "0070": "User is not registered, STWH is allowed only for registered user", "0073": "Provide Sale Origination Province of Supplier", "0074": "Provide Destination of Supply", "0077": "SRO/Schedule Number cannot be empty", "0078": "Item serial number cannot be empty", "0082": "The Seller is not registered for sales tax", "0106": "The Buyer is not registered for sales tax", "0401": "Unauthorized access: Seller NTN/CNIC token is invalid", "0402": "Unauthorized access: Buyer NTN/CNIC token is invalid" };
 
         const numberToWords = (num) => {
@@ -705,7 +705,6 @@
                 const mode = user.settings.integrationMode; const token = mode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
                 if (!token) return setMsg({ type: 'error', text: 'Token Missing.' });
 
-                // Smart RegType Resolution: Uses the auto-retry value, OR the verified value, OR guesses based on NTN presence.
                 let finalRegType = retryRegType || invoice.customerRegType || (invoice.customerNTN && String(invoice.customerNTN).replace(/-/g, '').length >= 7 ? "Registered" : "Unregistered");
 
                 const payload = {
@@ -713,35 +712,71 @@
                     buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", buyerBusinessName: invoice.customerName, buyerProvince: invoice.customerDestination, buyerAddress: invoice.customerAddress, 
                     buyerRegistrationType: finalRegType, 
                     invoiceRefNo: invoice.refInvoiceNumber,
-                    
-                    // NEW FIX: Added (item, index) to track the row number
                     items: invoice.items.map((item, index) => {
                         const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0; const baseVal = (isRetailFedSale(item.saleType) ? r : p) * q;
                         const cleanHsCode = item.hsCode ? item.hsCode.split(' - ')[0].trim() : "";
-                        
-                        return { 
-                            itemNo: index + 1, // <--- THE CRITICAL FIX: Tells FBR if this is row 1, 2, 3, etc.
-                            hsCode: cleanHsCode, 
-                            productDescription: item.desc, 
-                            rate: `${item.taxRate}%`, 
-                            uoM: item.uom || "Numbers, pieces, units", 
-                            quantity: q, 
-                            totalValues: +(baseVal + (baseVal * (parseFloat(item.taxRate) / 100 || 0)) + (baseVal * (parseFloat(item.furtherTax) / 100 || 0)) + (isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0)).toFixed(2), 
-                            valueSalesExcludingST: +baseVal.toFixed(2), 
-                            fixedNotifiedValueOrRetailPrice: +r.toFixed(2), 
-                            salesTaxApplicable: +(baseVal * (parseFloat(item.taxRate) / 100 || 0)).toFixed(2), 
-                            salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2), 
-                            extraTax: +(isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0).toFixed(2), 
-                            furtherTax: +(baseVal * (parseFloat(item.furtherTax) / 100 || 0)).toFixed(2), 
-                            sroScheduleNo: item.sroScheduleNo || "", 
-                            fedPayable: +(isRetailFedSale(item.saleType) ? (parseFloat(item.fedPayable) || 0) : 0).toFixed(2), 
-                            discount: +(parseFloat(item.discount) || 0).toFixed(2), 
-                            saleType: item.saleType, 
-                            sroItemSerialNo: item.sroItemSerialNo || "" 
-                        };
+                        return { itemNo: index + 1, hsCode: cleanHsCode, productDescription: item.desc, rate: `${item.taxRate}%`, uoM: item.uom || "Numbers, pieces, units", quantity: q, totalValues: +(baseVal + (baseVal * (parseFloat(item.taxRate) / 100 || 0)) + (baseVal * (parseFloat(item.furtherTax) / 100 || 0)) + (isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0)).toFixed(2), valueSalesExcludingST: +baseVal.toFixed(2), fixedNotifiedValueOrRetailPrice: +r.toFixed(2), salesTaxApplicable: +(baseVal * (parseFloat(item.taxRate) / 100 || 0)).toFixed(2), salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2), extraTax: +(isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0).toFixed(2), furtherTax: +(baseVal * (parseFloat(item.furtherTax) / 100 || 0)).toFixed(2), sroScheduleNo: item.sroScheduleNo || "", fedPayable: +(isRetailFedSale(item.saleType) ? (parseFloat(item.fedPayable) || 0) : 0).toFixed(2), discount: +(parseFloat(item.discount) || 0).toFixed(2), saleType: item.saleType, sroItemSerialNo: item.sroItemSerialNo || "" };
                     })
                 };
-                
+
+                if (mode !== 'production') {
+                    payload.scenarioId = retryScenario || (finalRegType === "Registered" ? "SN001" : "SN002");
+                }
+
+                setLoading(true);
+                try {
+                    const endpoint = isValidate ? (mode === 'production' ? SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_PROD : SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_SB) : (mode === 'production' ? SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD : SYSTEM_CONFIG.PATHS.POST_INVOICE_SB);
+                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
+                    
+                    const data = await res.json();
+                    
+                    if (res.ok) {
+                        let isFbrError = false;
+                        let errorMessage = "";
+
+                        if (data && data.Code && data.Code !== "0000" && data.Code !== "00") {
+                            isFbrError = true;
+                            errorMessage = FBR_ERRORS[data.Code] || data.Message || JSON.stringify(data);
+                        } 
+                        else if (data?.validationResponse && data.validationResponse.statusCode !== "00") {
+                            isFbrError = true;
+                            let itemErrors = data.validationResponse.invoiceStatuses?.filter(s => s.error)?.map(s => `Item ${s.itemSNo}: ${s.error}`).join(" | ") || "";
+                            errorMessage = data.validationResponse.error || itemErrors || "Validation Failed";
+                        }
+
+                        if (isFbrError) {
+                            if (errorMessage.toLowerCase().includes("scenario not valid for unregistered") && !retryScenario) {
+                                return callFbrApi(isValidate, "Unregistered", "SN002");
+                            }
+                            if (errorMessage.toLowerCase().includes("scenario not valid for registered") && !retryScenario) {
+                                return callFbrApi(isValidate, "Registered", "SN001");
+                            }
+                            setMsg({ type: 'error', text: `FBR Rejected: ${errorMessage}` });
+                        } else {
+                            setMsg({ type: 'success', text: isValidate ? "Validation Successful" : "Submitted Successfully" });
+                            if (!isValidate) { 
+                                let actualFbrNo = data?.InvoiceNumber || data?.invoiceNumber || data?.Invoice_Number;
+                                if (!actualFbrNo && Array.isArray(data) && data.length > 0) actualFbrNo = data[0]?.InvoiceNumber || data[0]?.invoiceNumber;
+                                if (!actualFbrNo && data?.data) actualFbrNo = data.data?.InvoiceNumber || data.data?.invoiceNumber;
+                                
+                                if (!actualFbrNo) {
+                                    setMsg({ type: 'error', text: `FBR Success, but no Invoice Number found. Raw FBR Output: ${JSON.stringify(data)}` });
+                                    return; 
+                                }
+                                saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: actualFbrNo }, ...(user.history || [])] }); 
+                                setInvoice({ ...invoice, invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, items: [], discount: 0, remarks: "", transportType: "", vehicleNo: "", departureTime: "" }); 
+                            }
+                        }
+                    } else {
+                        let errDetail = data?.Message || data?.error || JSON.stringify(data);
+                        if (res.status === 401 || res.status === 403) errDetail = "Token Invalid OR IP not whitelisted in FBR Portal.";
+                        setMsg({ type: 'error', text: `FBR Error (${res.status}): ${errDetail}` });
+                    }
+                } catch (e) {
+                    setMsg({ type: 'error', text: `Connection Error: Could not reach FBR Servers. Please check your internet or FBR portal.` });
+                } finally { setLoading(false); }
+            };
+
             const renderInvoiceTemplate = () => {
                 let qrUrl = ""; try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 120 }).toDataURL(); } catch (e) {}
                 const printShowRetail = lastInv?.items?.some(i => isRetailFedSale(i.saleType)) || showRetailFed;
