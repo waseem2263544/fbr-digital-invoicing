@@ -625,6 +625,14 @@
             // Reset validation lock if any change occurs
             useEffect(() => { setIsValidated(false); }, [invoice, lineItemForm]);
 
+            // Click anywhere to dismiss notification
+            useEffect(() => {
+                if (!msg) return;
+                const hideMsg = () => setMsg(null);
+                const timer = setTimeout(() => window.addEventListener('click', hideMsg), 50);
+                return () => { clearTimeout(timer); window.removeEventListener('click', hideMsg); };
+            }, [msg]);
+
             useEffect(() => {
                 const fetchReferenceData = async () => {
                     const mode = user.settings?.integrationMode || 'sandbox';
@@ -900,7 +908,7 @@
             };
 
             const renderInvoiceTemplate = () => {
-                let qrUrl = ""; try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 120 }).toDataURL(); } catch (e) {}
+                let qrUrl = ""; try { qrUrl = new QRious({ value: lastInv?.fbrInvoiceNumber || '', size: 120 }).toDataURL(); } catch (e) {}
                 const printShowRetail = lastInv?.items?.some(i => isRetailFedSale(i.saleType)) || showRetailFed;
 
                 return (
@@ -919,11 +927,11 @@
                                 </div>
                                 <div className="text-right flex flex-col items-end">
                                     <div className="flex items-center gap-2 mb-2">
-                                        {qrUrl && <img src={qrUrl} alt="QR Code" className="w-20 h-20" />}
-                                        
-                                        <div id="fbr-official-logo" className="text-center ml-2 flex items-center justify-center p-2 rounded" style={{ border: 'none', background: 'transparent' }}>
+                                        <div id="fbr-official-logo" className="text-center mr-2 flex items-center justify-center p-2 rounded" style={{ border: 'none', background: 'transparent' }}>
                                             <img src="http://tallied.pk/wp-content/uploads/2026/03/do-fbr-digital-invoice-integration-for-pakistan-market-2.webp" alt="FBR Digital Invoicing System" className="w-24 h-24 object-contain" />
                                         </div>
+                                        
+                                        {qrUrl && <img src={qrUrl} alt="QR Code" className="w-20 h-20" />}
                                     </div>
                                     <div className="font-bold text-sm bg-gray-100 px-2 py-1 rounded border border-gray-300">FBR Invoice No: <span className="text-red-600">{lastInv?.fbrInvoiceNumber || 'Pending'}</span></div>
                                 </div>
