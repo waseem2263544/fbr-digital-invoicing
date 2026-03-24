@@ -730,10 +730,48 @@
                     buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", buyerBusinessName: invoice.customerName, buyerProvince: safeBuyerProvince, buyerAddress: invoice.customerAddress, 
                     buyerRegistrationType: finalRegType, 
                     invoiceRefNo: invoice.refInvoiceNumber,
+// NEW FIX: Force Ghost Variables (like old Retail Prices) to 0 if they are hidden!
                     items: invoice.items.map((item, index) => {
-                        const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0; const baseVal = (isRetailFedSale(item.saleType) ? r : p) * q;
+                        const isRet = isRetailFedSale(item.saleType);
+                        const q = parseFloat(item.qty) || 0; 
+                        const p = parseFloat(item.price) || 0; 
+                        
+                        // Strictly zero out hidden fields so they don't leak into FBR
+                        const r = isRet ? (parseFloat(item.retailPrice) || 0) : 0; 
+                        const exRate = isRet ? (parseFloat(item.extraTax) || 0) : 0;
+                        const fed = isRet ? (parseFloat(item.fedPayable) || 0) : 0;
+                        
+                        const furtherRate = parseFloat(item.furtherTax) || 0;
+                        const taxRate = parseFloat(item.taxRate) || 0;
+                        
+                        const baseVal = (isRet ? r : p) * q;
+                        const stAmt = baseVal * (taxRate / 100);
+                        const furtherAmt = baseVal * (furtherRate / 100);
+                        const exAmt = baseVal * (exRate / 100);
+                        const total = baseVal + stAmt + furtherAmt + exAmt;
+                        
                         const cleanHsCode = item.hsCode ? item.hsCode.split(' - ')[0].trim() : "";
-                        return { itemNo: index + 1, hsCode: cleanHsCode, productDescription: item.desc, rate: `${item.taxRate}%`, uoM: item.uom || "Numbers, pieces, units", quantity: q, totalValues: +(baseVal + (baseVal * (parseFloat(item.taxRate) / 100 || 0)) + (baseVal * (parseFloat(item.furtherTax) / 100 || 0)) + (isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0)).toFixed(2), valueSalesExcludingST: +baseVal.toFixed(2), fixedNotifiedValueOrRetailPrice: +r.toFixed(2), salesTaxApplicable: +(baseVal * (parseFloat(item.taxRate) / 100 || 0)).toFixed(2), salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2), extraTax: +(isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0).toFixed(2), furtherTax: +(baseVal * (parseFloat(item.furtherTax) / 100 || 0)).toFixed(2), sroScheduleNo: item.sroScheduleNo || "", fedPayable: +(isRetailFedSale(item.saleType) ? (parseFloat(item.fedPayable) || 0) : 0).toFixed(2), discount: +(parseFloat(item.discount) || 0).toFixed(2), saleType: item.saleType, sroItemSerialNo: item.sroItemSerialNo || "" };
+
+                        return { 
+                            itemNo: index + 1, 
+                            hsCode: cleanHsCode, 
+                            productDescription: item.desc, 
+                            rate: `${taxRate}%`, 
+                            uoM: item.uom || "Numbers, pieces, units", 
+                            quantity: q, 
+                            totalValues: +total.toFixed(2), 
+                            valueSalesExcludingST: +baseVal.toFixed(2), 
+                            fixedNotifiedValueOrRetailPrice: +r.toFixed(2), 
+                            salesTaxApplicable: +stAmt.toFixed(2), 
+                            salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2), 
+                            extraTax: +exAmt.toFixed(2), 
+                            furtherTax: +furtherAmt.toFixed(2), 
+                            sroScheduleNo: item.sroScheduleNo || "", 
+                            fedPayable: +fed.toFixed(2), 
+                            discount: +(parseFloat(item.discount) || 0).toFixed(2), 
+                            saleType: item.saleType, 
+                            sroItemSerialNo: item.sroItemSerialNo || "" 
+                        };
                     })
                 };
 
