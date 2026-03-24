@@ -16,7 +16,14 @@
         
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; background-color: #fbfbfd; }
         
-        @media print { body * { visibility: hidden; } #printable-area, #printable-area * { visibility: visible; } #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none !important; border-radius: 0 !important; overflow: visible !important; } .no-print { display: none !important; } }
+        @media print { 
+            body * { visibility: hidden; } 
+            #printable-area, #printable-area * { visibility: visible; } 
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none !important; border-radius: 0 !important; } 
+            .no-print { display: none !important; } 
+            .fixed.inset-0.z-50 { position: absolute !important; display: block !important; overflow: visible !important; background: transparent !important; backdrop-filter: none !important; padding: 0 !important; align-items: flex-start !important; }
+            .max-h-\[90vh\] { max-height: none !important; overflow: visible !important; }
+        }
         ::-webkit-scrollbar { width: 6px; height: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; } ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
         
         .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; } 
@@ -173,7 +180,7 @@
                             </div>
                         </nav>
                     )}
-                    <main className={`max-w-[1200px] mx-auto w-full ${isLobby ? 'p-8 mt-8' : ''}`}>
+                    <main className={`max-w-[1600px] mx-auto w-full ${isLobby ? 'p-8 mt-8' : ''}`}>
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-gray-200 pb-6">
                             <div>
                                 <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Select a Business</h2>
@@ -603,7 +610,6 @@
             const [sroOptions, setSroOptions] = useState([ "THIRD SCHEDULE", "FIFTH SCHEDULE", "SIXTH SCHEDULE Table 1", "SIXTH SCHEDULE Table 2", "EIGHTH SCHEDULE Table 1", "EIGHTH SCHEDULE Table 2", "NINTH SCHEDULE", "ELEVENTH SCHEDULE", "1450(I)/2021", "1579(I)/2021" ]);
 
             const [isValidated, setIsValidated] = useState(false);
-            const [debugPayload, setDebugPayload] = useState(null);
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
@@ -692,7 +698,7 @@
             };
 
             const pickProductForInvoiceForm = (prod) => {
-                fetchAllowedUOMs(prod.hsCode).then(uoms => { setLineItemForm(p => ({ ...p, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0, fedPayable: prod.fedPayable, wht: prod.wht, allowedUOMs: uoms, isFromInventory: true })); });
+                fetchAllowedUOMs(prod.hsCode).then(uoms => { setLineItemForm(p => ({ ...p, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0, fedPayable: prod.fedPayable, wht: prod.wht, sroScheduleNo: prod.sroScheduleNo || "", sroItemSerialNo: prod.sroItemSerialNo || "", allowedUOMs: uoms, isFromInventory: true })); });
             };
 
             const addCustomer = () => { if (!newCust.name) return; saveUser({ customers: editingCustId ? (user.customers || []).map(c => c.id === editingCustId ? { ...c, ...newCust } : c) : [...(user.customers || []), { id: Date.now(), ...newCust }] }); setNewCust({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' }); setEditingCustId(null); };
@@ -726,7 +732,6 @@
             const callFbrApi = async (isValidate = false, retryRegType = null, retryScenario = null) => {
                 if (isExpired) return setMsg({ type: 'error', text: 'Subscription Expired.' });
                 
-                // SAFE TOKEN EXTRACTION
                 const mode = user.settings?.integrationMode || 'sandbox';
                 const token = mode === 'production' 
                     ? (user.settings?.productionToken || user.settings?.production?.token) 
@@ -782,9 +787,7 @@
                             fixedNotifiedValueOrRetailPrice: Number((isRet ? r : 0).toFixed(2)), 
                             salesTaxApplicable: Number(salesTaxApplicable.toFixed(2)), 
                             
-                            // Send "" for ExtraTax on reduced/exempt items to bypass Business Engine.
-                            // Send hard numbers for everything else to bypass Schema Parser crash.
-                            extraTax: isExemptOrReduced ? "" : Number(extraTaxApplicable.toFixed(2)),
+                            extraTax: (isExemptOrReduced || extraTaxApplicable === 0) ? "" : Number(extraTaxApplicable.toFixed(2)),
                             furtherTax: Number(furtherTaxApplicable.toFixed(2)),
                             fedPayable: Number((fedAmt * q).toFixed(2)),
                             salesTaxWithheldAtSource: Number((parseFloat(item.wht) || 0).toFixed(2)),
@@ -812,14 +815,23 @@
                     payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
                 }
 
-                if (isValidate) {
-                    setDebugPayload(JSON.stringify(payload, null, 2));
-                }
+                let finalJsonString = JSON.stringify(payload, null, 2);
+                
+                const numericKeysToFormat = [
+                    'totalValues', 'valueSalesExcludingST', 'fixedNotifiedValueOrRetailPrice', 
+                    'salesTaxApplicable', 'salesTaxWithheldAtSource', 'extraTax', 
+                    'furtherTax', 'fedPayable', 'discount'
+                ];
+                
+                numericKeysToFormat.forEach(key => {
+                    const regex = new RegExp(`("${key}":\\s*)0([,\\n\\r\\}])`, 'g');
+                    finalJsonString = finalJsonString.replace(regex, '$10.00$2');
+                });
 
                 setLoading(true);
                 try {
                     const endpoint = isValidate ? (mode === 'production' ? SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_PROD : SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_SB) : (mode === 'production' ? SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD : SYSTEM_CONFIG.PATHS.POST_INVOICE_SB);
-                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
+                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: finalJsonString });
                     
                     let rawData = await res.json();
                     let data = rawData;
@@ -892,7 +904,7 @@
                 const printShowRetail = lastInv?.items?.some(i => isRetailFedSale(i.saleType)) || showRetailFed;
 
                 return (
-                    <div className="bg-white w-full max-w-5xl rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] relative print:w-full print:max-w-none print:max-h-none print:shadow-none animate-fade-in">
+                    <div className="bg-white w-full max-w-5xl rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] relative print:w-full print:max-w-none print:max-h-none print:shadow-none print:overflow-visible animate-fade-in print:m-0 print:p-0">
                         <button onClick={() => setShowReceipt(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black hover:bg-gray-100 p-2 rounded-full z-50 no-print transition-colors" style={{ zIndex: 9999 }}><Icons.X /></button>
                         
                         <div id="printable-area" className="p-8 text-black bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
@@ -910,7 +922,7 @@
                                         {qrUrl && <img src={qrUrl} alt="QR Code" className="w-20 h-20" />}
                                         
                                         <div id="fbr-official-logo" className="text-center ml-2 flex items-center justify-center p-2 rounded" style={{ border: 'none', background: 'transparent' }}>
-                                            <img src="https://app.tallied.pk/do-fbr-digital-invoice-integration-for-pakistan-market-2.png" alt="FBR Digital Invoicing System" className="w-24 h-24 object-contain" />
+                                            <img src="http://tallied.pk/wp-content/uploads/2026/03/do-fbr-digital-invoice-integration-for-pakistan-market-2.webp" alt="FBR Digital Invoicing System" className="w-24 h-24 object-contain" />
                                         </div>
                                     </div>
                                     <div className="font-bold text-sm bg-gray-100 px-2 py-1 rounded border border-gray-300">FBR Invoice No: <span className="text-red-600">{lastInv?.fbrInvoiceNumber || 'Pending'}</span></div>
@@ -1354,34 +1366,15 @@
                             <Card className="p-0 overflow-hidden w-full shadow-sm animate-fade-in">
                                 <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-white"><div className="font-bold text-gray-900 text-lg">Invoice History</div><div className="relative w-64"><input type="text" placeholder="Search..." className="px-4 py-2 border border-gray-200 rounded-lg outline-none w-full pl-10 text-sm focus:border-black transition-colors" value={histSearch} onChange={e => setHistSearch(e.target.value)} /><span className="absolute left-3 top-2.5 text-gray-400"><Icons.Search size={16} /></span></div></div>
                                 <div className="table-container">
-                                    <table className="w-full text-left text-sm fbr-table"><thead className="bg-black text-white uppercase text-xs tracking-wide"><tr><th className="p-3">FBR Invoice #</th><th className="p-3">Date</th><th className="p-3">Customer</th><th className="p-3">NTN</th><th className="p-3 text-right">Subtotal</th><th className="p-3 text-right">Sales Tax</th><th className="p-3 text-right">FED</th><th className="p-3 text-right">Fur.Tax</th><th className="p-3 text-right">WHT</th><th className="p-3 text-right">Grand Total</th><th className="p-3 text-center">Action</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredHistory.map(inv => (<tr key={inv.id} className="hover:bg-gray-50 transition-colors bg-white"><td className="p-4 text-xs font-bold text-red-600 border-r border-gray-100">{inv.fbrInvoiceNumber}</td><td className="p-4 text-xs text-gray-500">{inv.invoiceDate || inv.date}</td><td className="p-4 text-sm font-bold text-gray-900">{inv.customerName}</td><td className="p-4 text-xs text-gray-500">{inv.customerNTN}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.subtotal)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.gst)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.fed)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.further)}</td><td className="p-4 text-sm text-right text-blue-600">{formatCurrency(inv.wht)}</td><td className="p-4 text-lg text-right font-bold text-gray-900 tracking-tight">{formatCurrency(inv.total)}</td><td className="p-4 text-center"><div className="flex justify-center gap-3"><button onClick={() => { setLastInv(inv); setShowReceipt(true); }} className="text-gray-400 hover:text-black transition-colors" title="Print"><Icons.Printer size={18}/></button><button onClick={() => downloadInvoice(inv)} className="text-gray-400 hover:text-black transition-colors" title="Download JSON"><Icons.Download size={18}/></button></div></td></tr>))}</tbody></table>
+                                    <table className="w-full text-left text-sm fbr-table"><thead className="bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wider font-bold border-b border-gray-100"><tr><th className="p-4 border-r border-gray-200 pl-6">FBR Invoice #</th><th className="p-4">Date</th><th className="p-4">Customer</th><th className="p-4">NTN</th><th className="p-4 text-right">Subtotal</th><th className="p-4 text-right">Sales Tax</th><th className="p-4 text-right">FED</th><th className="p-4 text-right">Fur.Tax</th><th className="p-4 text-right">WHT</th><th className="p-4 text-right">Grand Total</th><th className="p-4 text-center pr-6">Action</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredHistory.map(inv => (<tr key={inv.id} className="hover:bg-gray-50 transition-colors bg-white"><td className="p-4 pl-6 text-xs font-bold text-red-600 border-r border-gray-100">{inv.fbrInvoiceNumber}</td><td className="p-4 text-xs text-gray-500">{inv.invoiceDate || inv.date}</td><td className="p-4 text-sm font-bold text-gray-900">{inv.customerName}</td><td className="p-4 text-xs text-gray-500">{inv.customerNTN}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.subtotal)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.gst)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.fed)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.further)}</td><td className="p-4 text-sm text-right text-blue-600">{formatCurrency(inv.wht)}</td><td className="p-4 text-lg text-right font-bold text-gray-900 tracking-tight">{formatCurrency(inv.total)}</td><td className="p-4 text-center pr-6"><div className="flex justify-center gap-3"><button onClick={() => { setLastInv(inv); setShowReceipt(true); }} className="text-gray-400 hover:text-black transition-colors" title="Print"><Icons.Printer size={18}/></button><button onClick={() => downloadInvoice(inv)} className="text-gray-400 hover:text-black transition-colors" title="Download JSON"><Icons.Download size={18}/></button></div></td></tr>))}</tbody></table>
                                 </div>
                             </Card>
                         )}
 
                         {activeTab === 'settings' && <SettingsTab user={user} />}
 
-                        {/* FBR PAYLOAD DEBUG INSPECTOR */}
-                        {debugPayload && (
-                            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9500] animate-fade-in">
-                                <div className="bg-gray-900 p-6 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative text-green-400 font-mono text-xs border border-gray-700">
-                                    <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
-                                        <h3 className="text-lg font-bold text-white flex items-center gap-2"><Icons.Settings size={18}/> FBR Payload Inspector</h3>
-                                        <button onClick={() => setDebugPayload(null)} className="text-gray-400 hover:text-white transition-colors"><Icons.X size={20} /></button>
-                                    </div>
-                                    <div className="bg-black p-4 rounded-xl overflow-x-auto">
-                                        <pre className="whitespace-pre-wrap break-words">{debugPayload}</pre>
-                                    </div>
-                                    <div className="mt-6 flex justify-between items-center">
-                                        <div className="text-gray-500">View what your app is sending to FBR behind the scenes.</div>
-                                        <Button onClick={() => setDebugPayload(null)} variant="secondary" className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">Close Inspector</Button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
                     </main >
-                    {showReceipt && lastInv && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">{renderInvoiceTemplate()}</div>}
+                    {showReceipt && lastInv && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in print:absolute print:inset-0 print:block print:bg-transparent print:p-0">{renderInvoiceTemplate()}</div>}
                 </div >
             );
         };
