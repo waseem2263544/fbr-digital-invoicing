@@ -589,7 +589,7 @@
             useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
             const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
 
-            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0 });
+            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0, remarks: "", transportType: "", vehicleNo: "", departureTime: "" });
             
             const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
@@ -603,7 +603,6 @@
             const [sroOptions, setSroOptions] = useState([ "THIRD SCHEDULE", "FIFTH SCHEDULE", "SIXTH SCHEDULE Table 1", "SIXTH SCHEDULE Table 2", "EIGHTH SCHEDULE Table 1", "EIGHTH SCHEDULE Table 2", "NINTH SCHEDULE", "ELEVENTH SCHEDULE", "1450(I)/2021", "1579(I)/2021" ]);
 
             const [isValidated, setIsValidated] = useState(false);
-            const [showLineModal, setShowLineModal] = useState(false); // Modal state for Line Items
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
@@ -617,7 +616,7 @@
             useEffect(() => { if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province })); }, [user?.settings?.province]);
             
             // Reset validation lock if any change occurs
-            useEffect(() => { setIsValidated(false); }, [invoice]);
+            useEffect(() => { setIsValidated(false); }, [invoice, lineItemForm]);
 
             // Click anywhere to dismiss notification
             useEffect(() => {
@@ -697,7 +696,6 @@
                     return { ...p, items: [...p.items, newItemObj] };
                 });
                 setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0});
-                setShowLineModal(false); // Close Modal after save
             };
 
             const pickProductForInvoiceForm = (prod) => {
@@ -794,7 +792,7 @@
                             fedPayable: +(safeFed * q).toFixed(2), 
                             discount: +(parseFloat(item.discount) || 0).toFixed(2), 
                             saleType: item.saleType, 
-                            sroItemSerialNo: item.sroItemSerialNo || "" // RESTORED CORRECT KEY FOR FBR
+                            sroItemSerialNo: item.sroItemSerialNo || "" 
                         };
                     })
                 };
@@ -977,9 +975,7 @@
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 mb-4 text-xs">
-                                <div>
-                                    
-                                </div>
+                                <div></div>
                                 <div>
                                     <table className="w-full text-right border-collapse border border-black">
                                         <tbody>
@@ -1072,34 +1068,78 @@
                                     </div>
 
                                     <div className="mb-8 border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                                        <div className="w-full overflow-x-auto hide-scrollbar pb-4 bg-white">
-                                            <div className="bg-gray-50 px-6 py-4 font-bold text-gray-900 border-b border-gray-200 flex justify-between items-center mb-4">
-                                                <span className="flex items-center gap-2"><Icons.Plus size={18}/> Line Items</span>
-                                                <div className="flex gap-3 items-center">
-                                                    {showRetailFed && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2.5 py-1 rounded-md uppercase tracking-wider font-bold border border-yellow-200">Retail & FED Enabled</span>}
-                                                    <Button onClick={() => { setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0}); setShowLineModal(true); }}><Icons.Plus size={16}/> Add New Item</Button>
+                                        <div className="bg-gray-50 px-6 py-4 font-bold text-gray-900 border-b border-gray-200 flex justify-between items-center">
+                                            <span className="flex items-center gap-2"><Icons.Plus size={18}/> Line Item Entry</span>
+                                            {showRetailFed && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2.5 py-1 rounded-md uppercase tracking-wider font-bold border border-yellow-200">Retail & FED Enabled</span>}
+                                        </div>
+                                        <div className="p-6 bg-white">
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end">
+                                                <div className="md:col-span-5"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={(user.inventory || []).filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = (user.inventory || []).find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
+                                                <div className="md:col-span-4"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
+                                                <div className="md:col-span-3">
+                                                    <SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={SALE_TYPES} onChange={v => {
+                                                        let autoTax = lineItemForm.taxRate;
+                                                        let autoFurther = lineItemForm.furtherTax;
+                                                        if (v === "Goods at reduced rate") { autoTax = 5; autoFurther = 0; }
+                                                        else if (v === "Goods at zero-rate" || v === "Exempt goods") { autoTax = 0; autoFurther = 0; }
+                                                        else if (v.includes("standard rate")) { autoTax = 18; }
+                                                        setLineItemForm({...lineItemForm, saleType: v, taxRate: autoTax, furtherTax: autoFurther});
+                                                    }} />
                                                 </div>
                                             </div>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end bg-gray-50/50 p-5 rounded-xl border border-gray-100">
+                                                <div className="md:col-span-2"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
+                                                <div className="md:col-span-2"><Input label="Unit Price" type="number" value={lineItemForm.price} onChange={e => setLineItemForm({...lineItemForm, price: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={lineItemForm.taxRate} onChange={e => setLineItemForm({...lineItemForm, taxRate: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="Further Tax %" type="number" value={lineItemForm.furtherTax} onChange={e => setLineItemForm({...lineItemForm, furtherTax: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="Discount Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
+                                            </div>
+
+                                            {showRetailFed && (
+                                                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end bg-yellow-50/30 p-5 rounded-xl border border-yellow-100">
+                                                    <div className="md:col-span-3"><Input label="Retail Price" type="number" value={lineItemForm.retailPrice} onChange={e => setLineItemForm({...lineItemForm, retailPrice: e.target.value})} /></div>
+                                                    <div className="md:col-span-3"><Input label="Extra Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
+                                                    <div className="md:col-span-3"><Input label="FED Amount" type="number" value={lineItemForm.fedPayable} onChange={e => setLineItemForm({...lineItemForm, fedPayable: e.target.value})} /></div>
+                                                    <div className="md:col-span-3"><Input label="ST WHT Amount" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>
+                                                </div>
+                                            )}
+
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end border-t border-gray-100 pt-5">
+                                                <div className="md:col-span-3"><SearchableDropdown label="SRO Schedule No." value={lineItemForm.sroScheduleNo} options={sroOptions} onChange={v => setLineItemForm({...lineItemForm, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
+                                                <div className="md:col-span-3"><Input label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} onChange={e => setLineItemForm({...lineItemForm, sroItemSerialNo: e.target.value})} /></div>
+                                                {!showRetailFed && <div className="md:col-span-3"><Input label="ST WHT Amount" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>}
+                                                <div className={`col-span-12 ${!showRetailFed ? 'md:col-span-3' : 'md:col-span-6'} flex justify-end gap-3`}>
+                                                    {lineItemForm.id && <Button onClick={() => setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0})} variant="secondary" className="px-6">Cancel</Button>}
+                                                    <Button onClick={pushItemToInvoice} className="w-full md:w-auto px-8"><Icons.Plus size={18}/> {lineItemForm.id ? 'Update Line Item' : 'Add Line Item'}</Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="border border-gray-200 rounded-xl shadow-sm mb-6 overflow-hidden">
+                                        <div className="w-full overflow-x-auto hide-scrollbar pb-4">
                                             <table className="fbr-table min-w-[1200px]">
-                                                <thead className="bg-white text-gray-500 text-[11px] uppercase tracking-wider font-bold border-b border-gray-100">
+                                                <thead className="bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wider font-bold">
                                                     <tr>
-                                                        <th className="desc-col border-r border-gray-200 pl-6">Description</th>
+                                                        <th className="desc-col border-r border-gray-200">Description</th>
                                                         <th className="hs-col">HS Code</th><th>Type</th><th>Qty/UoM</th><th>Price</th>
                                                         {showRetailFed && <th>Ret.P</th>}
                                                         <th>S.Tax%</th><th>S.Tax Amt</th>
                                                         {showRetailFed && <th>Ex.Tax Amt</th>}
                                                         <th>Fur.Tax Amt</th>
                                                         {showRetailFed && <th>FED Amt</th>}
-                                                        <th>WHT</th><th>SRO Sch/Ser</th><th className="text-center pr-6">Action</th>
+                                                        <th>WHT</th><th>SRO Sch/Ser</th><th className="text-center">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100">
-                                                    {invoice.items.length === 0 ? <tr><td colSpan="15" className="p-12 text-center text-gray-400 bg-white">No items added to invoice. Click "Add New Item" to begin.</td></tr> : invoice.items.map(item => {
+                                                    {invoice.items.length === 0 ? <tr><td colSpan="15" className="p-12 text-center text-gray-400 bg-white">No items added to invoice.</td></tr> : invoice.items.map(item => {
                                                         const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
                                                         const val = (isRet ? r : p) * q; const stAmt = val * (parseFloat(item.taxRate || 0) / 100); const exAmt = isRet ? (val * (parseFloat(item.extraTax || 0) / 100)) : 0; const furAmt = val * (parseFloat(item.furtherTax || 0) / 100); const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
                                                         return (
                                                             <tr key={item.id} className="hover:bg-gray-50 transition-colors bg-white">
-                                                                <td className="font-bold text-sm desc-col border-r border-gray-100 pl-6">{item.desc} {item.discount > 0 && <span className="block text-[10px] text-red-500 font-normal mt-0.5 uppercase tracking-wide">Discount: {item.discount}</span>}</td>
+                                                                <td className="font-bold text-sm desc-col border-r border-gray-100">{item.desc} {item.discount > 0 && <span className="block text-[10px] text-red-500 font-normal mt-0.5 uppercase tracking-wide">Discount: {item.discount}</span>}</td>
                                                                 <td className="text-xs text-gray-500 hs-col">{item.hsCode?.split(' - ')[0]}</td>
                                                                 <td className="text-xs text-gray-500">{item.saleType}</td>
                                                                 <td className="text-sm font-medium">{q} <span className="text-xs text-gray-400">{item.uom}</span></td>
@@ -1112,9 +1152,9 @@
                                                                 {showRetailFed && <td className="text-sm">{isRet ? formatCurrency(fedAmt) : '-'}</td>}
                                                                 <td className="text-sm">{formatCurrency(item.wht)}</td>
                                                                 <td className="text-xs text-gray-500">{item.sroScheduleNo || '-'}/{item.sroItemSerialNo || '-'}</td>
-                                                                <td className="text-center pr-6">
+                                                                <td className="text-center">
                                                                     <div className="flex justify-center gap-3">
-                                                                        <button onClick={() => { setLineItemForm(item); setShowLineModal(true); }} className="text-gray-400 hover:text-black transition-colors"><Icons.Edit size={18} /></button>
+                                                                        <button onClick={() => setLineItemForm(item)} className="text-gray-400 hover:text-black transition-colors"><Icons.Edit size={18} /></button>
                                                                         <button onClick={() => setInvoice(p => ({ ...p, items: p.items.filter(i => i.id !== item.id) }))} className="text-gray-400 hover:text-red-500 transition-colors"><Icons.Trash2 size={18} /></button>
                                                                     </div>
                                                                 </td>
@@ -1155,7 +1195,7 @@
                                         <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4"><h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 tracking-tight"><div className="bg-blue-50 text-blue-600 p-2 rounded-lg"><Icons.Box size={24} /></div> {editingInvId ? 'Edit Product' : 'Add Product'}</h2></div>
                                         <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
                                             <div className="md:col-span-4"><Input label="Product Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} /></div>
-                                            <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
+                                            <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
                                             <div className="md:col-span-3"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
                                             
                                             <div className="md:col-span-6"><SearchableDropdown label="Sales Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
@@ -1259,60 +1299,6 @@
                             </Card>
                         )}
                     </main >
-
-                    {/* MODAL FOR LINE ITEM ENTRY */}
-                    {showLineModal && (
-                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-                            <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
-                                <button onClick={() => setShowLineModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black transition-colors"><Icons.X size={24} /></button>
-                                <h3 className="text-xl font-bold mb-6 flex items-center gap-2 border-b border-gray-100 pb-4"><Icons.Plus size={20}/> {lineItemForm.id ? 'Edit Line Item' : 'Add Line Item'}</h3>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end">
-                                    <div className="md:col-span-5"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={(user.inventory || []).filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = (user.inventory || []).find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
-                                    <div className="md:col-span-4"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
-                                    <div className="md:col-span-3">
-                                        <SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={SALE_TYPES} onChange={v => {
-                                            let autoTax = lineItemForm.taxRate;
-                                            let autoFurther = lineItemForm.furtherTax;
-                                            if (v === "Goods at reduced rate") { autoFurther = 0; }
-                                            else if (v === "Goods at zero-rate" || v === "Exempt goods") { autoTax = 0; autoFurther = 0; }
-                                            else if (v.includes("standard rate")) { autoTax = 18; }
-                                            setLineItemForm({...lineItemForm, saleType: v, taxRate: autoTax, furtherTax: autoFurther});
-                                        }} />
-                                    </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end bg-gray-50/50 p-5 rounded-xl border border-gray-100">
-                                    <div className="md:col-span-2"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
-                                    <div className="md:col-span-2"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
-                                    <div className="md:col-span-2"><Input label="Unit Price" type="number" value={lineItemForm.price} onChange={e => setLineItemForm({...lineItemForm, price: e.target.value})} /></div>
-                                    <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={lineItemForm.taxRate} onChange={e => setLineItemForm({...lineItemForm, taxRate: e.target.value})} /></div>
-                                    <div className="md:col-span-2"><Input label="Further Tax %" type="number" value={lineItemForm.furtherTax} onChange={e => setLineItemForm({...lineItemForm, furtherTax: e.target.value})} /></div>
-                                    <div className="md:col-span-2"><Input label="Discount Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
-                                </div>
-
-                                {showRetailFed && (
-                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end bg-yellow-50/30 p-5 rounded-xl border border-yellow-100">
-                                        <div className="md:col-span-3"><Input label="Retail Price" type="number" value={lineItemForm.retailPrice} onChange={e => setLineItemForm({...lineItemForm, retailPrice: e.target.value})} /></div>
-                                        <div className="md:col-span-3"><Input label="Extra Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
-                                        <div className="md:col-span-3"><Input label="FED Amount" type="number" value={lineItemForm.fedPayable} onChange={e => setLineItemForm({...lineItemForm, fedPayable: e.target.value})} /></div>
-                                        <div className="md:col-span-3"><Input label="ST WHT Amount" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>
-                                    </div>
-                                )}
-
-                                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end border-t border-gray-100 pt-5">
-                                    <div className="md:col-span-3"><SearchableDropdown label="SRO Schedule No." value={lineItemForm.sroScheduleNo} options={sroOptions} onChange={v => setLineItemForm({...lineItemForm, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
-                                    <div className="md:col-span-3"><Input label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} onChange={e => setLineItemForm({...lineItemForm, sroItemSerialNo: e.target.value})} /></div>
-                                    {!showRetailFed && <div className="md:col-span-3"><Input label="ST WHT Amount" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>}
-                                    <div className={`col-span-12 ${!showRetailFed ? 'md:col-span-3' : 'md:col-span-6'} flex justify-end gap-3 mt-4`}>
-                                        <Button onClick={() => setShowLineModal(false)} variant="secondary" className="px-6">Cancel</Button>
-                                        <Button onClick={pushItemToInvoice} className="w-full md:w-auto px-8"><Icons.Plus size={18}/> {lineItemForm.id ? 'Update Line Item' : 'Add Line Item'}</Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {showReceipt && lastInv && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">{renderInvoiceTemplate()}</div>}
                 </div >
             );
