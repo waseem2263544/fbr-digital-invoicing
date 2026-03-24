@@ -17,6 +17,7 @@
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; background-color: #fbfbfd; }
         
         @media print { 
+            @page { size: landscape; margin: 10mm; }
             body * { visibility: hidden; } 
             #printable-area, #printable-area * { visibility: visible; } 
             #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none !important; border-radius: 0 !important; } 
@@ -625,14 +626,6 @@
             // Reset validation lock if any change occurs
             useEffect(() => { setIsValidated(false); }, [invoice, lineItemForm]);
 
-            // Click anywhere to dismiss notification
-            useEffect(() => {
-                if (!msg) return;
-                const hideMsg = () => setMsg(null);
-                const timer = setTimeout(() => window.addEventListener('click', hideMsg), 50);
-                return () => { clearTimeout(timer); window.removeEventListener('click', hideMsg); };
-            }, [msg]);
-
             useEffect(() => {
                 const fetchReferenceData = async () => {
                     const mode = user.settings?.integrationMode || 'sandbox';
@@ -910,6 +903,11 @@
             const renderInvoiceTemplate = () => {
                 let qrUrl = ""; try { qrUrl = new QRious({ value: lastInv?.fbrInvoiceNumber || '', size: 120 }).toDataURL(); } catch (e) {}
                 const printShowRetail = lastInv?.items?.some(i => isRetailFedSale(i.saleType)) || showRetailFed;
+                
+                const hasDiscount = lastInv?.items?.some(i => parseFloat(i.discount) > 0);
+                const hasExtraTax = lastInv?.items?.some(i => parseFloat(i.extraTax) > 0);
+                const hasFurtherTax = lastInv?.items?.some(i => parseFloat(i.furtherTax) > 0);
+                const hasWht = lastInv?.items?.some(i => parseFloat(i.wht) > 0);
 
                 return (
                     <div className="bg-white w-full max-w-5xl rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] relative print:w-full print:max-w-none print:max-h-none print:shadow-none print:overflow-visible animate-fade-in print:m-0 print:p-0">
@@ -973,9 +971,13 @@
                                             {printShowRetail && <th className="border border-black p-1">Assessed Value</th>}
                                             {printShowRetail && <th className="border border-black p-1">FED</th>}
                                             {printShowRetail && <th className="border border-black p-1">Retail Price</th>}
+                                            {hasDiscount && <th className="border border-black p-1">Discount</th>}
                                             <th className="border border-black p-1">Amt. Excl Sales Tax</th>
                                             <th className="border border-black p-1">Sales Tax %</th>
                                             <th className="border border-black p-1">Sales Tax</th>
+                                            {hasExtraTax && <th className="border border-black p-1">Extra Tax</th>}
+                                            {hasFurtherTax && <th className="border border-black p-1">Further Tax</th>}
+                                            {hasWht && <th className="border border-black p-1">WHT</th>}
                                             <th className="border border-black p-1">Total</th>
                                         </tr>
                                     </thead>
@@ -988,7 +990,7 @@
                                             const exAmt = isRet ? (val * (parseFloat(item.extraTax) / 100 || 0)) : 0;
                                             const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
                                             const amtExclSt = val + fedAmt + exAmt; 
-                                            const lineTotal = amtExclSt + stAmt + furAmt;
+                                            const lineTotal = amtExclSt + stAmt + furAmt - parseFloat(item.discount || 0);
 
                                             return (
                                                 <tr key={idx}>
@@ -999,9 +1001,13 @@
                                                     {printShowRetail && <td className="border border-black p-1 text-right">{formatCurrency(val)}</td>}
                                                     {printShowRetail && <td className="border border-black p-1 text-right">{formatCurrency(fedAmt)}</td>}
                                                     {printShowRetail && <td className="border border-black p-1 text-right">{isRet ? formatCurrency(r) : '0.00'}</td>}
+                                                    {hasDiscount && <td className="border border-black p-1 text-right">{formatCurrency(item.discount)}</td>}
                                                     <td className="border border-black p-1 text-right">{formatCurrency(amtExclSt)}</td>
                                                     <td className="border border-black p-1 text-center">{item.taxRate}%</td>
                                                     <td className="border border-black p-1 text-right">{formatCurrency(stAmt)}</td>
+                                                    {hasExtraTax && <td className="border border-black p-1 text-right">{formatCurrency(exAmt)}</td>}
+                                                    {hasFurtherTax && <td className="border border-black p-1 text-right">{formatCurrency(furAmt)}</td>}
+                                                    {hasWht && <td className="border border-black p-1 text-right">{formatCurrency(item.wht)}</td>}
                                                     <td className="border border-black p-1 text-right">{formatCurrency(lineTotal)}</td>
                                                 </tr>
                                             )
@@ -1015,15 +1021,24 @@
                                 <div>
                                     <table className="w-full text-right border-collapse border border-black">
                                         <tbody>
-                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal)}</td></tr>}
-                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold">FED</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.fed)}</td></tr>}
-                                            <tr><td className="border-b border-r border-black p-1 font-bold">Amount Excl Discount:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.totalDisc || 0))}</td></tr>
+                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal)}</td></tr>}
+                                            {printShowRetail && lastInv?.fed > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">FED:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.fed)}</td></tr>}
+                                            
+                                            {lastInv?.totalDisc > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Gross Amount:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.totalDisc || 0))}</td></tr>}
+                                            {lastInv?.totalDisc > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Discount:</td><td className="border-b border-black p-1">-{formatCurrency(lastInv?.totalDisc)}</td></tr>}
+                                            
                                             <tr><td className="border-b border-r border-black p-1 font-bold">Amount Excl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0))}</td></tr>
+                                            
                                             <tr><td className="border-b border-r border-black p-1 font-bold">Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.gst)}</td></tr>
-                                            <tr><td className="border-b border-r border-black p-1 font-bold">Amount Incl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.gst || 0))}</td></tr>
-                                            <tr><td className="border-b border-r border-black p-1 font-bold">Total:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.total + (lastInv?.wht || 0))}</td></tr>
-                                            <tr><td className="border-b border-r border-black p-1 font-bold">Advance Tax (0%):</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.wht)}</td></tr>
-                                            <tr><td className="border-r border-black p-1 font-bold text-sm bg-gray-100">Total Amount:</td><td className="p-1 font-bold text-sm bg-gray-100">{formatCurrency(lastInv?.total)}</td></tr>
+                                            
+                                            {lastInv?.extra > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Extra Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.extra)}</td></tr>}
+                                            {lastInv?.further > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Further Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.further)}</td></tr>}
+                                            
+                                            <tr><td className="border-b border-r border-black p-1 font-bold">Amount Incl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.gst || 0) + (lastInv?.further || 0))}</td></tr>
+                                            
+                                            {lastInv?.wht > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Advance Tax (WHT):</td><td className="border-b border-black p-1">-{formatCurrency(lastInv?.wht)}</td></tr>}
+                                            
+                                            <tr><td className="border-r border-black p-1 font-bold text-sm bg-gray-100">Total Amount Payable:</td><td className="p-1 font-bold text-sm bg-gray-100">{formatCurrency(lastInv?.total)}</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -1248,10 +1263,14 @@
                                         <div className="flex gap-10 text-right">
                                             <div><div className="text-gray-400 text-[11px] uppercase tracking-wider font-bold mb-1">Subtotal</div><div className="font-semibold text-lg">{formatCurrency(totals.subtotal)}</div></div>
                                             <div><div className="text-gray-400 text-[11px] uppercase tracking-wider font-bold mb-1">Sales Tax</div><div className="font-semibold text-lg">{formatCurrency(totals.gst)}</div></div>
-                                            <div><div className="text-gray-400 text-[11px] uppercase tracking-wider font-bold mb-1">Extra Tax</div><div className="font-semibold text-lg">{formatCurrency(totals.extra)}</div></div>
-                                            <div><div className="text-gray-400 text-[11px] uppercase tracking-wider font-bold mb-1">Further Tax</div><div className="font-semibold text-lg">{formatCurrency(totals.further)}</div></div>
+                                            
+                                            {totals.extra > 0 && <div><div className="text-gray-400 text-[11px] uppercase tracking-wider font-bold mb-1">Extra Tax</div><div className="font-semibold text-lg">{formatCurrency(totals.extra)}</div></div>}
+                                            {totals.further > 0 && <div><div className="text-gray-400 text-[11px] uppercase tracking-wider font-bold mb-1">Further Tax</div><div className="font-semibold text-lg">{formatCurrency(totals.further)}</div></div>}
+                                            
                                             {showRetailFed && <div><div className="text-gray-400 text-[11px] uppercase tracking-wider font-bold mb-1">FED</div><div className="font-semibold text-lg">{formatCurrency(totals.fed)}</div></div>}
-                                            <div><div className="text-blue-500 text-[11px] uppercase tracking-wider font-bold mb-1">ST Withheld</div><div className="font-bold text-lg text-blue-600">-{formatCurrency(totals.wht)}</div></div>
+                                            
+                                            {totals.wht > 0 && <div><div className="text-blue-500 text-[11px] uppercase tracking-wider font-bold mb-1">ST Withheld</div><div className="font-bold text-lg text-blue-600">-{formatCurrency(totals.wht)}</div></div>}
+                                            
                                             <div className="pl-6 border-l border-gray-300"><div className="text-gray-900 text-[11px] uppercase tracking-wider font-bold mb-1">Grand Total</div><div className="font-bold text-3xl tracking-tight">{formatCurrency(totals.total)}</div></div>
                                         </div>
                                     </div>
