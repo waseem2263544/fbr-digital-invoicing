@@ -706,10 +706,14 @@
                 if (!token) return setMsg({ type: 'error', text: 'Token Missing.' });
 
                 let finalRegType = retryRegType || invoice.customerRegType || (invoice.customerNTN && String(invoice.customerNTN).replace(/-/g, '').length >= 7 ? "Registered" : "Unregistered");
+                
+                // NEW FIX: Ensure Province is NEVER empty to prevent FBR crashes
+                const safeBuyerProvince = invoice.customerDestination || user.settings?.province || "Sindh";
+                const safeSellerProvince = user.settings?.province || "Sindh";
 
                 const payload = {
-                    invoiceType: invoice.type, invoiceDate: invoice.invoiceDate, sellerNTNCNIC: String(user.settings.ntn || "").replace(/-/g, ""), sellerBusinessName: user.settings.businessName, sellerProvince: user.settings.province, sellerAddress: user.settings.address,
-                    buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", buyerBusinessName: invoice.customerName, buyerProvince: invoice.customerDestination, buyerAddress: invoice.customerAddress, 
+                    invoiceType: invoice.type, invoiceDate: invoice.invoiceDate, sellerNTNCNIC: String(user.settings.ntn || "").replace(/-/g, ""), sellerBusinessName: user.settings.businessName, sellerProvince: safeSellerProvince, sellerAddress: user.settings.address,
+                    buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", buyerBusinessName: invoice.customerName, buyerProvince: safeBuyerProvince, buyerAddress: invoice.customerAddress, 
                     buyerRegistrationType: finalRegType, 
                     invoiceRefNo: invoice.refInvoiceNumber,
                     items: invoice.items.map((item, index) => {
@@ -728,7 +732,14 @@
                     const endpoint = isValidate ? (mode === 'production' ? SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_PROD : SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_SB) : (mode === 'production' ? SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD : SYSTEM_CONFIG.PATHS.POST_INVOICE_SB);
                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
                     
-                    const data = await res.json();
+                    let rawData = await res.json();
+                    let data = rawData;
+                    
+                    // NEW FIX: Force-clean FBR's malformed JSON (trailing commas)
+                    if (typeof rawData === 'string') {
+                        try { data = JSON.parse(rawData.replace(/,\s*([}\]])/g, '$1')); } 
+                        catch (e) { data = { error: rawData }; }
+                    }
                     
                     if (res.ok) {
                         let isFbrError = false;
@@ -776,7 +787,6 @@
                     setMsg({ type: 'error', text: `Connection Error: Could not reach FBR Servers. Please check your internet or FBR portal.` });
                 } finally { setLoading(false); }
             };
-
             const renderInvoiceTemplate = () => {
                 let qrUrl = ""; try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 120 }).toDataURL(); } catch (e) {}
                 const printShowRetail = lastInv?.items?.some(i => isRetailFedSale(i.saleType)) || showRetailFed;
