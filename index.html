@@ -710,7 +710,11 @@
                     buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", buyerBusinessName: invoice.customerName, buyerProvince: invoice.customerDestination, buyerAddress: invoice.customerAddress, buyerRegistrationType: invoice.customerRegType, invoiceRefNo: invoice.refInvoiceNumber,
                     items: invoice.items.map(item => {
                         const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0; const baseVal = (isRetailFedSale(item.saleType) ? r : p) * q;
-                        return { hsCode: item.hsCode, productDescription: item.desc, rate: `${item.taxRate}%`, uoM: item.uom || "Numbers, pieces, units", quantity: q, totalValues: +(baseVal + (baseVal * (parseFloat(item.taxRate) / 100 || 0)) + (baseVal * (parseFloat(item.furtherTax) / 100 || 0)) + (isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0)).toFixed(2), valueSalesExcludingST: +baseVal.toFixed(2), fixedNotifiedValueOrRetailPrice: +r.toFixed(2), salesTaxApplicable: +(baseVal * (parseFloat(item.taxRate) / 100 || 0)).toFixed(2), salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2), extraTax: +(isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0).toFixed(2), furtherTax: +(baseVal * (parseFloat(item.furtherTax) / 100 || 0)).toFixed(2), sroScheduleNo: item.sroScheduleNo || "", fedPayable: +(isRetailFedSale(item.saleType) ? (parseFloat(item.fedPayable) || 0) : 0).toFixed(2), discount: +(parseFloat(item.discount) || 0).toFixed(2), saleType: item.saleType, sroItemSerialNo: item.sroItemSerialNo || "" };
+                        
+                        // NEW FIX: STRIP TEXT FROM HS CODE
+                        const cleanHsCode = item.hsCode ? item.hsCode.split(' - ')[0].trim() : "";
+
+                        return { hsCode: cleanHsCode, productDescription: item.desc, rate: `${item.taxRate}%`, uoM: item.uom || "Numbers, pieces, units", quantity: q, totalValues: +(baseVal + (baseVal * (parseFloat(item.taxRate) / 100 || 0)) + (baseVal * (parseFloat(item.furtherTax) / 100 || 0)) + (isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0)).toFixed(2), valueSalesExcludingST: +baseVal.toFixed(2), fixedNotifiedValueOrRetailPrice: +r.toFixed(2), salesTaxApplicable: +(baseVal * (parseFloat(item.taxRate) / 100 || 0)).toFixed(2), salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2), extraTax: +(isRetailFedSale(item.saleType) ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0).toFixed(2), furtherTax: +(baseVal * (parseFloat(item.furtherTax) / 100 || 0)).toFixed(2), sroScheduleNo: item.sroScheduleNo || "", fedPayable: +(isRetailFedSale(item.saleType) ? (parseFloat(item.fedPayable) || 0) : 0).toFixed(2), discount: +(parseFloat(item.discount) || 0).toFixed(2), saleType: item.saleType, sroItemSerialNo: item.sroItemSerialNo || "" };
                     })
                 };
                 if (mode !== 'production') payload.scenarioId = invoice.scenarioId || "SN001";
@@ -723,12 +727,26 @@
                     const data = await res.json();
                     
                     if (res.ok) {
+                        let isFbrError = false;
+                        let errorMessage = "";
+
+                        // Catch standard FBR Error
                         if (data && data.Code && data.Code !== "0000" && data.Code !== "00") {
-                            setMsg({ type: 'error', text: `FBR Rejected: ${FBR_ERRORS[data.Code] || data.Message || JSON.stringify(data)}` });
+                            isFbrError = true;
+                            errorMessage = FBR_ERRORS[data.Code] || data.Message || JSON.stringify(data);
+                        } 
+                        // NEW FIX: Catch Nested ValidationResponse Error (The one you saw!)
+                        else if (data?.validationResponse && data.validationResponse.statusCode !== "00") {
+                            isFbrError = true;
+                            let itemErrors = data.validationResponse.invoiceStatuses?.filter(s => s.error)?.map(s => `Item ${s.itemSNo}: ${s.error}`).join(" | ") || "";
+                            errorMessage = data.validationResponse.error || itemErrors || "Validation Failed";
+                        }
+
+                        if (isFbrError) {
+                            setMsg({ type: 'error', text: `FBR Rejected: ${errorMessage}` });
                         } else {
                             setMsg({ type: 'success', text: isValidate ? "Validation Successful" : "Submitted Successfully" });
                             if (!isValidate) { 
-                                // Aggressive scan for Invoice Number
                                 let actualFbrNo = data?.InvoiceNumber || data?.invoiceNumber || data?.Invoice_Number;
                                 if (!actualFbrNo && Array.isArray(data) && data.length > 0) actualFbrNo = data[0]?.InvoiceNumber || data[0]?.invoiceNumber;
                                 if (!actualFbrNo && data?.data) actualFbrNo = data.data?.InvoiceNumber || data.data?.invoiceNumber;
