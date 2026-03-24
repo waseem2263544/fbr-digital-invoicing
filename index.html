@@ -589,7 +589,7 @@
             useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
             const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
 
-            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0, remarks: "", transportType: "", vehicleNo: "", departureTime: "" });
+            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0 });
             
             const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
@@ -732,8 +732,13 @@
 
             const callFbrApi = async (isValidate = false, retryRegType = null, retryScenario = null) => {
                 if (isExpired) return setMsg({ type: 'error', text: 'Subscription Expired.' });
-                const mode = user.settings.integrationMode; 
-                const token = mode === 'production' ? (user.settings?.productionToken || user.settings?.production?.token) : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
+                
+                // SAFE TOKEN EXTRACTION
+                const mode = user.settings?.integrationMode || 'sandbox';
+                const token = mode === 'production' 
+                    ? (user.settings?.productionToken || user.settings?.production?.token) 
+                    : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
+                
                 if (!token) return setMsg({ type: 'error', text: 'Token Missing.' });
 
                 let finalRegType = retryRegType || invoice.customerRegType || (invoice.customerNTN && String(invoice.customerNTN).replace(/-/g, '').length >= 7 ? "Registered" : "Unregistered");
@@ -742,13 +747,12 @@
                 const safeSellerProvince = user.settings?.province || "Sindh";
 
                 const payload = {
-                    invoiceType: invoice.type, invoiceDate: invoice.invoiceDate, sellerNTNCNIC: String(user.settings.ntn || "").replace(/-/g, ""), sellerBusinessName: user.settings.businessName, sellerProvince: safeSellerProvince, sellerAddress: user.settings.address,
+                    invoiceType: invoice.type, invoiceDate: invoice.invoiceDate, sellerNTNCNIC: String(user.settings?.ntn || "").replace(/-/g, ""), sellerBusinessName: user.settings.businessName, sellerProvince: safeSellerProvince, sellerAddress: user.settings.address,
                     buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", buyerBusinessName: invoice.customerName, buyerProvince: safeBuyerProvince, buyerAddress: invoice.customerAddress, 
                     buyerRegistrationType: finalRegType, 
                     invoiceRefNo: invoice.refInvoiceNumber,
                     items: invoice.items.map((item, index) => {
                         const isRet = isRetailFedSale(item.saleType);
-                        // FBR strictly forbids Extra Tax and Further Tax on these categories
                         const isReducedZeroOrExempt = item.saleType === "Goods at reduced rate" || 
                                                        item.saleType === "Goods at zero-rate" || 
                                                        item.saleType === "Exempt goods";
@@ -765,7 +769,6 @@
                         
                         const taxRate = parseFloat(item.taxRate) || 0;
                         
-                        // Precise calculation for the payload
                         const salesTaxApplicable = baseVal * (taxRate / 100);
                         const furtherTaxApplicable = baseVal * (safeFurtherTax / 100);
                         const extraTaxApplicable = baseVal * (safeExtraTax / 100);
@@ -792,7 +795,7 @@
                             fedPayable: +(safeFed * q).toFixed(2), 
                             discount: +(parseFloat(item.discount) || 0).toFixed(2), 
                             saleType: item.saleType, 
-                            sroItemSerialNo: item.sroItemSerialNo || "" 
+                            sroItemSNo: item.sroItemSerialNo || "" // FIXED KEY FOR FBR
                         };
                     })
                 };
