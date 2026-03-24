@@ -754,78 +754,55 @@
                     invoiceRefNo: invoice.refInvoiceNumber,
                     items: invoice.items.map((item, index) => {
                         const type = item.saleType || "";
-                        
-                        // 1. Define the FBR Strict Groups
-                        const isRetail = type === "3rd Schedule Goods" || type === "Cotton ginners";
+                        const isRet = type === "3rd Schedule Goods" || type === "Cotton ginners";
                         const isExemptOrReduced = type.includes("reduced rate") || type.includes("zero-rate") || type.includes("Exempt") || type.includes("DTRE");
                         const isFedMode = type.includes("FED in ST Mode");
 
                         const q = parseFloat(item.qty) || 0; 
                         const p = parseFloat(item.price) || 0; 
                         
-                        // 2. Safely extract values based on groups to prevent bad math
-                        const r = isRetail ? (parseFloat(item.retailPrice) || 0) : 0; 
-                        const baseVal = (isRetail ? r : p) * q;
+                        const r = isRet ? (parseFloat(item.retailPrice) || 0) : 0; 
+                        const baseVal = (isRet ? r : p) * q;
                         
                         const taxRate = parseFloat(item.taxRate) || 0;
                         const furtherRate = isExemptOrReduced ? 0 : (parseFloat(item.furtherTax) || 0);
-                        const extraRate = isRetail ? (parseFloat(item.extraTax) || 0) : (parseFloat(item.extraTax) || 0); // Allow extra tax for standard if provided
-                        const fedAmt = (isRetail || isFedMode) ? (parseFloat(item.fedPayable) || 0) : 0;
+                        const extraRate = isExemptOrReduced ? 0 : (parseFloat(item.extraTax) || 0); 
+                        const fedAmt = (isRet || isFedMode) ? (parseFloat(item.fedPayable) || 0) : 0;
 
-                        // 3. FBR-Matched Calculations
                         const salesTaxApplicable = baseVal * (taxRate / 100);
                         const furtherTaxApplicable = baseVal * (furtherRate / 100);
                         const extraTaxApplicable = baseVal * (extraRate / 100);
                         const totalValues = baseVal + salesTaxApplicable + furtherTaxApplicable + extraTaxApplicable + (fedAmt * q);
                         
                         const cleanHsCode = item.hsCode ? item.hsCode.split(' - ')[0].trim() : "";
-                        
-                        // 4. Build the initial FBR Object
-                        let mappedItem = { 
+                        const serialNo = item.sroItemSerialNo ? String(item.sroItemSerialNo) : "";
+
+                        // 🔴 STRICT NUMERIC TYPING TO PREVENT FBR PARSER CRASHES 🔴
+                        return { 
                             itemNo: index + 1, 
                             hsCode: cleanHsCode, 
                             productDescription: item.desc, 
                             rate: `${taxRate}%`, 
                             uoM: item.uom || "Numbers, pieces, units", 
-                            quantity: q, 
-                            totalValues: +totalValues.toFixed(2), 
-                            valueSalesExcludingST: +baseVal.toFixed(2), 
-                            fixedNotifiedValueOrRetailPrice: +(isRetail ? r : 0).toFixed(2), 
-                            salesTaxApplicable: +salesTaxApplicable.toFixed(2), 
-                            salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2), 
-                            extraTax: +extraTaxApplicable.toFixed(2), 
-                            furtherTax: +furtherTaxApplicable.toFixed(2), 
+                            quantity: Number(q.toFixed(4)), 
+                            totalValues: Number(totalValues.toFixed(2)), 
+                            valueSalesExcludingST: Number(baseVal.toFixed(2)), 
+                            fixedNotifiedValueOrRetailPrice: Number((isRet ? r : 0).toFixed(2)), 
+                            salesTaxApplicable: Number(salesTaxApplicable.toFixed(2)), 
+                            salesTaxWithheldAtSource: Number((parseFloat(item.wht) || 0).toFixed(2)), 
+                            extraTax: Number(extraTaxApplicable.toFixed(2)), 
+                            furtherTax: Number(furtherTaxApplicable.toFixed(2)), 
                             sroScheduleNo: item.sroScheduleNo || "", 
-                            fedPayable: +(fedAmt * q).toFixed(2), 
-                            discount: +(parseFloat(item.discount) || 0).toFixed(2), 
+                            fedPayable: Number((fedAmt * q).toFixed(2)), 
+                            discount: Number((parseFloat(item.discount) || 0).toFixed(2)), 
                             saleType: type, 
-                            sroItemSerialNo: item.sroItemSerialNo || "" 
+                            sroItemSerialNo: serialNo,
+                            sroItemSNo: serialNo,
+                            itemSNo: serialNo
                         };
-
-                        // 5. 🔴 THE MASTER SANITIZER: Aggressively delete forbidden keys
-                        if (!isRetail) {
-                            delete mappedItem.fixedNotifiedValueOrRetailPrice;
-                        }
-                        if (isExemptOrReduced) {
-                            delete mappedItem.extraTax;
-                        }
-                        if (!isRetail && !isFedMode) {
-                            delete mappedItem.fedPayable;
-                        }
-                        if (isExemptOrReduced) {
-                            delete mappedItem.furtherTax;
-                        }
-                        if (parseFloat(item.wht) === 0 || !item.wht) {
-                            delete mappedItem.salesTaxWithheldAtSource;
-                        }
-                        if (!mappedItem.sroScheduleNo) {
-                            delete mappedItem.sroScheduleNo;
-                            delete mappedItem.sroItemSerialNo;
-                        }
-
-                        return mappedItem;
                     })
                 };
+                
                 if (mode !== 'production') {
                     payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
                 }
