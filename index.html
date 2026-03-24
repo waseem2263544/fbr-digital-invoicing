@@ -588,7 +588,9 @@
             const [newItem, setNewItem] = useState({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" });
             const [newCust, setNewCust] = useState({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
             const [invSearch, setInvSearch] = useState(""); const [histSearch, setHistSearch] = useState(""); const [custSearch, setCustSearch] = useState(""); const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS); const [invUomStatus, setInvUomStatus] = useState(null);
+            
             const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES); const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES); const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
+            const [sroOptions, setSroOptions] = useState(["Third Schedule", "Fifth Schedule", "Sixth Schedule", "Eighth Schedule", "Ninth Schedule", "Eleventh Schedule"]);
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
@@ -600,15 +602,28 @@
             const tabs = user.accessibleBusinesses?.length > 1 ? ['businesses', 'invoice', 'inventory', 'customers', 'history', 'settings'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
 
             useEffect(() => { if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province })); }, [user?.settings?.province]);
+            
             useEffect(() => {
                 const fetchReferenceData = async () => {
                     const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
                     if (!token) return;
                     const headers = { 'Authorization': `Bearer ${token}` };
+                    
                     try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.ITEM_CODE}`, { method: 'GET', headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data)) setHsCodes(data.map(item => ({ val: `${item.hS_CODE} - ${item.description}`, desc: item.description }))); } } catch (e) { }
                     try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.PROVINCES}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) setDynamicProvinces(data.map(d => d.stateProvinceDesc)); } } catch (e) { }
                     try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.DOCTYPECODE}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) setDynamicDocTypes(data.map(d => d.docDescription)); } } catch (e) { }
                     try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.UOM}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { const uoms = data.map(d => d.description); setDynamicUOMs(uoms); setInvUomOptions(uoms); } } } catch (e) { }
+                    
+                    try { 
+                        const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.SROITEMCODE}`, { headers }); 
+                        if (res.ok) { 
+                            const data = await res.json(); 
+                            if (Array.isArray(data) && data.length > 0) { 
+                                const sros = [...new Set(data.map(d => d.sro_Schedule_No || d.SRO_Schedule_No || d.sroDescription).filter(Boolean))];
+                                if(sros.length > 0) setSroOptions(sros);
+                            } 
+                        } 
+                    } catch (e) { }
                 };
                 fetchReferenceData();
             }, []);
@@ -723,7 +738,6 @@
                 };
 
                 if (mode !== 'production') {
-                    // Force retry, OR manual dropdown, OR auto-guess
                     payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
                 }
 
@@ -755,6 +769,10 @@
                         }
 
                         if (isFbrError) {
+                            if (errorMessage.toLowerCase().includes("registration type does not match") && !retryRegType) {
+                                const flippedRegType = finalRegType === "Registered" ? "Unregistered" : "Registered";
+                                return callFbrApi(isValidate, flippedRegType, retryScenario);
+                            }
                             if (errorMessage.toLowerCase().includes("scenario not valid for unregistered") && !retryScenario) {
                                 return callFbrApi(isValidate, "Unregistered", "SN002");
                             }
@@ -1018,7 +1036,7 @@
                                             )}
 
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end border-t border-gray-100 pt-5">
-                                                <div className="md:col-span-3"><Input label="SRO Schedule No." value={lineItemForm.sroScheduleNo} onChange={e => setLineItemForm({...lineItemForm, sroScheduleNo: e.target.value})} /></div>
+                                                <div className="md:col-span-3"><SearchableDropdown label="SRO Schedule No." value={lineItemForm.sroScheduleNo} options={sroOptions} onChange={v => setLineItemForm({...lineItemForm, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
                                                 <div className="md:col-span-3"><Input label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} onChange={e => setLineItemForm({...lineItemForm, sroItemSerialNo: e.target.value})} /></div>
                                                 {!showRetailFed && <div className="md:col-span-3"><Input label="ST WHT Amount" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>}
                                                 <div className={`col-span-12 ${!showRetailFed ? 'md:col-span-3' : 'md:col-span-6'} flex justify-end gap-3`}>
@@ -1122,7 +1140,7 @@
                                                 </div>
                                             )}
 
-                                            <div className="md:col-span-4"><Input label="SRO Schedule No" value={newItem.sroScheduleNo} onChange={e => setNewItem({ ...newItem, sroScheduleNo: e.target.value })} /></div>
+                                            <div className="md:col-span-4"><SearchableDropdown label="SRO Schedule No" value={newItem.sroScheduleNo} options={sroOptions} onChange={v => setNewItem({...newItem, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
                                             <div className="md:col-span-4"><Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
                                             <div className="md:col-span-4"><Input label="ST WHT Amount" type="number" value={newItem.wht} onChange={e => setNewItem({ ...newItem, wht: e.target.value })} /></div>
                                             
