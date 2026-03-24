@@ -32,6 +32,10 @@
 
         @keyframes smoothFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: smoothFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* Custom Horizontal Scroll for Table */
+        .hide-scrollbar::-webkit-scrollbar { height: 8px; }
+        .hide-scrollbar::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; }
     </style>
 </head>
 
@@ -581,7 +585,7 @@
             useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
             const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
 
-            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0, remarks: "", transportType: "", vehicleNo: "", departureTime: "" });
+            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0 });
             
             const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
@@ -590,10 +594,11 @@
             const [newItem, setNewItem] = useState({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" });
             const [newCust, setNewCust] = useState({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
             const [invSearch, setInvSearch] = useState(""); const [histSearch, setHistSearch] = useState(""); const [custSearch, setCustSearch] = useState(""); const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS); const [invUomStatus, setInvUomStatus] = useState(null);
-            const [isValidated, setIsValidated] = useState(false);
             
             const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES); const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES); const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
             const [sroOptions, setSroOptions] = useState([ "THIRD SCHEDULE", "FIFTH SCHEDULE", "SIXTH SCHEDULE Table 1", "SIXTH SCHEDULE Table 2", "EIGHTH SCHEDULE Table 1", "EIGHTH SCHEDULE Table 2", "NINTH SCHEDULE", "ELEVENTH SCHEDULE", "1450(I)/2021", "1579(I)/2021" ]);
+
+            const [isValidated, setIsValidated] = useState(false);
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
@@ -606,15 +611,17 @@
 
             useEffect(() => { if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province })); }, [user?.settings?.province]);
             
+            // Reset validation lock if any change occurs
             useEffect(() => { setIsValidated(false); }, [invoice, lineItemForm]);
 
+            // Click anywhere to dismiss notification
             useEffect(() => {
                 if (!msg) return;
                 const hideMsg = () => setMsg(null);
                 const timer = setTimeout(() => window.addEventListener('click', hideMsg), 50);
                 return () => { clearTimeout(timer); window.removeEventListener('click', hideMsg); };
             }, [msg]);
-            
+
             useEffect(() => {
                 const fetchReferenceData = async () => {
                     const token = user.settings.integrationMode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
@@ -733,7 +740,6 @@
                     invoiceRefNo: invoice.refInvoiceNumber,
                     items: invoice.items.map((item, index) => {
                         const isRet = isRetailFedSale(item.saleType);
-                        // FBR strictly forbids Extra Tax and Further Tax on these categories
                         const isReducedZeroOrExempt = item.saleType === "Goods at reduced rate" || 
                                                        item.saleType === "Goods at zero-rate" || 
                                                        item.saleType === "Exempt goods";
@@ -743,14 +749,12 @@
                         const r = parseFloat(item.retailPrice) || 0; 
                         const baseVal = (isRet ? r : p) * q;
                         
-                        // SANITIZATION: Force Extra/Further Tax to 0 if Reduced Rate is selected
                         const safeFurtherTax = isReducedZeroOrExempt ? 0 : (parseFloat(item.furtherTax) || 0);
                         const safeExtraTax = (isRet && !isReducedZeroOrExempt) ? (parseFloat(item.extraTax) || 0) : 0;
                         const safeFed = (isRet && !isReducedZeroOrExempt) ? (parseFloat(item.fedPayable) || 0) : 0;
                         
                         const taxRate = parseFloat(item.taxRate) || 0;
                         
-                        // Precise calculation for the payload
                         const salesTaxApplicable = baseVal * (taxRate / 100);
                         const furtherTaxApplicable = baseVal * (safeFurtherTax / 100);
                         const extraTaxApplicable = baseVal * (safeExtraTax / 100);
@@ -777,7 +781,7 @@
                             fedPayable: +(safeFed * q).toFixed(2), 
                             discount: +(parseFloat(item.discount) || 0).toFixed(2), 
                             saleType: item.saleType, 
-                            sroItemSerialNo: item.sroItemSerialNo || "" 
+                            sroItemSNo: item.sroItemSerialNo || "" 
                         };
                     })
                 };
@@ -841,7 +845,7 @@
                                     return; 
                                 }
                                 saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: actualFbrNo }, ...(user.history || [])] }); 
-                                setInvoice({ ...invoice, invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, items: [], discount: 0, remarks: "", transportType: "", vehicleNo: "", departureTime: "" }); 
+                                setInvoice({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0 }); 
                             }
                         }
                     } else {
@@ -878,8 +882,8 @@
                                     <div className="flex items-center gap-2 mb-2">
                                         {qrUrl && <img src={qrUrl} alt="QR Code" className="w-20 h-20" />}
                                         
-                                        <div id="fbr-official-logo" className="text-center ml-2 flex items-center justify-center p-2 rounded bg-[#0047AB]" style={{ border: '0px solid black' }}>
-                                            <img src="http://tallied.pk/wp-content/uploads/2026/03/do-fbr-digital-invoice-integration-for-pakistan-market-2.webp" alt="FBR Digital Invoicing System" className="w-24 h-24 object-contain" />
+                                        <div id="fbr-official-logo" className="text-center ml-2 flex items-center justify-center">
+                                            <img src="https://app.tallied.pk/do-fbr-digital-invoice-integration-for-pakistan-market-2.png" alt="FBR Digital Invoicing System" className="w-24 h-24 object-contain" />
                                         </div>
                                     </div>
                                     <div className="font-bold text-sm bg-gray-100 px-2 py-1 rounded border border-gray-300">FBR Invoice No: <span className="text-red-600">{lastInv?.fbrInvoiceNumber || 'Pending'}</span></div>
@@ -961,16 +965,7 @@
 
                             <div className="grid grid-cols-2 gap-4 mb-4 text-xs">
                                 <div>
-                                    {lastInv?.remarks && <div className="mb-2 font-bold">Note: <span className="font-normal">{lastInv.remarks}</span></div>}
-                                    {(lastInv?.transportType || lastInv?.vehicleNo) && (
-                                        <table className="border border-black w-3/4">
-                                            <tbody>
-                                                <tr><td className="border-b border-r border-black p-1 font-bold">Type of Transport</td><td className="border-b border-black p-1">= {lastInv?.transportType || '-'}</td></tr>
-                                                <tr><td className="border-b border-r border-black p-1 font-bold">Reg Vehicle No.</td><td className="border-b border-black p-1">= {lastInv?.vehicleNo || '-'}</td></tr>
-                                                <tr><td className="border-r border-black p-1 font-bold">Departure Time</td><td className="p-1">= {lastInv?.departureTime || '-'}</td></tr>
-                                            </tbody>
-                                        </table>
-                                    )}
+                                    {/* Remarks & Transport removed */}
                                 </div>
                                 <div>
                                     <table className="w-full text-right border-collapse border border-black">
@@ -1009,6 +1004,20 @@
 
             return (
                 <div className="min-h-screen pb-20 relative bg-gray-50 animate-fade-in">
+                    
+                    {/* GLOBAL CLICK-TO-DISMISS NOTIFICATION OVERLAY */}
+                    {msg && (
+                        <div className="fixed inset-0 z-[10000]" onClick={() => setMsg(null)}>
+                            <div className="absolute top-6 left-1/2 transform -translate-x-1/2 pointer-events-auto">
+                                <div className={`px-6 py-4 rounded-2xl border shadow-2xl font-medium flex items-center gap-3 cursor-pointer ${msg.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
+                                    {msg.type === 'error' ? <Icons.AlertCircle/> : <Icons.CheckCircle/>}
+                                    {msg.text}
+                                    <span className="ml-6 opacity-40 text-[10px] uppercase tracking-widest border-l border-current pl-4">Click anywhere to dismiss</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <nav className="bg-black text-white shadow-lg sticky top-0 z-40">
                         <div className="max-w-[1600px] mx-auto px-6 py-4 flex justify-between items-center">
                             <div className="flex items-center gap-4">
@@ -1027,8 +1036,6 @@
                     {daysLeft <= 7 && <div className={`w-full text-center py-2.5 text-xs font-bold uppercase tracking-widest ${daysLeft <= 0 ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'}`}>{daysLeft <= 0 ? "SUBSCRIPTION EXPIRED" : `Expiring in ${daysLeft} days`}</div>}
                     
                     <main className="max-w-[1600px] mx-auto p-6 md:p-8">
-                        {msg && <div className={`mb-8 p-4 rounded-xl flex gap-3 border shadow-sm cursor-pointer relative z-50 ${msg.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-800 border-green-200'}`} onClick={() => setMsg(null)}>{msg.type === 'error' ? <Icons.AlertCircle /> : <Icons.CheckCircle />} <span className="font-medium flex-1">{msg.text}</span> <span className="text-xs opacity-50 uppercase tracking-widest flex items-center border-l border-current pl-4 ml-4">Click anywhere to dismiss</span></div>}
-
                         {activeTab === 'businesses' && <BusinessList user={user} onSelect={(id) => { sessionStorage.setItem('activeTab', 'invoice'); onSwitch(id); }} />}
 
                         {activeTab === 'invoice' && (
@@ -1049,12 +1056,6 @@
                                         
                                         <div className={user.settings.integrationMode !== 'production' ? "md:col-span-2" : "md:col-span-3"}><Input label="Customer Address" value={invoice.customerAddress} onChange={e => setInvoice({ ...invoice, customerAddress: e.target.value })} /></div>
                                         {user.settings.integrationMode !== 'production' && <div className="md:col-span-1"><SearchableDropdown label="Scenario ID (Sandbox)" value={invoice.scenarioId} options={SCENARIOS} onChange={v => setInvoice({ ...invoice, scenarioId: v })} placeholder="Auto-Assign" strict={false} /></div>}
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8 pt-6 border-t border-gray-100">
-                                        <div className="md:col-span-2"><Input label="Invoice Remarks / Notes" value={invoice.remarks || ''} onChange={e => setInvoice({ ...invoice, remarks: e.target.value })} placeholder="Optional note for invoice" /></div>
-                                        <Input label="Transport Type" value={invoice.transportType || ''} onChange={e => setInvoice({ ...invoice, transportType: e.target.value })} placeholder="e.g. Mazda" />
-                                        <Input label="Vehicle Reg No." value={invoice.vehicleNo || ''} onChange={e => setInvoice({ ...invoice, vehicleNo: e.target.value })} placeholder="e.g. JX-5276" />
                                     </div>
 
                                     <div className="mb-8 border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -1109,7 +1110,7 @@
                                     </div>
 
                                     <div className="border border-gray-200 rounded-xl shadow-sm mb-6 overflow-hidden">
-                                        <div className="w-full overflow-x-auto pb-4">
+                                        <div className="w-full overflow-x-auto hide-scrollbar pb-4">
                                             <table className="fbr-table min-w-[1200px]">
                                                 <thead className="bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wider font-bold">
                                                     <tr>
