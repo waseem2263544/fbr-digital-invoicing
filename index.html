@@ -731,7 +731,7 @@
                     buyerRegistrationType: finalRegType, 
                     invoiceRefNo: invoice.refInvoiceNumber,
 // NEW FIX: Force Ghost Variables (like old Retail Prices) to 0 if they are hidden!
-items: invoice.items.map((item, index) => {
+                    items: invoice.items.map((item, index) => {
                         const isRet = isRetailFedSale(item.saleType);
                         const isReducedOrExempt = item.saleType === "Goods at reduced rate" || item.saleType === "Goods at zero-rate" || item.saleType === "Exempt goods";
 
@@ -765,7 +765,6 @@ items: invoice.items.map((item, index) => {
                             saleType: item.saleType, 
                             sroItemSerialNo: item.sroItemSerialNo || "" 
                         };
-                    })
 
                 if (mode !== 'production') {
                     payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
