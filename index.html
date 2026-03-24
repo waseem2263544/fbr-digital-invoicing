@@ -700,14 +700,13 @@
                 } catch (e) { setMsg({ type: 'error', text: 'Verification Error' }); }
             };
 
-            const callFbrApi = async (isValidate = false) => {
+            const callFbrApi = async (isValidate = false, retryRegType = null, retryScenario = null) => {
                 if (isExpired) return setMsg({ type: 'error', text: 'Subscription Expired.' });
                 const mode = user.settings.integrationMode; const token = mode === 'production' ? user.settings.production.token : user.settings.sandbox.token;
                 if (!token) return setMsg({ type: 'error', text: 'Token Missing.' });
 
-                // Automatically assign finalRegType and scenarioId based on valid NTN presence
-                const isRegistered = invoice.customerNTN && String(invoice.customerNTN).replace(/-/g, '').length >= 7;
-                const finalRegType = isRegistered ? "Registered" : "Unregistered";
+                // Smart RegType Resolution: Uses the auto-retry value, OR the verified value, OR guesses based on NTN presence.
+                let finalRegType = retryRegType || invoice.customerRegType || (invoice.customerNTN && String(invoice.customerNTN).replace(/-/g, '').length >= 7 ? "Registered" : "Unregistered");
 
                 const payload = {
                     invoiceType: invoice.type, invoiceDate: invoice.invoiceDate, sellerNTNCNIC: String(user.settings.ntn || "").replace(/-/g, ""), sellerBusinessName: user.settings.businessName, sellerProvince: user.settings.province, sellerAddress: user.settings.address,
@@ -721,8 +720,9 @@
                     })
                 };
 
+                // Automatically assigns SN001 or SN002
                 if (mode !== 'production') {
-                    payload.scenarioId = isRegistered ? "SN001" : "SN002";
+                    payload.scenarioId = retryScenario || (finalRegType === "Registered" ? "SN001" : "SN002");
                 }
 
                 setLoading(true);
@@ -747,6 +747,14 @@
                         }
 
                         if (isFbrError) {
+                            // --- AUTO-RETRY LOGIC (Silent Error Handling) ---
+                            if (errorMessage.toLowerCase().includes("scenario not valid for unregistered") && !retryScenario) {
+                                return callFbrApi(isValidate, "Unregistered", "SN002");
+                            }
+                            if (errorMessage.toLowerCase().includes("scenario not valid for registered") && !retryScenario) {
+                                return callFbrApi(isValidate, "Registered", "SN001");
+                            }
+                            
                             setMsg({ type: 'error', text: `FBR Rejected: ${errorMessage}` });
                         } else {
                             setMsg({ type: 'success', text: isValidate ? "Validation Successful" : "Submitted Successfully" });
@@ -765,14 +773,13 @@
                         }
                     } else {
                         let errDetail = data?.Message || data?.error || JSON.stringify(data);
-                        if (res.status === 401 || res.status === 403) errDetail = "Token Invalid OR IP (64.225.4.64) not whitelisted in FBR Portal.";
+                        if (res.status === 401 || res.status === 403) errDetail = "Token Invalid OR IP not whitelisted in FBR Portal.";
                         setMsg({ type: 'error', text: `FBR Error (${res.status}): ${errDetail}` });
                     }
                 } catch (e) {
-                    setMsg({ type: 'error', text: `Connection Error: Could not reach FBR Servers. Please check your internet or FBR portal.` });
+                    setMsg({ type: 'error', text: `Connection Error: Could not reach FBR Servers.` });
                 } finally { setLoading(false); }
             };
-
             const renderInvoiceTemplate = () => {
                 let qrUrl = ""; try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 120 }).toDataURL(); } catch (e) {}
                 const printShowRetail = lastInv?.items?.some(i => isRetailFedSale(i.saleType)) || showRetailFed;
