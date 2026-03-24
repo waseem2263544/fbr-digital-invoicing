@@ -590,7 +590,7 @@
             const [invSearch, setInvSearch] = useState(""); const [histSearch, setHistSearch] = useState(""); const [custSearch, setCustSearch] = useState(""); const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS); const [invUomStatus, setInvUomStatus] = useState(null);
             
             const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES); const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES); const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
-            const [sroOptions, setSroOptions] = useState(["Third Schedule", "Fifth Schedule", "Sixth Schedule", "Eighth Schedule", "Ninth Schedule", "Eleventh Schedule"]);
+            const [sroOptions, setSroOptions] = useState([ "THIRD SCHEDULE", "FIFTH SCHEDULE", "SIXTH SCHEDULE Table 1", "SIXTH SCHEDULE Table 2", "EIGHTH SCHEDULE Table 1", "EIGHTH SCHEDULE Table 2", "NINTH SCHEDULE", "ELEVENTH SCHEDULE", "1450(I)/2021", "1579(I)/2021" ]);
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
@@ -613,17 +613,6 @@
                     try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.PROVINCES}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) setDynamicProvinces(data.map(d => d.stateProvinceDesc)); } } catch (e) { }
                     try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.DOCTYPECODE}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) setDynamicDocTypes(data.map(d => d.docDescription)); } } catch (e) { }
                     try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.UOM}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { const uoms = data.map(d => d.description); setDynamicUOMs(uoms); setInvUomOptions(uoms); } } } catch (e) { }
-                    
-                    try { 
-                        const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.SROITEMCODE}`, { headers }); 
-                        if (res.ok) { 
-                            const data = await res.json(); 
-                            if (Array.isArray(data) && data.length > 0) { 
-                                const sros = [...new Set(data.map(d => d.sro_Schedule_No || d.SRO_Schedule_No || d.sroDescription).filter(Boolean))];
-                                if(sros.length > 0) setSroOptions(sros);
-                            } 
-                        } 
-                    } catch (e) { }
                 };
                 fetchReferenceData();
             }, []);
@@ -730,7 +719,6 @@
                     buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", buyerBusinessName: invoice.customerName, buyerProvince: safeBuyerProvince, buyerAddress: invoice.customerAddress, 
                     buyerRegistrationType: finalRegType, 
                     invoiceRefNo: invoice.refInvoiceNumber,
-// NEW FIX: Force Ghost Variables (like old Retail Prices) to 0 if they are hidden!
                     items: invoice.items.map((item, index) => {
                         const isRet = isRetailFedSale(item.saleType);
                         const isReducedOrExempt = item.saleType === "Goods at reduced rate" || item.saleType === "Goods at zero-rate" || item.saleType === "Exempt goods";
@@ -740,9 +728,7 @@
                         const r = parseFloat(item.retailPrice) || 0; 
                         const baseVal = (isRet ? r : p) * q;
                         
-                        // NEW FIX: FBR Portal silently zeroes out Further Tax for these items. We must do the same.
                         const safeFurtherTax = isReducedOrExempt ? 0 : (parseFloat(item.furtherTax) || 0);
-                        
                         const cleanHsCode = item.hsCode ? item.hsCode.split(' - ')[0].trim() : "";
                         
                         return { 
@@ -765,6 +751,8 @@
                             saleType: item.saleType, 
                             sroItemSerialNo: item.sroItemSerialNo || "" 
                         };
+                    })
+                };
 
                 if (mode !== 'production') {
                     payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
@@ -1043,7 +1031,16 @@
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end">
                                                 <div className="md:col-span-5"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={(user.inventory || []).filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = (user.inventory || []).find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
                                                 <div className="md:col-span-4"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
-                                                <div className="md:col-span-3"><SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={SALE_TYPES} onChange={v => setLineItemForm({...lineItemForm, saleType: v})} /></div>
+                                                <div className="md:col-span-3">
+                                                    <SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={SALE_TYPES} onChange={v => {
+                                                        let autoTax = lineItemForm.taxRate;
+                                                        let autoFurther = lineItemForm.furtherTax;
+                                                        if (v === "Goods at reduced rate") { autoTax = 5; autoFurther = 0; }
+                                                        else if (v === "Goods at zero-rate" || v === "Exempt goods") { autoTax = 0; autoFurther = 0; }
+                                                        else if (v.includes("standard rate")) { autoTax = 18; }
+                                                        setLineItemForm({...lineItemForm, saleType: v, taxRate: autoTax, furtherTax: autoFurther});
+                                                    }} />
+                                                </div>
                                             </div>
                                             
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end bg-gray-50/50 p-5 rounded-xl border border-gray-100">
