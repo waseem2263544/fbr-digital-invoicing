@@ -603,7 +603,7 @@
             const [sroOptions, setSroOptions] = useState([ "THIRD SCHEDULE", "FIFTH SCHEDULE", "SIXTH SCHEDULE Table 1", "SIXTH SCHEDULE Table 2", "EIGHTH SCHEDULE Table 1", "EIGHTH SCHEDULE Table 2", "NINTH SCHEDULE", "ELEVENTH SCHEDULE", "1450(I)/2021", "1579(I)/2021" ]);
 
             const [isValidated, setIsValidated] = useState(false);
-            const [debugPayload, setDebugPayload] = useState(null);
+            const [debugPayload, setDebugPayload] = useState(null); // PAYLOAD INSPECTOR STATE
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
@@ -726,6 +726,7 @@
             const callFbrApi = async (isValidate = false, retryRegType = null, retryScenario = null) => {
                 if (isExpired) return setMsg({ type: 'error', text: 'Subscription Expired.' });
                 
+                // SAFE TOKEN EXTRACTION
                 const mode = user.settings?.integrationMode || 'sandbox';
                 const token = mode === 'production' 
                     ? (user.settings?.productionToken || user.settings?.production?.token) 
@@ -781,10 +782,13 @@
                             fixedNotifiedValueOrRetailPrice: Number((isRet ? r : 0).toFixed(2)), 
                             salesTaxApplicable: Number(salesTaxApplicable.toFixed(2)), 
                             
-                            extraTax: (isExemptOrReduced || extraTaxApplicable === 0) ? "" : Number(extraTaxApplicable.toFixed(2)),
-                            furtherTax: (isExemptOrReduced || furtherTaxApplicable === 0) ? "" : Number(furtherTaxApplicable.toFixed(2)),
-                            fedPayable: (!isRet && !isFedMode || fedAmt === 0) ? "" : Number((fedAmt * q).toFixed(2)),
-                            salesTaxWithheldAtSource: parseFloat(item.wht) === 0 ? "" : Number((parseFloat(item.wht) || 0).toFixed(2)),
+                            // THE HYBRID FIX
+                            // Extra Tax MUST be "" for Reduced Rate.
+                            // But everything else MUST be a strict Number for the schema parser.
+                            extraTax: isExemptOrReduced ? "" : Number(extraTaxApplicable.toFixed(2)),
+                            furtherTax: Number(furtherTaxApplicable.toFixed(2)),
+                            fedPayable: Number((fedAmt * q).toFixed(2)),
+                            salesTaxWithheldAtSource: Number((parseFloat(item.wht) || 0).toFixed(2)),
                             
                             sroScheduleNo: item.sroScheduleNo || "", 
                             discount: Number((parseFloat(item.discount) || 0).toFixed(2)), 
@@ -809,14 +813,29 @@
                     payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
                 }
 
+                // THE 0.00 REGEX INJECTOR
+                // Safely turns 0 values into 0.00 strings without breaking the "" string we just set for extraTax
+                let finalJsonString = JSON.stringify(payload, null, 2);
+                
+                const numericKeysToFormat = [
+                    'totalValues', 'valueSalesExcludingST', 'fixedNotifiedValueOrRetailPrice', 
+                    'salesTaxApplicable', 'salesTaxWithheldAtSource', 'extraTax', 
+                    'furtherTax', 'fedPayable', 'discount'
+                ];
+                
+                numericKeysToFormat.forEach(key => {
+                    const regex = new RegExp(`("${key}":\\s*)0([,\\n\\r\\}])`, 'g');
+                    finalJsonString = finalJsonString.replace(regex, '$10.00$2');
+                });
+
                 if (isValidate) {
-                    setDebugPayload(JSON.stringify(payload, null, 2));
+                    setDebugPayload(finalJsonString);
                 }
 
                 setLoading(true);
                 try {
                     const endpoint = isValidate ? (mode === 'production' ? SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_PROD : SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_SB) : (mode === 'production' ? SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD : SYSTEM_CONFIG.PATHS.POST_INVOICE_SB);
-                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
+                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: finalJsonString });
                     
                     let rawData = await res.json();
                     let data = rawData;
@@ -1027,22 +1046,28 @@
                     <div className="w-full animate-fade-in"><Card className="p-10 shadow-sm">
                         <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4"><h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 tracking-tight"><div className="bg-blue-50 text-blue-600 p-2 rounded-lg"><Icons.Settings size={24} /></div> Client Configuration</h2></div>
                         <div className="space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-gray-100 pb-8">
-                                <div>
-                                    <h3 className="font-bold text-sm text-gray-900 uppercase tracking-wider mb-5">Contact Information</h3>
-                                    <div className="space-y-5">
-                                        <Input label="Contact Phone" value={user?.settings?.phone || ''} readOnly placeholder="Set by Admin" />
-                                        <Input label="Contact Email" value={user?.settings?.email || ''} readOnly placeholder="Set by Admin" />
-                                    </div>
-                                </div>
-                            </div>
-
                             <div>
                                 <h3 className="font-bold text-sm text-gray-900 uppercase tracking-wider mb-5 opacity-60">Locked Business Profile</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5"><Input label="Business Name" value={user?.settings?.businessName} readOnly /><Input label="Business Address" value={user?.settings?.address} readOnly /></div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5"><Input label="NTN" value={user?.settings?.ntn} readOnly /><Input label="STRN" value={user?.settings?.strn} readOnly /></div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5"><Input label="Sale Origination Province" value={user?.settings?.province} readOnly /><Input label="Active Environment" value={user?.settings?.integrationMode === 'production' ? 'Production' : 'Sandbox'} readOnly /></div>
-                                <div className="opacity-60 pointer-events-none"><label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-1 block mb-2">Company Logo</label>{user.settings?.logo ? <img src={user.settings.logo} className="h-16 mt-2 object-contain" /> : <p className="text-sm">No Logo Uploaded</p>}</div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5">
+                                    <Input label="Business Name" value={user?.settings?.businessName} readOnly />
+                                    <Input label="Business Address" value={user?.settings?.address} readOnly />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5">
+                                    <Input label="NTN" value={user?.settings?.ntn} readOnly />
+                                    <Input label="STRN" value={user?.settings?.strn} readOnly />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5">
+                                    <Input label="Contact Phone" value={user?.settings?.phone || ''} readOnly placeholder="Set by Admin" />
+                                    <Input label="Contact Email" value={user?.settings?.email || ''} readOnly placeholder="Set by Admin" />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5">
+                                    <Input label="Sale Origination Province" value={user?.settings?.province} readOnly />
+                                    <Input label="Active Environment" value={user?.settings?.integrationMode === 'production' ? 'Production' : 'Sandbox'} readOnly />
+                                </div>
+                                <div className="opacity-60 pointer-events-none">
+                                    <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-1 block mb-2">Company Logo</label>
+                                    {user.settings?.logo ? <img src={user.settings.logo} className="h-16 mt-2 object-contain" /> : <p className="text-sm">No Logo Uploaded</p>}
+                                </div>
                             </div>
                         </div>
                         <div className="text-center mt-10 text-sm text-gray-400 font-medium">Contact Administrator to update locked details. Invoices are printed to FBR Standard format.</div>
@@ -1349,8 +1374,6 @@
                                 </div>
                             </Card>
                         )}
-
-                        {activeTab === 'settings' && <SettingsTab user={user} />}
 
                         {/* FBR PAYLOAD DEBUG INSPECTOR */}
                         {debugPayload && (
