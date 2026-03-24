@@ -754,21 +754,25 @@
                     invoiceRefNo: invoice.refInvoiceNumber,
                     items: invoice.items.map((item, index) => {
                         const type = item.saleType || "";
-                        const isRet = type === "3rd Schedule Goods" || type === "Cotton ginners";
+                        
+                        // 1. Define the FBR Strict Groups
+                        const isRetail = type === "3rd Schedule Goods" || type === "Cotton ginners";
                         const isExemptOrReduced = type.includes("reduced rate") || type.includes("zero-rate") || type.includes("Exempt") || type.includes("DTRE");
                         const isFedMode = type.includes("FED in ST Mode");
 
                         const q = parseFloat(item.qty) || 0; 
                         const p = parseFloat(item.price) || 0; 
                         
-                        const r = isRet ? (parseFloat(item.retailPrice) || 0) : 0; 
-                        const baseVal = (isRet ? r : p) * q;
+                        // 2. Safely extract values based on groups to prevent bad math
+                        const r = isRetail ? (parseFloat(item.retailPrice) || 0) : 0; 
+                        const baseVal = (isRetail ? r : p) * q;
                         
                         const taxRate = parseFloat(item.taxRate) || 0;
                         const furtherRate = isExemptOrReduced ? 0 : (parseFloat(item.furtherTax) || 0);
-                        const extraRate = isExemptOrReduced ? 0 : (parseFloat(item.extraTax) || 0); 
-                        const fedAmt = (isRet || isFedMode) ? (parseFloat(item.fedPayable) || 0) : 0;
+                        const extraRate = isRetail ? (parseFloat(item.extraTax) || 0) : (parseFloat(item.extraTax) || 0); // Allow extra tax for standard if provided
+                        const fedAmt = (isRetail || isFedMode) ? (parseFloat(item.fedPayable) || 0) : 0;
 
+                        // 3. FBR-Matched Calculations
                         const salesTaxApplicable = baseVal * (taxRate / 100);
                         const furtherTaxApplicable = baseVal * (furtherRate / 100);
                         const extraTaxApplicable = baseVal * (extraRate / 100);
@@ -777,8 +781,8 @@
                         const cleanHsCode = item.hsCode ? item.hsCode.split(' - ')[0].trim() : "";
                         const serialNo = item.sroItemSerialNo ? String(item.sroItemSerialNo) : "";
 
-                        // 🔴 STRICT NUMERIC TYPING TO PREVENT FBR PARSER CRASHES 🔴
-                        return { 
+                        // 4. Build the initial FBR Object (Strict Numeric Types)
+                        let mappedItem = { 
                             itemNo: index + 1, 
                             hsCode: cleanHsCode, 
                             productDescription: item.desc, 
@@ -787,7 +791,7 @@
                             quantity: Number(q.toFixed(4)), 
                             totalValues: Number(totalValues.toFixed(2)), 
                             valueSalesExcludingST: Number(baseVal.toFixed(2)), 
-                            fixedNotifiedValueOrRetailPrice: Number((isRet ? r : 0).toFixed(2)), 
+                            fixedNotifiedValueOrRetailPrice: Number((isRetail ? r : 0).toFixed(2)), 
                             salesTaxApplicable: Number(salesTaxApplicable.toFixed(2)), 
                             salesTaxWithheldAtSource: Number((parseFloat(item.wht) || 0).toFixed(2)), 
                             extraTax: Number(extraTaxApplicable.toFixed(2)), 
@@ -800,6 +804,23 @@
                             sroItemSNo: serialNo,
                             itemSNo: serialNo
                         };
+
+                        // 5. 🔴 THE MASTER SANITIZER: Aggressively delete forbidden '0' keys so FBR doesn't complain about them existing
+                        if (mappedItem.extraTax === 0) delete mappedItem.extraTax;
+                        if (mappedItem.furtherTax === 0) delete mappedItem.furtherTax;
+                        if (mappedItem.fedPayable === 0) delete mappedItem.fedPayable;
+                        if (mappedItem.fixedNotifiedValueOrRetailPrice === 0) delete mappedItem.fixedNotifiedValueOrRetailPrice;
+                        if (mappedItem.salesTaxWithheldAtSource === 0) delete mappedItem.salesTaxWithheldAtSource;
+                        
+                        // SRO Cleanup
+                        if (!mappedItem.sroScheduleNo) {
+                            delete mappedItem.sroScheduleNo;
+                            delete mappedItem.sroItemSerialNo;
+                            delete mappedItem.sroItemSNo;
+                            delete mappedItem.itemSNo;
+                        }
+
+                        return mappedItem;
                     })
                 };
                 
@@ -1338,27 +1359,28 @@
                                 </div>
                             </Card>
                         )}
-                    </main >
 
-                    {/* FBR PAYLOAD DEBUG INSPECTOR */}
-                    {debugPayload && (
-                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9500] animate-fade-in">
-                            <div className="bg-gray-900 p-6 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative text-green-400 font-mono text-xs border border-gray-700">
-                                <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
-                                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><Icons.Settings size={18}/> FBR Payload Inspector</h3>
-                                    <button onClick={() => setDebugPayload(null)} className="text-gray-400 hover:text-white transition-colors"><Icons.X size={20} /></button>
-                                </div>
-                                <div className="bg-black p-4 rounded-xl overflow-x-auto">
-                                    <pre className="whitespace-pre-wrap break-words">{debugPayload}</pre>
-                                </div>
-                                <div className="mt-6 flex justify-between items-center">
-                                    <div className="text-gray-500">View what your app is sending to FBR behind the scenes.</div>
-                                    <Button onClick={() => setDebugPayload(null)} variant="secondary" className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">Close Inspector</Button>
+                        {/* FBR PAYLOAD DEBUG INSPECTOR */}
+                        {debugPayload && (
+                            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9500] animate-fade-in">
+                                <div className="bg-gray-900 p-6 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative text-green-400 font-mono text-xs border border-gray-700">
+                                    <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
+                                        <h3 className="text-lg font-bold text-white flex items-center gap-2"><Icons.Settings size={18}/> FBR Payload Inspector</h3>
+                                        <button onClick={() => setDebugPayload(null)} className="text-gray-400 hover:text-white transition-colors"><Icons.X size={20} /></button>
+                                    </div>
+                                    <div className="bg-black p-4 rounded-xl overflow-x-auto">
+                                        <pre className="whitespace-pre-wrap break-words">{debugPayload}</pre>
+                                    </div>
+                                    <div className="mt-6 flex justify-between items-center">
+                                        <div className="text-gray-500">View what your app is sending to FBR behind the scenes.</div>
+                                        <Button onClick={() => setDebugPayload(null)} variant="secondary" className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">Close Inspector</Button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
+                    </main >
+                    {showReceipt && lastInv && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">{renderInvoiceTemplate()}</div>}
                 </div >
             );
         };
