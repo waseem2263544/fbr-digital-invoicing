@@ -740,6 +740,7 @@
                     invoiceRefNo: invoice.refInvoiceNumber,
                     items: invoice.items.map((item, index) => {
                         const isRet = isRetailFedSale(item.saleType);
+                        // FBR strictly forbids Extra Tax and Further Tax on these categories
                         const isReducedZeroOrExempt = item.saleType === "Goods at reduced rate" || 
                                                        item.saleType === "Goods at zero-rate" || 
                                                        item.saleType === "Exempt goods";
@@ -749,12 +750,14 @@
                         const r = parseFloat(item.retailPrice) || 0; 
                         const baseVal = (isRet ? r : p) * q;
                         
+                        // SANITIZATION: Force Extra/Further Tax to 0 if Reduced Rate is selected
                         const safeFurtherTax = isReducedZeroOrExempt ? 0 : (parseFloat(item.furtherTax) || 0);
                         const safeExtraTax = (isRet && !isReducedZeroOrExempt) ? (parseFloat(item.extraTax) || 0) : 0;
                         const safeFed = (isRet && !isReducedZeroOrExempt) ? (parseFloat(item.fedPayable) || 0) : 0;
                         
                         const taxRate = parseFloat(item.taxRate) || 0;
                         
+                        // Precise calculation for the payload
                         const salesTaxApplicable = baseVal * (taxRate / 100);
                         const furtherTaxApplicable = baseVal * (safeFurtherTax / 100);
                         const extraTaxApplicable = baseVal * (safeExtraTax / 100);
@@ -781,7 +784,7 @@
                             fedPayable: +(safeFed * q).toFixed(2), 
                             discount: +(parseFloat(item.discount) || 0).toFixed(2), 
                             saleType: item.saleType, 
-                            sroItemSNo: item.sroItemSerialNo || "" 
+                            sroItemSNo: item.sroItemSerialNo || "" // <-- FIXED KEY NAME FOR FBR
                         };
                     })
                 };
@@ -965,7 +968,7 @@
 
                             <div className="grid grid-cols-2 gap-4 mb-4 text-xs">
                                 <div>
-                                    {/* Remarks & Transport removed */}
+                                    
                                 </div>
                                 <div>
                                     <table className="w-full text-right border-collapse border border-black">
@@ -1168,14 +1171,12 @@
                                         </div>
                                     </div>
                                     
-                                    <div className="mt-8 flex justify-end gap-4 border-t border-gray-100 pt-6">
-                                        <Button onClick={() => setLastInv({ ...invoice, ...totals, id: invoice.invoiceNumber }) || setShowReceipt(true)} variant="secondary" className="px-6 shadow-sm"><Icons.Printer size={18}/> Print Preview</Button>
-                                        {userCanEdit && (
-                                            <>
-                                                {!isValidated && <Button onClick={() => callFbrApi(true)} variant="secondary" disabled={loading || invoice.items.length === 0} className="px-6 shadow-sm"><Icons.ShieldCheck size={18}/> Validate Details</Button>}
-                                                {isValidated && <Button onClick={() => callFbrApi(false)} disabled={loading || invoice.items.length === 0} className="px-8 shadow-sm"><Icons.Save size={18}/> Submit to FBR</Button>}
-                                            </>
-                                        )}
+                                    <div className="flex justify-end items-center gap-4 border-t border-gray-100 pt-6">
+                                        <button className="px-6 py-3 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors" onClick={() => setLastInv({ ...invoice, id: invoice.invoiceNumber }) || setShowReceipt(true)}>Print Preview</button>
+                                        
+                                        {!isValidated && <button className="px-8 py-3 bg-gray-100 text-black border border-gray-300 rounded-xl font-bold shadow-sm hover:bg-gray-200 transition-colors flex items-center gap-2" onClick={() => submit(true)} disabled={loading || invoice.items.length === 0}><Icons.CheckCircle size={18}/> Validate Details</button>}
+                                        
+                                        {isValidated && <button className="px-10 py-3 bg-black text-white rounded-xl font-bold shadow-xl hover:bg-gray-800 transition-transform active:scale-95 animate-fade-in flex items-center gap-2" onClick={() => submit(false)} disabled={loading}><Icons.Save size={18}/> {loading ? 'Submitting...' : 'Submit to FBR'}</button>}
                                     </div>
                                 </Card>
                             </div>
