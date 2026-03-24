@@ -145,7 +145,6 @@
         const formatCurrency = (val) => parseFloat(val || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const getToday = () => new Date().toISOString().split('T')[0];
 
-        // CORRECTED fbrFetch to pass FBR token in headers
         const fbrFetch = async (url, options = {}) => {
             if (!url.startsWith(SYSTEM_CONFIG.BASE_URL)) return fetch(url, options);
             const proxyPayload = { endpoint: url.replace(SYSTEM_CONFIG.BASE_URL, ''), method: options.method || 'GET', headers: options.headers || {} };
@@ -795,7 +794,7 @@
                             fedPayable: +(safeFed * q).toFixed(2), 
                             discount: +(parseFloat(item.discount) || 0).toFixed(2), 
                             saleType: item.saleType, 
-                            sroItemSNo: item.sroItemSerialNo || "" // FIXED KEY FOR FBR
+                            sroItemSerialNo: item.sroItemSerialNo || "" // RESTORED CORRECT KEY FOR FBR
                         };
                     })
                 };
@@ -896,7 +895,7 @@
                                     <div className="flex items-center gap-2 mb-2">
                                         {qrUrl && <img src={qrUrl} alt="QR Code" className="w-20 h-20" />}
                                         
-                                        <div id="fbr-official-logo" className="text-center ml-2 flex items-center justify-center" style={{ border: 'none', background: 'transparent' }}>
+                                        <div id="fbr-official-logo" className="text-center ml-2 flex items-center justify-center p-2 rounded" style={{ border: 'none', background: 'transparent' }}>
                                             <img src="https://app.tallied.pk/do-fbr-digital-invoice-integration-for-pakistan-market-2.png" alt="FBR Digital Invoicing System" className="w-24 h-24 object-contain" />
                                         </div>
                                     </div>
@@ -978,7 +977,9 @@
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 mb-4 text-xs">
-                                <div></div>
+                                <div>
+                                    
+                                </div>
                                 <div>
                                     <table className="w-full text-right border-collapse border border-black">
                                         <tbody>
@@ -1071,15 +1072,14 @@
                                     </div>
 
                                     <div className="mb-8 border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                                        <div className="bg-gray-50 px-6 py-4 font-bold text-gray-900 border-b border-gray-200 flex justify-between items-center">
-                                            <span className="flex items-center gap-2"><Icons.Plus size={18}/> Line Items</span>
-                                            <div className="flex gap-3 items-center">
-                                                {showRetailFed && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2.5 py-1 rounded-md uppercase tracking-wider font-bold border border-yellow-200">Retail & FED Enabled</span>}
-                                                <Button onClick={() => { setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0}); setShowLineModal(true); }}><Icons.Plus size={16}/> Add New Item</Button>
-                                            </div>
-                                        </div>
-
                                         <div className="w-full overflow-x-auto hide-scrollbar pb-4 bg-white">
+                                            <div className="bg-gray-50 px-6 py-4 font-bold text-gray-900 border-b border-gray-200 flex justify-between items-center mb-4">
+                                                <span className="flex items-center gap-2"><Icons.Plus size={18}/> Line Items</span>
+                                                <div className="flex gap-3 items-center">
+                                                    {showRetailFed && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2.5 py-1 rounded-md uppercase tracking-wider font-bold border border-yellow-200">Retail & FED Enabled</span>}
+                                                    <Button onClick={() => { setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0}); setShowLineModal(true); }}><Icons.Plus size={16}/> Add New Item</Button>
+                                                </div>
+                                            </div>
                                             <table className="fbr-table min-w-[1200px]">
                                                 <thead className="bg-white text-gray-500 text-[11px] uppercase tracking-wider font-bold border-b border-gray-100">
                                                     <tr>
@@ -1155,7 +1155,7 @@
                                         <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4"><h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 tracking-tight"><div className="bg-blue-50 text-blue-600 p-2 rounded-lg"><Icons.Box size={24} /></div> {editingInvId ? 'Edit Product' : 'Add Product'}</h2></div>
                                         <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
                                             <div className="md:col-span-4"><Input label="Product Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} /></div>
-                                            <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
+                                            <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
                                             <div className="md:col-span-3"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
                                             
                                             <div className="md:col-span-6"><SearchableDropdown label="Sales Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
@@ -1257,32 +1257,6 @@
                                     <table className="w-full text-left text-sm fbr-table"><thead className="bg-black text-white uppercase text-xs tracking-wide"><tr><th className="p-3">FBR Invoice #</th><th className="p-3">Date</th><th className="p-3">Customer</th><th className="p-3">NTN</th><th className="p-3 text-right">Subtotal</th><th className="p-3 text-right">Sales Tax</th><th className="p-3 text-right">FED</th><th className="p-3 text-right">Fur.Tax</th><th className="p-3 text-right">WHT</th><th className="p-3 text-right">Grand Total</th><th className="p-3 text-center">Action</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredHistory.map(inv => (<tr key={inv.id} className="hover:bg-gray-50 transition-colors bg-white"><td className="p-4 text-xs font-bold text-red-600 border-r border-gray-100">{inv.fbrInvoiceNumber}</td><td className="p-4 text-xs text-gray-500">{inv.invoiceDate || inv.date}</td><td className="p-4 text-sm font-bold text-gray-900">{inv.customerName}</td><td className="p-4 text-xs text-gray-500">{inv.customerNTN}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.subtotal)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.gst)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.fed)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.further)}</td><td className="p-4 text-sm text-right text-blue-600">{formatCurrency(inv.wht)}</td><td className="p-4 text-lg text-right font-bold text-gray-900 tracking-tight">{formatCurrency(inv.total)}</td><td className="p-4 text-center"><div className="flex justify-center gap-3"><button onClick={() => { setLastInv(inv); setShowReceipt(true); }} className="text-gray-400 hover:text-black transition-colors" title="Print"><Icons.Printer size={18}/></button><button onClick={() => downloadInvoice(inv)} className="text-gray-400 hover:text-black transition-colors" title="Download JSON"><Icons.Download size={18}/></button></div></td></tr>))}</tbody></table>
                                 </div>
                             </Card>
-                        )}
-
-                        {activeTab === 'settings' && (
-                            <div className="w-full animate-fade-in"><Card className="p-10 shadow-sm">
-                                <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4"><h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 tracking-tight"><div className="bg-blue-50 text-blue-600 p-2 rounded-lg"><Icons.Settings size={24} /></div> Client Configuration</h2></div>
-                                <div className="space-y-8">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-gray-100 pb-8">
-                                        <div>
-                                            <h3 className="font-bold text-sm text-gray-900 uppercase tracking-wider mb-5">Contact Information</h3>
-                                            <div className="space-y-5">
-                                                <Input label="Contact Phone" value={user?.settings?.phone || ''} readOnly placeholder="e.g. +92..." />
-                                                <Input label="Contact Email" value={user?.settings?.email || ''} readOnly placeholder="e.g. info@business.com" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="font-bold text-sm text-gray-900 uppercase tracking-wider mb-5 opacity-60">Locked Business Profile</h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5"><Input label="Business Name" value={user?.settings?.businessName} readOnly /><Input label="Business Address" value={user?.settings?.address} readOnly /></div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5"><Input label="NTN" value={user?.settings?.ntn} readOnly /><Input label="STRN" value={user?.settings?.strn} readOnly /></div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5"><Input label="Sale Origination Province" value={user?.settings?.province} readOnly /><Input label="Active Environment" value={user?.settings?.integrationMode === 'production' ? 'Production' : 'Sandbox'} readOnly /></div>
-                                        <div className="opacity-60 pointer-events-none"><label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-1 block mb-2">Company Logo</label>{user.settings?.logo ? <img src={user.settings.logo} className="h-16 mt-2 object-contain" /> : <p className="text-sm">No Logo Uploaded</p>}</div>
-                                    </div>
-                                </div>
-                                <div className="text-center mt-10 text-sm text-gray-400 font-medium">Contact Administrator to update locked details. Invoices are printed to FBR Standard format.</div>
-                            </Card></div>
                         )}
                     </main >
 
