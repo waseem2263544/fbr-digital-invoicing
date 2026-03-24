@@ -603,7 +603,7 @@
             const [sroOptions, setSroOptions] = useState([ "THIRD SCHEDULE", "FIFTH SCHEDULE", "SIXTH SCHEDULE Table 1", "SIXTH SCHEDULE Table 2", "EIGHTH SCHEDULE Table 1", "EIGHTH SCHEDULE Table 2", "NINTH SCHEDULE", "ELEVENTH SCHEDULE", "1450(I)/2021", "1579(I)/2021" ]);
 
             const [isValidated, setIsValidated] = useState(false);
-            const [debugPayload, setDebugPayload] = useState(null); // PAYLOAD INSPECTOR STATE
+            const [debugPayload, setDebugPayload] = useState(null);
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
@@ -748,16 +748,8 @@
                 const safeSellerProvince = user.settings?.province || "Sindh";
 
                 const payload = {
-                    invoiceType: invoice.type, 
-                    invoiceDate: invoice.invoiceDate, 
-                    sellerNTNCNIC: String(user.settings?.ntn || "").replace(/-/g, ""), 
-                    sellerBusinessName: user.settings.businessName, 
-                    sellerProvince: safeSellerProvince, 
-                    sellerAddress: user.settings.address,
-                    buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", 
-                    buyerBusinessName: invoice.customerName, 
-                    buyerProvince: safeBuyerProvince, 
-                    buyerAddress: invoice.customerAddress, 
+                    invoiceType: invoice.type, invoiceDate: invoice.invoiceDate, sellerNTNCNIC: String(user.settings?.ntn || "").replace(/-/g, ""), sellerBusinessName: user.settings.businessName, sellerProvince: safeSellerProvince, sellerAddress: user.settings.address,
+                    buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", buyerBusinessName: invoice.customerName, buyerProvince: safeBuyerProvince, buyerAddress: invoice.customerAddress, 
                     buyerRegistrationType: finalRegType, 
                     invoiceRefNo: invoice.refInvoiceNumber,
                     items: invoice.items.map((item, index) => {
@@ -809,8 +801,6 @@
                             itemSNo: serialNo
                         };
 
-                        // ONLY clean up SRO strings if empty. 
-                        // NEVER delete numeric fields (extraTax, furtherTax, etc.)
                         if (!mappedItem.sroScheduleNo) {
                             delete mappedItem.sroScheduleNo;
                             delete mappedItem.sroItemSerialNo;
@@ -826,14 +816,35 @@
                     payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
                 }
 
+                // --- THE 0.00 REGEX INJECTOR ---
+                // JavaScript natively strips .00 from numbers when converting to JSON.
+                // To force FBR to see "0.00", we intercept the string and manually inject it.
+                let finalJsonString = JSON.stringify(payload, null, 2);
+                
+                const numericKeysToFormat = [
+                    'totalValues', 'valueSalesExcludingST', 'fixedNotifiedValueOrRetailPrice', 
+                    'salesTaxApplicable', 'salesTaxWithheldAtSource', 'extraTax', 
+                    'furtherTax', 'fedPayable', 'discount'
+                ];
+                
+                numericKeysToFormat.forEach(key => {
+                    // Matches the key, a 0, and a comma or newline, replacing it with 0.00
+                    const regex = new RegExp(`("${key}":\\s*)0([,\\n])`, 'g');
+                    finalJsonString = finalJsonString.replace(regex, '$10.00$2');
+                });
+
                 if (isValidate) {
-                    setDebugPayload(JSON.stringify(payload, null, 2));
+                    setDebugPayload(finalJsonString);
                 }
 
                 setLoading(true);
                 try {
                     const endpoint = isValidate ? (mode === 'production' ? SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_PROD : SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_SB) : (mode === 'production' ? SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD : SYSTEM_CONFIG.PATHS.POST_INVOICE_SB);
-                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
+                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
+                        body: finalJsonString 
+                    });
                     
                     let rawData = await res.json();
                     let data = rawData;
