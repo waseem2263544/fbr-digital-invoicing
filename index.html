@@ -619,14 +619,6 @@
             // Reset validation lock if any change occurs
             useEffect(() => { setIsValidated(false); }, [invoice, lineItemForm]);
 
-            // Click anywhere to dismiss notification
-            useEffect(() => {
-                if (!msg) return;
-                const hideMsg = () => setMsg(null);
-                const timer = setTimeout(() => window.addEventListener('click', hideMsg), 50);
-                return () => { clearTimeout(timer); window.removeEventListener('click', hideMsg); };
-            }, [msg]);
-
             useEffect(() => {
                 const fetchReferenceData = async () => {
                     const mode = user.settings?.integrationMode || 'sandbox';
@@ -734,7 +726,6 @@
             const callFbrApi = async (isValidate = false, retryRegType = null, retryScenario = null) => {
                 if (isExpired) return setMsg({ type: 'error', text: 'Subscription Expired.' });
                 
-                // SAFE TOKEN EXTRACTION
                 const mode = user.settings?.integrationMode || 'sandbox';
                 const token = mode === 'production' 
                     ? (user.settings?.productionToken || user.settings?.production?.token) 
@@ -766,25 +757,18 @@
                         const baseVal = (isRet ? r : p) * q;
                         
                         const taxRate = parseFloat(item.taxRate) || 0;
-                        
+                        const furtherRate = isExemptOrReduced ? 0 : (parseFloat(item.furtherTax) || 0);
+                        const extraRate = isExemptOrReduced ? 0 : (parseFloat(item.extraTax) || 0); 
+                        const fedAmt = (isRet || isFedMode) ? (parseFloat(item.fedPayable) || 0) : 0;
+
                         const salesTaxApplicable = baseVal * (taxRate / 100);
-                        
-                        const extraRate = parseFloat(item.extraTax) || 0;
-                        const furtherRate = parseFloat(item.furtherTax) || 0;
-                        const fedAmt = parseFloat(item.fedPayable) || 0;
-                        
-                        const extraTaxApplicable = baseVal * (extraRate / 100);
                         const furtherTaxApplicable = baseVal * (furtherRate / 100);
-                        
+                        const extraTaxApplicable = baseVal * (extraRate / 100);
                         const totalValues = baseVal + salesTaxApplicable + furtherTaxApplicable + extraTaxApplicable + (fedAmt * q);
                         
                         const cleanHsCode = item.hsCode ? item.hsCode.split(' - ')[0].trim() : "";
                         const serialNo = item.sroItemSerialNo ? String(item.sroItemSerialNo) : "";
 
-                        // 🔴 THE "EMPTY STRING" FIX FOR FORBIDDEN TAXES 🔴
-                        // Instead of deleting the key (which crashes parser) or sending 0 (which crashes rule engine),
-                        // we send an empty string "" exactly as requested by community developers.
-                        
                         let mappedItem = { 
                             itemNo: index + 1, 
                             hsCode: cleanHsCode, 
@@ -797,7 +781,6 @@
                             fixedNotifiedValueOrRetailPrice: Number((isRet ? r : 0).toFixed(2)), 
                             salesTaxApplicable: Number(salesTaxApplicable.toFixed(2)), 
                             
-                            // Bypass FBR's pedantic zero-checks using empty strings
                             extraTax: (isExemptOrReduced || extraTaxApplicable === 0) ? "" : Number(extraTaxApplicable.toFixed(2)),
                             furtherTax: (isExemptOrReduced || furtherTaxApplicable === 0) ? "" : Number(furtherTaxApplicable.toFixed(2)),
                             fedPayable: (!isRet && !isFedMode || fedAmt === 0) ? "" : Number((fedAmt * q).toFixed(2)),
@@ -811,7 +794,6 @@
                             itemSNo: serialNo
                         };
 
-                        // Clean up SRO strings if empty
                         if (!mappedItem.sroScheduleNo) {
                             delete mappedItem.sroScheduleNo;
                             delete mappedItem.sroItemSerialNo;
@@ -1073,14 +1055,23 @@
             return (
                 <div className="min-h-screen pb-20 relative bg-gray-50 animate-fade-in">
                     
-                    {/* GLOBAL CLICK-TO-DISMISS NOTIFICATION OVERLAY */}
+                    {/* CENTERED POPUP MODAL FOR MESSAGES/ERRORS */}
                     {msg && (
-                        <div className="fixed inset-0 z-[9000]" onClick={() => setMsg(null)}>
-                            <div className="absolute top-6 left-1/2 transform -translate-x-1/2 pointer-events-auto">
-                                <div className={`px-6 py-4 rounded-2xl border shadow-2xl font-medium flex items-center gap-3 cursor-pointer ${msg.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
-                                    {msg.type === 'error' ? <Icons.AlertCircle/> : <Icons.CheckCircle/>}
-                                    {msg.text}
-                                    <span className="ml-6 opacity-40 text-[10px] uppercase tracking-widest border-l border-current pl-4">Click anywhere to dismiss</span>
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4 animate-fade-in">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                                <div className={`p-6 text-center ${msg.type === 'error' ? 'bg-red-50' : 'bg-green-50'}`}>
+                                    <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 shadow-sm ${msg.type === 'error' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                                        {msg.type === 'error' ? <Icons.AlertCircle size={32}/> : <Icons.CheckCircle size={32}/>}
+                                    </div>
+                                    <h3 className={`text-xl font-bold mb-2 ${msg.type === 'error' ? 'text-red-900' : 'text-green-900'}`}>
+                                        {msg.type === 'error' ? 'Validation Error' : 'Success'}
+                                    </h3>
+                                    <p className="text-gray-700 text-sm leading-relaxed">{msg.text}</p>
+                                </div>
+                                <div className="p-4 bg-white border-t border-gray-100 flex justify-center">
+                                    <Button onClick={() => setMsg(null)} className="w-full max-w-[200px]" variant={msg.type === 'error' ? 'danger' : 'primary'}>
+                                        {msg.type === 'error' ? 'Review & Fix' : 'Continue'}
+                                    </Button>
                                 </div>
                             </div>
                         </div>
@@ -1358,6 +1349,8 @@
                                 </div>
                             </Card>
                         )}
+
+                        {activeTab === 'settings' && <SettingsTab user={user} />}
 
                         {/* FBR PAYLOAD DEBUG INSPECTOR */}
                         {debugPayload && (
