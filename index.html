@@ -731,49 +731,41 @@
                     buyerRegistrationType: finalRegType, 
                     invoiceRefNo: invoice.refInvoiceNumber,
 // NEW FIX: Force Ghost Variables (like old Retail Prices) to 0 if they are hidden!
-                    items: invoice.items.map((item, index) => {
+items: invoice.items.map((item, index) => {
                         const isRet = isRetailFedSale(item.saleType);
+                        const isReducedOrExempt = item.saleType === "Goods at reduced rate" || item.saleType === "Goods at zero-rate" || item.saleType === "Exempt goods";
+
                         const q = parseFloat(item.qty) || 0; 
                         const p = parseFloat(item.price) || 0; 
-                        
-                        // Strictly zero out hidden fields so they don't leak into FBR
-                        const r = isRet ? (parseFloat(item.retailPrice) || 0) : 0; 
-                        const exRate = isRet ? (parseFloat(item.extraTax) || 0) : 0;
-                        const fed = isRet ? (parseFloat(item.fedPayable) || 0) : 0;
-                        
-                        const furtherRate = parseFloat(item.furtherTax) || 0;
-                        const taxRate = parseFloat(item.taxRate) || 0;
-                        
+                        const r = parseFloat(item.retailPrice) || 0; 
                         const baseVal = (isRet ? r : p) * q;
-                        const stAmt = baseVal * (taxRate / 100);
-                        const furtherAmt = baseVal * (furtherRate / 100);
-                        const exAmt = baseVal * (exRate / 100);
-                        const total = baseVal + stAmt + furtherAmt + exAmt;
+                        
+                        // NEW FIX: FBR Portal silently zeroes out Further Tax for these items. We must do the same.
+                        const safeFurtherTax = isReducedOrExempt ? 0 : (parseFloat(item.furtherTax) || 0);
                         
                         const cleanHsCode = item.hsCode ? item.hsCode.split(' - ')[0].trim() : "";
-
+                        
                         return { 
                             itemNo: index + 1, 
                             hsCode: cleanHsCode, 
                             productDescription: item.desc, 
-                            rate: `${taxRate}%`, 
+                            rate: `${item.taxRate}%`, 
                             uoM: item.uom || "Numbers, pieces, units", 
                             quantity: q, 
-                            totalValues: +total.toFixed(2), 
+                            totalValues: +(baseVal + (baseVal * (parseFloat(item.taxRate) / 100 || 0)) + (baseVal * (safeFurtherTax / 100)) + (isRet ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0)).toFixed(2), 
                             valueSalesExcludingST: +baseVal.toFixed(2), 
-                            fixedNotifiedValueOrRetailPrice: +r.toFixed(2), 
-                            salesTaxApplicable: +stAmt.toFixed(2), 
+                            fixedNotifiedValueOrRetailPrice: +(isRet ? r : 0).toFixed(2), 
+                            salesTaxApplicable: +(baseVal * (parseFloat(item.taxRate) / 100 || 0)).toFixed(2), 
                             salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2), 
-                            extraTax: +exAmt.toFixed(2), 
-                            furtherTax: +furtherAmt.toFixed(2), 
+                            extraTax: +(isRet ? (baseVal * (parseFloat(item.extraTax) / 100 || 0)) : 0).toFixed(2), 
+                            furtherTax: +(baseVal * (safeFurtherTax / 100)).toFixed(2), 
                             sroScheduleNo: item.sroScheduleNo || "", 
-                            fedPayable: +fed.toFixed(2), 
+                            fedPayable: +(isRet ? (parseFloat(item.fedPayable) || 0) : 0).toFixed(2), 
                             discount: +(parseFloat(item.discount) || 0).toFixed(2), 
                             saleType: item.saleType, 
                             sroItemSerialNo: item.sroItemSerialNo || "" 
                         };
                     })
-                };
 
                 if (mode !== 'production') {
                     payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
