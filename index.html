@@ -748,14 +748,24 @@
                 const safeSellerProvince = user.settings?.province || "Sindh";
 
                 const payload = {
-                    invoiceType: invoice.type, invoiceDate: invoice.invoiceDate, sellerNTNCNIC: String(user.settings?.ntn || "").replace(/-/g, ""), sellerBusinessName: user.settings.businessName, sellerProvince: safeSellerProvince, sellerAddress: user.settings.address,
-                    buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", buyerBusinessName: invoice.customerName, buyerProvince: safeBuyerProvince, buyerAddress: invoice.customerAddress, 
+                    invoiceType: invoice.type, 
+                    invoiceDate: invoice.invoiceDate, 
+                    sellerNTNCNIC: String(user.settings?.ntn || "").replace(/-/g, ""), 
+                    sellerBusinessName: user.settings.businessName, 
+                    sellerProvince: safeSellerProvince, 
+                    sellerAddress: user.settings.address,
+                    buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", 
+                    buyerBusinessName: invoice.customerName, 
+                    buyerProvince: safeBuyerProvince, 
+                    buyerAddress: invoice.customerAddress, 
                     buyerRegistrationType: finalRegType, 
                     invoiceRefNo: invoice.refInvoiceNumber,
                     items: invoice.items.map((item, index) => {
                         const type = item.saleType || "";
+                        
                         const isRet = type === "3rd Schedule Goods" || type === "Cotton ginners";
                         const isExemptOrReduced = type.includes("reduced rate") || type.includes("zero-rate") || type.includes("Exempt") || type.includes("DTRE");
+                        const isFedMode = type.includes("FED in ST Mode");
 
                         const q = parseFloat(item.qty) || 0; 
                         const p = parseFloat(item.price) || 0; 
@@ -766,7 +776,7 @@
                         const taxRate = parseFloat(item.taxRate) || 0;
                         const furtherRate = isExemptOrReduced ? 0 : (parseFloat(item.furtherTax) || 0);
                         const extraRate = isExemptOrReduced ? 0 : (parseFloat(item.extraTax) || 0); 
-                        const fedAmt = isRet ? (parseFloat(item.fedPayable) || 0) : 0;
+                        const fedAmt = (isRet || isFedMode) ? (parseFloat(item.fedPayable) || 0) : 0;
 
                         const salesTaxApplicable = baseVal * (taxRate / 100);
                         const furtherTaxApplicable = baseVal * (furtherRate / 100);
@@ -799,20 +809,15 @@
                             itemSNo: serialNo
                         };
 
-                        // 5. 🔴 THE MASTER SANITIZER 🔴
-                        // User Insight: fixedNotifiedValueOrRetailPrice is strictly required (even as 0). 
-                        // extraTax MUST be deleted for Reduced Rate/Zero Rate, otherwise FBR rejects it.
-                        if (isExemptOrReduced || mappedItem.extraTax === 0) {
-                            delete mappedItem.extraTax;
-                        }
-                        
-                        // Clean up empty SRO fields
+                        // ONLY clean up SRO strings if empty. 
+                        // NEVER delete numeric fields (extraTax, furtherTax, etc.)
                         if (!mappedItem.sroScheduleNo) {
                             delete mappedItem.sroScheduleNo;
                             delete mappedItem.sroItemSerialNo;
                             delete mappedItem.sroItemSNo;
                             delete mappedItem.itemSNo;
                         }
+                        
                         return mappedItem;
                     })
                 };
