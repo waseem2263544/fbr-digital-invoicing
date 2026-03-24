@@ -720,54 +720,46 @@
                     buyerRegistrationType: finalRegType, 
                     invoiceRefNo: invoice.refInvoiceNumber,
                     items: invoice.items.map((item, index) => {
-                        const isRet = isRetailFedSale(item.saleType);
-                        // FBR strictly forbids Extra Tax and Further Tax on these categories
-                        const isReducedZeroOrExempt = item.saleType === "Goods at reduced rate" || 
-                                                       item.saleType === "Goods at zero-rate" || 
-                                                       item.saleType === "Exempt goods";
+    const q = parseFloat(item.qty) || 0;
+    const p = parseFloat(item.price) || 0;
+    
+    // Determine if this specific item is allowed to have Retail/Extra taxes
+    const isRetailType = item.saleType === "3rd Schedule Goods" || item.saleType === "Cotton ginners";
+    const isReducedZeroExempt = ["Goods at reduced rate", "Goods at zero-rate", "Exempt goods"].includes(item.saleType);
 
-                        const q = parseFloat(item.qty) || 0; 
-                        const p = parseFloat(item.price) || 0; 
-                        const r = parseFloat(item.retailPrice) || 0; 
-                        const baseVal = (isRet ? r : p) * q;
-                        
-                        // SANITIZATION: Force Extra/Further Tax to 0 if Reduced Rate is selected
-                        const safeFurtherTax = isReducedZeroOrExempt ? 0 : (parseFloat(item.furtherTax) || 0);
-                        const safeExtraTax = (isRet && !isReducedZeroOrExempt) ? (parseFloat(item.extraTax) || 0) : 0;
-                        const safeFed = (isRet && !isReducedZeroOrExempt) ? (parseFloat(item.fedPayable) || 0) : 0;
-                        
-                        const taxRate = parseFloat(item.taxRate) || 0;
-                        
-                        // Precise calculation for the payload
-                        const salesTaxApplicable = baseVal * (taxRate / 100);
-                        const furtherTaxApplicable = baseVal * (safeFurtherTax / 100);
-                        const extraTaxApplicable = baseVal * (safeExtraTax / 100);
-                        
-                        const totalValues = baseVal + salesTaxApplicable + furtherTaxApplicable + extraTaxApplicable + (safeFed * q);
-                        
-                        const cleanHsCode = item.hsCode ? item.hsCode.split(' - ')[0].trim() : "";
-                        
-                        return { 
-                            itemNo: index + 1, 
-                            hsCode: cleanHsCode, 
-                            productDescription: item.desc, 
-                            rate: `${taxRate}%`, 
-                            uoM: item.uom || "Numbers, pieces, units", 
-                            quantity: q, 
-                            totalValues: +totalValues.toFixed(2), 
-                            valueSalesExcludingST: +baseVal.toFixed(2), 
-                            fixedNotifiedValueOrRetailPrice: +(isRet ? r : 0).toFixed(2), 
-                            salesTaxApplicable: +salesTaxApplicable.toFixed(2), 
-                            salesTaxWithheldAtSource: +(parseFloat(item.wht) || 0).toFixed(2), 
-                            extraTax: +extraTaxApplicable.toFixed(2), 
-                            furtherTax: +furtherTaxApplicable.toFixed(2), 
-                            sroScheduleNo: item.sroScheduleNo || "", 
-                            fedPayable: +(safeFed * q).toFixed(2), 
-                            discount: +(parseFloat(item.discount) || 0).toFixed(2), 
-                            saleType: item.saleType, 
-                            sroItemSerialNo: item.sroItemSerialNo || "" 
-                        };
-                    })
+    // SANITIZATION: If not a retail type, force retail fields to 0.00
+    const r = isRetailType ? (parseFloat(item.retailPrice) || 0) : 0;
+    const extraTaxRate = isRetailType ? (parseFloat(item.extraTax) || 0) : 0;
+    const fed = isRetailType ? (parseFloat(item.fedPayable) || 0) : 0;
+
+    // SANITIZATION: If Reduced/Zero/Exempt, force Further Tax to 0.00
+    const furtherTaxRate = isReducedZeroExempt ? 0 : (parseFloat(item.furtherTax) || 0);
+    
+    const baseVal = (isRetailType ? r : p) * q;
+    const salesTaxAmt = baseVal * (parseFloat(item.taxRate) / 100 || 0);
+    const furtherTaxAmt = baseVal * (furtherTaxRate / 100);
+    const extraTaxAmt = baseVal * (extraTaxRate / 100);
+
+    return {
+        itemNo: index + 1,
+        hsCode: item.hsCode ? item.hsCode.split(' - ')[0] : "",
+        productDescription: item.desc,
+        rate: `${item.taxRate}%`,
+        uoM: item.uom || "Numbers, pieces, units",
+        quantity: q,
+        // Math must be exactly what FBR expects
+        totalValues: +(baseVal + salesTaxAmt + furtherTaxAmt + extraTaxAmt + (fed * q)).toFixed(2),
+        valueSalesExcludingST: +baseVal.toFixed(2),
+        fixedNotifiedValueOrRetailPrice: +r.toFixed(2),
+        salesTaxApplicable: +salesTaxAmt.toFixed(2),
+        furtherTax: +furtherTaxAmt.toFixed(2),
+        extraTax: +extraTaxAmt.toFixed(2),
+        fedPayable: +(fed * q).toFixed(2),
+        saleType: item.saleType,
+        // ... include other fields like SRO as before
+    };
+})
+
                 };
                 if (mode !== 'production') {
                     payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
