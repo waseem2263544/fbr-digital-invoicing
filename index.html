@@ -1034,12 +1034,6 @@
                                         {user.settings.integrationMode !== 'production' && <div className="md:col-span-1"><SearchableDropdown label="Scenario ID (Sandbox)" value={invoice.scenarioId} options={SCENARIOS} onChange={v => setInvoice({ ...invoice, scenarioId: v })} placeholder="Auto-Assign" strict={false} /></div>}
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8 pt-6 border-t border-gray-100">
-                                        <div className="md:col-span-2"><Input label="Invoice Remarks / Notes" value={invoice.remarks || ''} onChange={e => setInvoice({ ...invoice, remarks: e.target.value })} placeholder="Optional note for invoice" /></div>
-                                        <Input label="Transport Type" value={invoice.transportType || ''} onChange={e => setInvoice({ ...invoice, transportType: e.target.value })} placeholder="e.g. Mazda" />
-                                        <Input label="Vehicle Reg No." value={invoice.vehicleNo || ''} onChange={e => setInvoice({ ...invoice, vehicleNo: e.target.value })} placeholder="e.g. JX-5276" />
-                                    </div>
-
                                     <div className="mb-8 border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
                                         <div className="bg-gray-50 px-6 py-4 font-bold text-gray-900 border-b border-gray-200 flex justify-between items-center">
                                             <span className="flex items-center gap-2"><Icons.Plus size={18}/> Line Item Entry</span>
