@@ -579,7 +579,7 @@
             useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
             const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
 
-            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", items: [], discount: 0, remarks: "", transportType: "", vehicleNo: "", departureTime: "" });
+            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0, remarks: "", transportType: "", vehicleNo: "", departureTime: "" });
             
             const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
@@ -707,7 +707,6 @@
 
                 let finalRegType = retryRegType || invoice.customerRegType || (invoice.customerNTN && String(invoice.customerNTN).replace(/-/g, '').length >= 7 ? "Registered" : "Unregistered");
                 
-                // NEW FIX: Ensure Province is NEVER empty to prevent FBR crashes
                 const safeBuyerProvince = invoice.customerDestination || user.settings?.province || "Sindh";
                 const safeSellerProvince = user.settings?.province || "Sindh";
 
@@ -724,7 +723,8 @@
                 };
 
                 if (mode !== 'production') {
-                    payload.scenarioId = retryScenario || (finalRegType === "Registered" ? "SN001" : "SN002");
+                    // Force retry, OR manual dropdown, OR auto-guess
+                    payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
                 }
 
                 setLoading(true);
@@ -735,7 +735,6 @@
                     let rawData = await res.json();
                     let data = rawData;
                     
-                    // NEW FIX: Force-clean FBR's malformed JSON (trailing commas)
                     if (typeof rawData === 'string') {
                         try { data = JSON.parse(rawData.replace(/,\s*([}\]])/g, '$1')); } 
                         catch (e) { data = { error: rawData }; }
@@ -787,6 +786,7 @@
                     setMsg({ type: 'error', text: `Connection Error: Could not reach FBR Servers. Please check your internet or FBR portal.` });
                 } finally { setLoading(false); }
             };
+
             const renderInvoiceTemplate = () => {
                 let qrUrl = ""; try { qrUrl = new QRious({ value: `https://fbr.gov.pk/invoice?id=${lastInv?.fbrInvoiceNumber || ''}`, size: 120 }).toDataURL(); } catch (e) {}
                 const printShowRetail = lastInv?.items?.some(i => isRetailFedSale(i.saleType)) || showRetailFed;
@@ -976,7 +976,9 @@
                                             <button onClick={() => checkCustomerStatus(invoice.customerNTN, true)} disabled={loading} className="absolute right-1 top-6 text-[10px] bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200 font-bold tracking-wider transition-colors">Verify</button>
                                         </div>
                                         <SearchableDropdown label="Destination" value={invoice.customerDestination} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, customerDestination: v })} />
-                                        <div className="md:col-span-3"><Input label="Customer Address" value={invoice.customerAddress} onChange={e => setInvoice({ ...invoice, customerAddress: e.target.value })} /></div>
+                                        
+                                        <div className={user.settings.integrationMode !== 'production' ? "md:col-span-2" : "md:col-span-3"}><Input label="Customer Address" value={invoice.customerAddress} onChange={e => setInvoice({ ...invoice, customerAddress: e.target.value })} /></div>
+                                        {user.settings.integrationMode !== 'production' && <div className="md:col-span-1"><SearchableDropdown label="Scenario ID (Sandbox)" value={invoice.scenarioId} options={SCENARIOS} onChange={v => setInvoice({ ...invoice, scenarioId: v })} placeholder="Auto-Assign" strict={false} /></div>}
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8 pt-6 border-t border-gray-100">
