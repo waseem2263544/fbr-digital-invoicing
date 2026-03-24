@@ -766,18 +766,25 @@
                         const baseVal = (isRet ? r : p) * q;
                         
                         const taxRate = parseFloat(item.taxRate) || 0;
-                        const furtherRate = isExemptOrReduced ? 0 : (parseFloat(item.furtherTax) || 0);
-                        const extraRate = isExemptOrReduced ? 0 : (parseFloat(item.extraTax) || 0); 
-                        const fedAmt = (isRet || isFedMode) ? (parseFloat(item.fedPayable) || 0) : 0;
-
+                        
                         const salesTaxApplicable = baseVal * (taxRate / 100);
-                        const furtherTaxApplicable = baseVal * (furtherRate / 100);
+                        
+                        const extraRate = parseFloat(item.extraTax) || 0;
+                        const furtherRate = parseFloat(item.furtherTax) || 0;
+                        const fedAmt = parseFloat(item.fedPayable) || 0;
+                        
                         const extraTaxApplicable = baseVal * (extraRate / 100);
+                        const furtherTaxApplicable = baseVal * (furtherRate / 100);
+                        
                         const totalValues = baseVal + salesTaxApplicable + furtherTaxApplicable + extraTaxApplicable + (fedAmt * q);
                         
                         const cleanHsCode = item.hsCode ? item.hsCode.split(' - ')[0].trim() : "";
                         const serialNo = item.sroItemSerialNo ? String(item.sroItemSerialNo) : "";
 
+                        // 🔴 THE "EMPTY STRING" FIX FOR FORBIDDEN TAXES 🔴
+                        // Instead of deleting the key (which crashes parser) or sending 0 (which crashes rule engine),
+                        // we send an empty string "" exactly as requested by community developers.
+                        
                         let mappedItem = { 
                             itemNo: index + 1, 
                             hsCode: cleanHsCode, 
@@ -789,11 +796,14 @@
                             valueSalesExcludingST: Number(baseVal.toFixed(2)), 
                             fixedNotifiedValueOrRetailPrice: Number((isRet ? r : 0).toFixed(2)), 
                             salesTaxApplicable: Number(salesTaxApplicable.toFixed(2)), 
-                            salesTaxWithheldAtSource: Number((parseFloat(item.wht) || 0).toFixed(2)), 
-                            extraTax: Number(extraTaxApplicable.toFixed(2)), 
-                            furtherTax: Number(furtherTaxApplicable.toFixed(2)), 
+                            
+                            // Bypass FBR's pedantic zero-checks using empty strings
+                            extraTax: (isExemptOrReduced || extraTaxApplicable === 0) ? "" : Number(extraTaxApplicable.toFixed(2)),
+                            furtherTax: (isExemptOrReduced || furtherTaxApplicable === 0) ? "" : Number(furtherTaxApplicable.toFixed(2)),
+                            fedPayable: (!isRet && !isFedMode || fedAmt === 0) ? "" : Number((fedAmt * q).toFixed(2)),
+                            salesTaxWithheldAtSource: parseFloat(item.wht) === 0 ? "" : Number((parseFloat(item.wht) || 0).toFixed(2)),
+                            
                             sroScheduleNo: item.sroScheduleNo || "", 
-                            fedPayable: Number((fedAmt * q).toFixed(2)), 
                             discount: Number((parseFloat(item.discount) || 0).toFixed(2)), 
                             saleType: type, 
                             sroItemSerialNo: serialNo,
@@ -801,6 +811,7 @@
                             itemSNo: serialNo
                         };
 
+                        // Clean up SRO strings if empty
                         if (!mappedItem.sroScheduleNo) {
                             delete mappedItem.sroScheduleNo;
                             delete mappedItem.sroItemSerialNo;
@@ -816,35 +827,14 @@
                     payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
                 }
 
-                // --- THE 0.00 REGEX INJECTOR ---
-                // JavaScript natively strips .00 from numbers when converting to JSON.
-                // To force FBR to see "0.00", we intercept the string and manually inject it.
-                let finalJsonString = JSON.stringify(payload, null, 2);
-                
-                const numericKeysToFormat = [
-                    'totalValues', 'valueSalesExcludingST', 'fixedNotifiedValueOrRetailPrice', 
-                    'salesTaxApplicable', 'salesTaxWithheldAtSource', 'extraTax', 
-                    'furtherTax', 'fedPayable', 'discount'
-                ];
-                
-                numericKeysToFormat.forEach(key => {
-                    // Matches the key, a 0, and a comma or newline, replacing it with 0.00
-                    const regex = new RegExp(`("${key}":\\s*)0([,\\n])`, 'g');
-                    finalJsonString = finalJsonString.replace(regex, '$10.00$2');
-                });
-
                 if (isValidate) {
-                    setDebugPayload(finalJsonString);
+                    setDebugPayload(JSON.stringify(payload, null, 2));
                 }
 
                 setLoading(true);
                 try {
                     const endpoint = isValidate ? (mode === 'production' ? SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_PROD : SYSTEM_CONFIG.PATHS.VALIDATE_INVOICE_SB) : (mode === 'production' ? SYSTEM_CONFIG.PATHS.POST_INVOICE_PROD : SYSTEM_CONFIG.PATHS.POST_INVOICE_SB);
-                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, { 
-                        method: 'POST', 
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
-                        body: finalJsonString 
-                    });
+                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
                     
                     let rawData = await res.json();
                     let data = rawData;
