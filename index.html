@@ -603,6 +603,7 @@
             const [sroOptions, setSroOptions] = useState([ "THIRD SCHEDULE", "FIFTH SCHEDULE", "SIXTH SCHEDULE Table 1", "SIXTH SCHEDULE Table 2", "EIGHTH SCHEDULE Table 1", "EIGHTH SCHEDULE Table 2", "NINTH SCHEDULE", "ELEVENTH SCHEDULE", "1450(I)/2021", "1579(I)/2021" ]);
 
             const [isValidated, setIsValidated] = useState(false);
+            const [debugPayload, setDebugPayload] = useState(null);
 
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
@@ -733,10 +734,7 @@
             const callFbrApi = async (isValidate = false, retryRegType = null, retryScenario = null) => {
                 if (isExpired) return setMsg({ type: 'error', text: 'Subscription Expired.' });
                 const mode = user.settings?.integrationMode || 'sandbox';
-                const token = mode === 'production' 
-                    ? (user.settings?.productionToken || user.settings?.production?.token) 
-                    : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
-                
+                const token = mode === 'production' ? (user.settings?.productionToken || user.settings?.production?.token) : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
                 if (!token) return setMsg({ type: 'error', text: 'Token Missing.' });
 
                 let finalRegType = retryRegType || invoice.customerRegType || (invoice.customerNTN && String(invoice.customerNTN).replace(/-/g, '').length >= 7 ? "Registered" : "Unregistered");
@@ -760,7 +758,6 @@
                         const r = parseFloat(item.retailPrice) || 0; 
                         const baseVal = (isRet ? r : p) * q;
                         
-                        // SANITIZATION: Force Further Tax to 0 if Reduced Rate is selected
                         const safeFurtherTax = isReducedZeroOrExempt ? 0 : (parseFloat(item.furtherTax) || 0);
                         const safeExtraTax = (isRet && !isReducedZeroOrExempt) ? (parseFloat(item.extraTax) || 0) : 0;
                         const safeFed = (isRet && !isReducedZeroOrExempt) ? (parseFloat(item.fedPayable) || 0) : 0;
@@ -793,15 +790,16 @@
                             fedPayable: +(safeFed * q).toFixed(2), 
                             discount: +(parseFloat(item.discount) || 0).toFixed(2), 
                             saleType: item.saleType, 
-                            // BULLETPROOF SRO FIX: Pass all three keys. FBR ignores extras and catches the correct one.
-                            sroItemSerialNo: item.sroItemSerialNo ? String(item.sroItemSerialNo) : "", 
-                            sroItemSNo: item.sroItemSerialNo ? String(item.sroItemSerialNo) : "", 
-                            itemSNo: item.sroItemSerialNo ? String(item.sroItemSerialNo) : ""
+                            sroItemSerialNo: item.sroItemSerialNo || ""
                         };
                     })
                 };
                 if (mode !== 'production') {
                     payload.scenarioId = retryScenario || invoice.scenarioId || (finalRegType === "Registered" ? "SN001" : "SN002");
+                }
+
+                if (isValidate) {
+                    setDebugPayload(JSON.stringify(payload, null, 2));
                 }
 
                 setLoading(true);
@@ -1048,7 +1046,7 @@
                     
                     {/* GLOBAL CLICK-TO-DISMISS NOTIFICATION OVERLAY */}
                     {msg && (
-                        <div className="fixed inset-0 z-[10000]" onClick={() => setMsg(null)}>
+                        <div className="fixed inset-0 z-[9000]" onClick={() => setMsg(null)}>
                             <div className="absolute top-6 left-1/2 transform -translate-x-1/2 pointer-events-auto">
                                 <div className={`px-6 py-4 rounded-2xl border shadow-2xl font-medium flex items-center gap-3 cursor-pointer ${msg.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
                                     {msg.type === 'error' ? <Icons.AlertCircle/> : <Icons.CheckCircle/>}
@@ -1112,7 +1110,7 @@
                                                     <SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={SALE_TYPES} onChange={v => {
                                                         let autoTax = lineItemForm.taxRate;
                                                         let autoFurther = lineItemForm.furtherTax;
-                                                        if (v === "Goods at reduced rate") { autoFurther = 0; }
+                                                        if (v === "Goods at reduced rate") { autoTax = 5; autoFurther = 0; }
                                                         else if (v === "Goods at zero-rate" || v === "Exempt goods") { autoTax = 0; autoFurther = 0; }
                                                         else if (v.includes("standard rate")) { autoTax = 18; }
                                                         setLineItemForm({...lineItemForm, saleType: v, taxRate: autoTax, furtherTax: autoFurther});
@@ -1330,10 +1328,27 @@
                                 </div>
                             </Card>
                         )}
-
-                        {activeTab === 'settings' && <SettingsTab user={user} />}
-
                     </main >
+
+                    {/* FBR PAYLOAD DEBUG INSPECTOR */}
+                    {debugPayload && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9500] animate-fade-in">
+                            <div className="bg-gray-900 p-6 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative text-green-400 font-mono text-xs border border-gray-700">
+                                <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><Icons.Settings size={18}/> FBR Payload Inspector</h3>
+                                    <button onClick={() => setDebugPayload(null)} className="text-gray-400 hover:text-white transition-colors"><Icons.X size={20} /></button>
+                                </div>
+                                <div className="bg-black p-4 rounded-xl overflow-x-auto">
+                                    <pre className="whitespace-pre-wrap break-words">{debugPayload}</pre>
+                                </div>
+                                <div className="mt-6 flex justify-between items-center">
+                                    <div className="text-gray-500">View what your app is sending to FBR behind the scenes.</div>
+                                    <Button onClick={() => setDebugPayload(null)} variant="secondary" className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">Close Inspector</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {showReceipt && lastInv && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">{renderInvoiceTemplate()}</div>}
                 </div >
             );
