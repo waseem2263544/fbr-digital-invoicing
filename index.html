@@ -27,6 +27,8 @@
         .standard-input { height: 2.75rem; width: 100%; border: 1px solid #e5e7eb; border-radius: 12px; padding: 0 1rem; font-size: 0.875rem; outline: none; background: #ffffff; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 2px rgba(0,0,0,0.02); } 
         .standard-input:focus { border-color: #000000; box-shadow: 0 0 0 4px rgba(0,0,0,0.05); } 
         .standard-input:read-only { background: #f9fafb; color: #9ca3af; cursor: not-allowed; border-color: transparent; box-shadow: none; }
+        
+        #fbr-official-logo { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
 
         @keyframes smoothFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: smoothFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -858,8 +860,9 @@
                                 <div className="text-right flex flex-col items-end">
                                     <div className="flex items-center gap-2 mb-2">
                                         {qrUrl && <img src={qrUrl} alt="QR Code" className="w-20 h-20" />}
-                                        <div className="text-center border-l-2 border-black pl-2 ml-2">
-                                            <h2 className="font-bold text-lg leading-tight tracking-widest text-green-700">FBR<br/>DIGITAL<br/>INVOICING<br/>SYSTEM</h2>
+                                        
+                                        <div id="fbr-official-logo" className="text-center ml-2 flex items-center justify-center p-2 rounded bg-[#0047AB]" style={{ border: '1px solid black' }}>
+                                            <img src="https://app.tallied.pk/img/fbr_invoice_logo.png" alt="FBR Digital Invoicing System" className="w-24 h-24 object-contain" />
                                         </div>
                                     </div>
                                     <div className="font-bold text-sm bg-gray-100 px-2 py-1 rounded border border-gray-300">FBR Invoice No: <span className="text-red-600">{lastInv?.fbrInvoiceNumber || 'Pending'}</span></div>
