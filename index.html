@@ -63,10 +63,11 @@
         const FBR_ERRORS = { "0000": "Successful", "0001": "Invalid NTN/Reg. No. format", "0004": "Seller Reg No. doesn't match", "0005": "Buyer Name is empty/invalid", "0007": "Sale Type not allowed/invalid", "0009": "Provide UOM in KG", "0010": "Quantity/Electricity Units missing", "0011": "Provide Value of Sales Excl. ST", "0039": "STWH invoice fields must be same as sale invoice", "0041": "Invoice number cannot be empty", "0042": "Invoice date cannot be empty", "0044": "HS Code cannot be empty", "0053": "Buyer Registration Type is invalid", "0070": "User is not registered, STWH is allowed only for registered user", "0073": "Provide Sale Origination Province of Supplier", "0074": "Provide Destination of Supply", "0077": "SRO/Schedule Number cannot be empty", "0078": "Item serial number cannot be empty", "0082": "The Seller is not registered for sales tax", "0106": "The Buyer is not registered for sales tax", "0401": "Unauthorized access: Seller NTN/CNIC token is invalid", "0402": "Unauthorized access: Buyer NTN/CNIC token is invalid" };
 
         const numberToWords = (num) => {
-            if (num === 0) return "Zero";
+            if (num === null || num === undefined || isNaN(num) || num === 0) return "Zero Rupees Only";
             const a = ["", "One ", "Two ", "Three ", "Four ", "Five ", "Six ", "Seven ", "Eight ", "Nine ", "Ten ", "Eleven ", "Twelve ", "Thirteen ", "Fourteen ", "Fifteen ", "Sixteen ", "Seventeen ", "Eighteen ", "Nineteen "];
             const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
             const format = (n) => {
+                if (!n || isNaN(n)) return "";
                 if (n < 20) return a[n];
                 if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + a[n % 10] : "");
                 return a[Math.floor(n / 100)] + "Hundred " + (n % 100 !== 0 ? format(n % 100) : "");
@@ -82,7 +83,14 @@
             return res.trim() + " Rupees Only";
         };
 
-        class ErrorBoundary extends Component { constructor(props) { super(props); this.state = { hasError: false, error: null }; } static getDerivedStateFromError(error) { return { hasError: true, error }; } render() { if (this.state.hasError) return (<div className="min-h-screen flex items-center justify-center"><div className="bg-white p-8 rounded-lg shadow-xl"><h1 className="text-xl font-bold mb-2">Error Occurred</h1><button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="bg-black text-white px-4 py-2 rounded">Reset App Data</button></div></div>); return this.props.children; } }
+        class ErrorBoundary extends Component { 
+            constructor(props) { super(props); this.state = { hasError: false, error: null }; } 
+            static getDerivedStateFromError(error) { return { hasError: true, error }; } 
+            render() { 
+                if (this.state.hasError) return (<div className="min-h-screen flex items-center justify-center"><div className="bg-white p-8 rounded-lg shadow-xl"><h1 className="text-xl font-bold mb-2">System Error Caught</h1><p className="text-gray-500 mb-4 text-sm">Please refresh the page. If the issue persists, reset data.</p><button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="bg-black text-white px-4 py-2 rounded shadow">Reset App Data</button></div></div>); 
+                return this.props.children; 
+            } 
+        }
 
         const IconBase = ({ size = 20, children, ...props }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg> );
         const Icons = {
@@ -171,7 +179,7 @@
             const safeBiz = user.accessibleBusinesses || user.access || [];
             const filteredBiz = safeBiz.filter(b => {
                 const bName = b?.name || b?.businessName || "";
-                return bName.toLowerCase().includes(searchQuery.toLowerCase());
+                return String(bName).toLowerCase().includes(searchQuery.toLowerCase());
             });
 
             return (
@@ -238,6 +246,7 @@
         function App() {
             const [user, setUser] = useState(null);
             const [isAppLoading, setIsAppLoading] = useState(true);
+            const [autoSwitching, setAutoSwitching] = useState(false);
 
             useEffect(() => {
                 const loadSession = async () => {
@@ -286,8 +295,8 @@
                         window.location.hash = 'invoice';
                         await handleLogin(data.user);
                         window.location.reload();
-                    } else { alert("Failed to switch business context."); }
-                } catch (e) { alert("Network Error"); }
+                    } else { alert("Failed to switch business context."); setAutoSwitching(false); }
+                } catch (e) { alert("Network Error"); setAutoSwitching(false); }
             };
 
             const handleImpersonate = async (userId) => {
@@ -327,12 +336,25 @@
                 } catch (err) { window.location.href = window.location.pathname + '?logout=' + Date.now(); }
             };
 
+            useEffect(() => {
+                if (user && user.role !== 'admin' && (!user.settings || !user.businessStatus)) {
+                    const safeBiz = user.accessibleBusinesses || user.access || [];
+                    if (safeBiz.length === 1 && !autoSwitching) {
+                        setAutoSwitching(true);
+                        handleBusinessSwitch(safeBiz[0].id || safeBiz[0].businessId);
+                    }
+                }
+            }, [user, autoSwitching]);
+
             if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading System...</div>;
             if (!user) return <LoginScreen onLogin={handleLogin} />;
             
             if (user.role !== 'admin' && (!user?.settings || !user?.businessStatus)) {
                 const safeBiz = user.accessibleBusinesses || user.access || [];
                 if (safeBiz && safeBiz.length > 0) {
+                    if (safeBiz.length === 1 || autoSwitching) {
+                        return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 animate-pulse font-medium tracking-widest uppercase text-xs">Logging into Business Context...</div>;
+                    }
                     return <BusinessList user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} isLobby={true} />;
                 }
                 return <LoginScreen onLogin={handleLogin} />;
@@ -434,8 +456,8 @@
                 } catch (e) { setAdminError("Network Error"); }
             };
 
-            const filteredBiz = businesses.filter(b => b && (b.businessName || "").toLowerCase().includes(bizSearch.toLowerCase()) || (b.ntn || "").includes(bizSearch));
-            const filteredUsers = users.filter(u => u && (u.username || "").toLowerCase().includes(userSearch.toLowerCase()));
+            const filteredBiz = businesses.filter(b => b && ((b.businessName || "").toLowerCase().includes(bizSearch.toLowerCase()) || (b.ntn || "").includes(bizSearch)));
+            const filteredUsers = users.filter(u => u && ((u.username || "").toLowerCase().includes(userSearch.toLowerCase())));
 
             return (
                 <div className="min-h-screen bg-gray-50 animate-fade-in">
@@ -649,12 +671,13 @@
             
             const allowSetting = user?.settings?.allowRetailFed;
             const forceRetailFed = allowSetting === true || allowSetting === 1 || String(allowSetting) === "true" || String(allowSetting) === "1";
-            const showRetailFed = forceRetailFed || (activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user?.inventory || []).some(i => i && isRetailFedSale(i.saleType)));
+            const showRetailFed = forceRetailFed || (activeTab === 'invoice' ? invoice.items.some(i => i && isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user?.inventory || []).some(i => i && isRetailFedSale(i.saleType)));
             
-            const tabs = user?.accessibleBusinesses?.length > 1 ? ['businesses', 'invoice', 'inventory', 'customers', 'history', 'settings'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
+            const userBizCount = (user?.accessibleBusinesses || user?.access || []).length;
+            const tabs = userBizCount > 1 ? ['businesses', 'invoice', 'inventory', 'customers', 'history', 'settings'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
 
             useEffect(() => { if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province })); }, [user?.settings?.province]);
-            useEffect(() => { setIsValidated(false); }, [invoice, lineItemForm]);
+            useEffect(() => { setIsValidated(false); }, [invoice.customerRegType, invoice.items.length, lineItemForm]);
 
             useEffect(() => {
                 if (!msg) return;
@@ -792,7 +815,15 @@
             useEffect(() => {
                 const isUnregistered = invoice.customerRegType === "Unregistered";
                 const ftRate = user?.settings?.taxRates?.furtherTax || 4;
-                setInvoice(prev => { const newItems = prev.items.map(item => { let newFTRate = parseFloat(item.furtherTax) || 0; if (isUnregistered) { if (newFTRate === 0) newFTRate = ftRate; } else { newFTRate = 0; } return { ...item, furtherTax: newFTRate }; }); return { ...prev, items: newItems }; });
+                setInvoice(prev => { 
+                    const newItems = prev.items.map(item => { 
+                        let newFTRate = parseFloat(item.furtherTax) || 0; 
+                        if (isUnregistered) { if (newFTRate === 0) newFTRate = ftRate; } 
+                        else { newFTRate = 0; } 
+                        return { ...item, furtherTax: newFTRate }; 
+                    }); 
+                    return { ...prev, items: newItems }; 
+                });
                 setLineItemForm(prev => ({ ...prev, furtherTax: isUnregistered ? (parseFloat(prev.furtherTax) || ftRate) : 0 }));
             }, [invoice.customerRegType]);
 
@@ -827,7 +858,7 @@
                     extra += valueForTax * ((parseFloat(i.extraTax) || 0) / 100); 
                     further += valueForTax * ((parseFloat(i.furtherTax) || 0) / 100); 
                     fed += isRetailFedSale(i.saleType) ? ((parseFloat(i.fedPayable) || 0) * qty) : 0;
-                    wht += parseFloat(i.wht || 0); 
+                    wht += parseFloat(i.wht) || 0; 
                     totalDisc += disc;
                 });
                 const total = subtotal + gst + extra + further + fed - wht;
@@ -845,7 +876,7 @@
                 if(!lineItemForm.desc || !lineItemForm.price || !lineItemForm.qty) return setMsg({type: 'error', text: 'Description, Qty, and Price are required.'});
                 const newItemObj = { ...lineItemForm, id: lineItemForm.id || Date.now() };
                 setInvoice(p => {
-                    const existingIdx = p.items.findIndex(i => i.id === newItemObj.id);
+                    const existingIdx = p.items.findIndex(i => i && i.id === newItemObj.id);
                     if(existingIdx >= 0) { const newItems = [...p.items]; newItems[existingIdx] = newItemObj; return { ...p, items: newItems }; }
                     return { ...p, items: [...p.items, newItemObj] };
                 });
@@ -887,7 +918,7 @@
                             const statlRes = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.STATL}`, { method: 'POST', headers, body: JSON.stringify({ regno: regNo, date: todayDate }) });
                             if (statlRes.ok) {
                                 const statlData = await statlRes.json();
-                                if (statlData.status && statlData.status.toLowerCase().includes("in-active")) {
+                                if (statlData.status && String(statlData.status).toLowerCase().includes("in-active")) {
                                     setMsg({ type: 'error', text: `NTN is Registered, but ${statlData.status} on ATL. Downgrading to Unregistered.` });
                                     if (isInv) setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" })); else setNewCust(prev => ({ ...prev, regType: "Unregistered" }));
                                     return;
@@ -1286,6 +1317,7 @@
 
             const userCanEdit = user?.accessLevel !== 'view';
             
+            // SECURITY CHECK: All hooks must be loaded BEFORE this conditional return.
             if (isRevoked) { return (<div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 animate-fade-in"><div className="bg-white p-10 rounded-2xl shadow-xl max-w-md w-full border-t-4 border-red-600 text-center"><Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" /><h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1><p className="text-gray-500 mb-8">Your subscription to <b>{user?.settings?.businessName}</b> has expired or been suspended.</p><Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700 text-base py-3">Return to Portal</Button></div></div>); }
 
             return (
