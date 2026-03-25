@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FBR Invoice System | Fair Tax</title>
+    <title>FBR Digital Invoice System | Tallied</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -62,6 +62,13 @@
         const SCENARIOS = [ "SN001", "SN002", "SN003", "SN004", "SN005", "SN006", "SN007", "SN008", "SN009", "SN010", "SN011", "SN012", "SN013", "SN014", "SN015", "SN016", "SN017", "SN018", "SN019", "SN020", "SN021", "SN022", "SN023", "SN024", "SN025", "SN026", "SN027", "SN028" ];
         const FBR_ERRORS = { "0000": "Successful", "0001": "Invalid NTN/Reg. No. format", "0004": "Seller Reg No. doesn't match", "0005": "Buyer Name is empty/invalid", "0007": "Sale Type not allowed/invalid", "0009": "Provide UOM in KG", "0010": "Quantity/Electricity Units missing", "0011": "Provide Value of Sales Excl. ST", "0039": "STWH invoice fields must be same as sale invoice", "0041": "Invoice number cannot be empty", "0042": "Invoice date cannot be empty", "0044": "HS Code cannot be empty", "0053": "Buyer Registration Type is invalid", "0070": "User is not registered, STWH is allowed only for registered user", "0073": "Provide Sale Origination Province of Supplier", "0074": "Provide Destination of Supply", "0077": "SRO/Schedule Number cannot be empty", "0078": "Item serial number cannot be empty", "0082": "The Seller is not registered for sales tax", "0106": "The Buyer is not registered for sales tax", "0401": "Unauthorized access: Seller NTN/CNIC token is invalid", "0402": "Unauthorized access: Buyer NTN/CNIC token is invalid" };
 
+        const calculateDaysLeft = (dateStr) => {
+            if (!dateStr) return 0;
+            const ms = Date.parse(dateStr);
+            if (isNaN(ms)) return 0;
+            return Math.ceil((ms - Date.now()) / (1000 * 60 * 60 * 24));
+        };
+
         const numberToWords = (num) => {
             if (num === null || num === undefined || isNaN(num) || num === 0) return "Zero Rupees Only";
             const a = ["", "One ", "Two ", "Three ", "Four ", "Five ", "Six ", "Seven ", "Eight ", "Nine ", "Ten ", "Eleven ", "Twelve ", "Thirteen ", "Fourteen ", "Fifteen ", "Sixteen ", "Seventeen ", "Eighteen ", "Nineteen "];
@@ -83,7 +90,14 @@
             return res.trim() + " Rupees Only";
         };
 
-        class ErrorBoundary extends Component { constructor(props) { super(props); this.state = { hasError: false, error: null }; } static getDerivedStateFromError(error) { return { hasError: true, error }; } render() { if (this.state.hasError) return (<div className="min-h-screen flex items-center justify-center"><div className="bg-white p-8 rounded-lg shadow-xl"><h1 className="text-xl font-bold mb-2">Error Occurred</h1><button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="bg-black text-white px-4 py-2 rounded">Reset App Data</button></div></div>); return this.props.children; } }
+        class ErrorBoundary extends Component { 
+            constructor(props) { super(props); this.state = { hasError: false, error: null }; } 
+            static getDerivedStateFromError(error) { return { hasError: true, error }; } 
+            render() { 
+                if (this.state.hasError) return (<div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="bg-white p-8 rounded-2xl shadow-xl border border-red-100 max-w-md text-center"><div className="bg-red-50 text-red-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><h1 className="text-xl font-bold mb-2 text-gray-900">System Error Caught</h1><p className="text-gray-500 mb-6 text-sm">A background data issue was detected. Please reset the app to clear the cached memory.</p><button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} className="w-full bg-black hover:bg-gray-800 text-white px-4 py-3 rounded-xl shadow-md font-bold transition-all">Reset App Data</button></div></div>); 
+                return this.props.children; 
+            } 
+        }
 
         const IconBase = ({ size = 20, children, ...props }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg> );
         const Icons = {
@@ -239,6 +253,7 @@
         function App() {
             const [user, setUser] = useState(null);
             const [isAppLoading, setIsAppLoading] = useState(true);
+            const [autoSwitching, setAutoSwitching] = useState(false);
 
             useEffect(() => {
                 const loadSession = async () => {
@@ -287,8 +302,8 @@
                         window.location.hash = 'invoice';
                         await handleLogin(data.user);
                         window.location.reload();
-                    } else { alert("Failed to switch business context."); }
-                } catch (e) { alert("Network Error"); }
+                    } else { alert("Failed to switch business context."); setAutoSwitching(true); }
+                } catch (e) { alert("Network Error"); setAutoSwitching(true); }
             };
 
             const handleImpersonate = async (userId) => {
@@ -328,12 +343,25 @@
                 } catch (err) { window.location.href = window.location.pathname + '?logout=' + Date.now(); }
             };
 
+            useEffect(() => {
+                if (user && user.role !== 'admin' && (!user.settings || !user.businessStatus)) {
+                    const safeBiz = Array.isArray(user.accessibleBusinesses) ? user.accessibleBusinesses : (Array.isArray(user.access) ? user.access : []);
+                    if (safeBiz.length === 1 && !autoSwitching) {
+                        setAutoSwitching(true);
+                        handleBusinessSwitch(safeBiz[0].id || safeBiz[0].businessId);
+                    }
+                }
+            }, [user, autoSwitching]);
+
             if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading System...</div>;
             if (!user) return <LoginScreen onLogin={handleLogin} />;
             
-            if (user.role !== 'admin' && (!user?.settings || !user?.businessStatus)) {
+            if (user.role !== 'admin' && (!user.settings || !user.businessStatus)) {
                 const safeBiz = Array.isArray(user.accessibleBusinesses) ? user.accessibleBusinesses : (Array.isArray(user.access) ? user.access : []);
                 if (safeBiz && safeBiz.length > 0) {
+                    if (safeBiz.length === 1 || autoSwitching) {
+                        return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 animate-pulse font-medium tracking-widest uppercase text-xs">Logging into Business Context...</div>;
+                    }
                     return <BusinessList user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} isLobby={true} />;
                 }
                 return <LoginScreen onLogin={handleLogin} />;
@@ -643,6 +671,7 @@
             const [invDynamicSroItemsOptions, setInvDynamicSroItemsOptions] = useState([]);
 
             const [isValidated, setIsValidated] = useState(false);
+            const [hasVerifiedNtn, setHasVerifiedNtn] = useState(false);
 
             useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
             const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
@@ -834,22 +863,23 @@
             };
 
             const calculate = () => {
-                let subtotal = 0, gst = 0, extra = 0, further = 0, fed = 0, wht = 0, totalDisc = 0;
+                let subtotal = 0, gst = 0, extra = 0, further = 0, fed = 0, wht = 0, totalDisc = 0, totalAssessedValue = 0;
                 safeInvoiceItems.forEach(i => {
                     if (!i) return;
                     const price = parseFloat(i.price) || 0, retailPrice = parseFloat(i.retailPrice) || 0, qty = parseFloat(i.qty) || 0, disc = parseFloat(i.discount) || 0;
                     let grossValue = (isRetailFedSale(i.saleType) ? retailPrice : price) * qty;
                     let valueForTax = grossValue - disc;
+                    totalAssessedValue += (price * qty);
                     subtotal += valueForTax; 
                     gst += valueForTax * ((parseFloat(i.taxRate) || 0) / 100); 
                     extra += valueForTax * ((parseFloat(i.extraTax) || 0) / 100); 
                     further += valueForTax * ((parseFloat(i.furtherTax) || 0) / 100); 
-                    fed += isRetailFedSale(i.saleType) ? ((parseFloat(i.fedPayable) || 0) * qty) : 0;
+                    fed += isRetailFedSale(i.saleType) ? (parseFloat(i.fedPayable) || 0) : 0;
                     wht += parseFloat(i.wht) || 0; 
                     totalDisc += disc;
                 });
                 const total = subtotal + gst + extra + further + fed - wht;
-                return { subtotal, gst, extra, further, fed, wht, total, totalDisc };
+                return { subtotal, gst, extra, further, fed, wht, total, totalDisc, totalAssessedValue };
             };
             const totals = calculate();
 
@@ -884,7 +914,11 @@
             const onSelectCustomerName = (val) => { const existingCust = safeCustomers.find(c => c && c.name === val); if (existingCust) setInvoice(prev => ({ ...prev, customerName: existingCust.name, customerNTN: existingCust.ntn, customerDestination: existingCust.destination, customerAddress: existingCust.address, customerRegType: existingCust.regType || 'Unregistered' })); else setInvoice(prev => ({ ...prev, customerName: val })); };
 
             const checkCustomerStatus = async (regNo, isInv = false) => {
-                if (!regNo || String(regNo).length < 7) return setMsg({ type: 'error', text: 'Invalid NTN' });
+                if (!regNo || String(regNo).length < 7) {
+                    setMsg({ type: 'error', text: 'Invalid NTN' });
+                    if (isInv) setHasVerifiedNtn(true);
+                    return;
+                }
                 setMsg({ type: 'info', text: 'Verifying...' });
                 const mode = user?.settings?.integrationMode || 'sandbox';
                 const token = mode === 'production' ? (user?.settings?.productionToken || user?.settings?.production?.token) : (user?.settings?.sandboxToken || user?.settings?.sandbox?.token);
@@ -892,7 +926,11 @@
                 
                 try {
                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.GET_REG_TYPE}`, { method: 'POST', headers, body: JSON.stringify({ Registration_No: regNo }) });
-                    if (!res.ok) return setMsg({ type: 'error', text: 'API Failed' });
+                    if (!res.ok) {
+                        setMsg({ type: 'error', text: 'API Failed' });
+                        if (isInv) setHasVerifiedNtn(true);
+                        return;
+                    }
                     const data = await res.json();
                     
                     if (data.statuscode === "00" && data.REGISTRATION_TYPE === "Registered") {
@@ -903,28 +941,33 @@
                                 const statlData = await statlRes.json();
                                 if (statlData.status && String(statlData.status).toLowerCase().includes("in-active")) {
                                     setMsg({ type: 'error', text: `NTN is Registered, but ${statlData.status} on ATL. Downgrading to Unregistered.` });
-                                    if (isInv) setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" })); else setNewCust(prev => ({ ...prev, regType: "Unregistered" }));
+                                    if (isInv) { setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" })); setHasVerifiedNtn(true); } else setNewCust(prev => ({ ...prev, regType: "Unregistered" }));
                                     return;
                                 }
                             }
                         } catch(e) {}
                         
                         setMsg({ type: 'success', text: `Verified: Registered & Active` });
-                        if (isInv) setInvoice(prev => ({ ...prev, customerRegType: "Registered" })); else setNewCust(prev => ({ ...prev, regType: "Registered" }));
+                        if (isInv) { setInvoice(prev => ({ ...prev, customerRegType: "Registered" })); setHasVerifiedNtn(true); } else setNewCust(prev => ({ ...prev, regType: "Registered" }));
                     } 
                     else if (data.statuscode === "00") {
                         setMsg({ type: 'success', text: `Verified: ${data.REGISTRATION_TYPE}` }); 
-                        if (isInv) setInvoice(prev => ({ ...prev, customerRegType: data.REGISTRATION_TYPE })); else setNewCust(prev => ({ ...prev, regType: data.REGISTRATION_TYPE }));
+                        if (isInv) { setInvoice(prev => ({ ...prev, customerRegType: data.REGISTRATION_TYPE })); setHasVerifiedNtn(true); } else setNewCust(prev => ({ ...prev, regType: data.REGISTRATION_TYPE }));
                     }
                     else { 
                         setMsg({ type: 'error', text: `Error: ${FBR_ERRORS[data.statuscode] || 'Inactive/Unregistered'}` }); 
-                        if (isInv) setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" })); else setNewCust(prev => ({ ...prev, regType: "Unregistered" })); 
+                        if (isInv) { setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" })); setHasVerifiedNtn(true); } else setNewCust(prev => ({ ...prev, regType: "Unregistered" })); 
                     }
-                } catch (e) { setMsg({ type: 'error', text: 'Verification Error' }); }
+                } catch (e) { 
+                    setMsg({ type: 'error', text: 'Verification Error' }); 
+                    if (isInv) setHasVerifiedNtn(true);
+                }
             };
 
             const callFbrApi = async (isValidate = false, retryRegType = null, retryScenario = null) => {
                 if (isExpired) return setMsg({ type: 'error', text: 'Subscription Expired.' });
+                if (!invoice.invoiceNumber || invoice.invoiceNumber.trim() === '') return setMsg({ type: 'error', text: 'Invoice Number is required.' });
+                if (invoice.customerNTN && invoice.customerNTN.trim() !== '' && !hasVerifiedNtn) return setMsg({ type: 'error', text: 'Please click Verify to assess the NTN status before validating.' });
                 
                 const mode = user?.settings?.integrationMode || 'sandbox';
                 const token = mode === 'production' 
@@ -967,7 +1010,7 @@
                         const salesTaxApplicable = baseVal * (taxRate / 100);
                         const furtherTaxApplicable = baseVal * (furtherRate / 100);
                         const extraTaxApplicable = baseVal * (extraRate / 100);
-                        const totalValues = baseVal + salesTaxApplicable + furtherTaxApplicable + extraTaxApplicable + (fedAmt * q);
+                        const totalValues = baseVal + salesTaxApplicable + furtherTaxApplicable + extraTaxApplicable + fedAmt;
                         
                         const cleanHsCode = item.hsCode ? String(item.hsCode).split(' - ')[0].trim() : "";
                         const serialNo = item.sroItemSerialNo ? String(item.sroItemSerialNo) : "";
@@ -986,7 +1029,7 @@
                             
                             extraTax: isExemptOrReduced ? "" : Number(extraTaxApplicable.toFixed(2)),
                             furtherTax: Number(furtherTaxApplicable.toFixed(2)),
-                            fedPayable: Number((fedAmt * q).toFixed(2)),
+                            fedPayable: Number((fedAmt).toFixed(2)),
                             salesTaxWithheldAtSource: Number((parseFloat(item.wht) || 0).toFixed(2)),
                             
                             sroScheduleNo: item.sroScheduleNo || "", 
@@ -1165,7 +1208,7 @@
                                             <th className="border border-black p-1 text-left">Item</th>
                                             <th className="border border-black p-1">Qty. UOM</th>
                                             <th className="border border-black p-1">Unit Price</th>
-                                            {printShowRetail && <th className="border border-black p-1">Assessed Value</th>}
+                                            <th className="border border-black p-1">Assessed Value</th>
                                             {printShowRetail && <th className="border border-black p-1">FED</th>}
                                             {printShowRetail && <th className="border border-black p-1">Retail Price</th>}
                                             {hasDiscount && <th className="border border-black p-1">Discount</th>}
@@ -1182,13 +1225,14 @@
                                         {safeTemplateItems.map((item, idx) => {
                                             if (!item) return null;
                                             const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
+                                            const assessedValue = p * q;
                                             const val = (isRet ? r : p) * q;
                                             const itemDisc = parseFloat(item.discount || 0);
                                             const baseVal = val - itemDisc;
                                             const stAmt = baseVal * (parseFloat(item.taxRate) / 100 || 0);
                                             const furAmt = baseVal * (parseFloat(item.furtherTax) / 100 || 0);
                                             const exAmt = baseVal * (parseFloat(item.extraTax) / 100 || 0);
-                                            const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
+                                            const fedAmt = isRet ? (parseFloat(item.fedPayable) || 0) : 0;
                                             const amtExclSt = baseVal + fedAmt + exAmt; 
                                             const lineTotal = amtExclSt + stAmt + furAmt;
 
@@ -1203,7 +1247,7 @@
                                                     </td>
                                                     <td className="border border-black p-1 text-center">{q} {item.uom}</td>
                                                     <td className="border border-black p-1 text-right">{formatCurrency(p)}</td>
-                                                    {printShowRetail && <td className="border border-black p-1 text-right">{formatCurrency(val)}</td>}
+                                                    <td className="border border-black p-1 text-right">{formatCurrency(assessedValue)}</td>
                                                     {printShowRetail && <td className="border border-black p-1 text-right">{formatCurrency(fedAmt)}</td>}
                                                     {printShowRetail && <td className="border border-black p-1 text-right">{isRet ? formatCurrency(r) : '0.00'}</td>}
                                                     {hasDiscount && <td className="border border-black p-1 text-right">{formatCurrency(item.discount)}</td>}
@@ -1226,7 +1270,7 @@
                                 <div>
                                     <table className="w-full text-right border-collapse border border-black">
                                         <tbody>
-                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value:</td><td className="border-b border-black p-1">{formatCurrency((lastInv?.subtotal || 0) + (lastInv?.totalDisc || 0))}</td></tr>}
+                                            <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.totalAssessedValue || 0)}</td></tr>
                                             {printShowRetail && (lastInv?.fed || 0) > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">FED:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.fed)}</td></tr>}
                                             
                                             {(lastInv?.totalDisc || 0) > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Gross Amount:</td><td className="border-b border-black p-1">{formatCurrency((lastInv?.subtotal || 0) + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.totalDisc || 0))}</td></tr>}
@@ -1360,7 +1404,7 @@
                                         <SearchableDropdown label="Origin" value={invoice.originationProvince} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, originationProvince: v })} />
                                         <SearchableDropdown label="Customer Name" value={invoice.customerName} options={safeCustomers.map(c => c && c.name).filter(Boolean)} placeholder="Search Customer..." onChange={onSelectCustomerName} strict={false} />
                                         <div className="relative">
-                                            <Input label="Reg No / NTN" value={invoice.customerNTN} onChange={e => setInvoice({ ...invoice, customerNTN: e.target.value })} />
+                                            <Input label="Reg No / NTN" value={invoice.customerNTN} onChange={e => { setInvoice({ ...invoice, customerNTN: e.target.value }); setHasVerifiedNtn(false); }} />
                                             <button onClick={() => checkCustomerStatus(invoice.customerNTN, true)} disabled={loading} className="absolute right-1 top-6 text-[10px] bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200 font-bold tracking-wider transition-colors">Verify</button>
                                         </div>
                                         <SearchableDropdown label="Destination" value={invoice.customerDestination} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, customerDestination: v })} />
@@ -1376,8 +1420,8 @@
                                         </div>
                                         <div className="p-6 bg-white">
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end">
-                                                <div className="md:col-span-5"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={safeInventory.filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = safeInventory.find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
-                                                <div className="md:col-span-4"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h && h.val ? h.val : h).filter(Boolean)} onChange={val => { const code = String(val).includes(" - ") ? String(val).split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h && h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
+                                                <div className="md:col-span-4"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={safeInventory.filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = safeInventory.find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
+                                                <div className="md:col-span-3"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h && h.val ? h.val : h).filter(Boolean)} onChange={val => { const code = String(val).includes(" - ") ? String(val).split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h && h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
                                                 <div className="md:col-span-3">
                                                     <SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={dynamicSaleTypes.length > 0 ? dynamicSaleTypes : SALE_TYPES} onChange={v => {
                                                         let autoTax = lineItemForm.taxRate;
@@ -1388,15 +1432,17 @@
                                                         setLineItemForm({...lineItemForm, saleType: v, taxRate: autoTax, furtherTax: autoFurther});
                                                     }} />
                                                 </div>
+                                                <div className="md:col-span-1"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
+                                                <div className="md:col-span-1"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
                                             </div>
                                             
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end bg-gray-50/50 p-5 rounded-xl border border-gray-100">
-                                                <div className="md:col-span-2"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
-                                                <div className="md:col-span-2"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
                                                 <div className="md:col-span-2"><Input label="Unit Price" type="number" value={lineItemForm.price} onChange={e => setLineItemForm({...lineItemForm, price: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="Discount Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={lineItemForm.taxRate} onChange={e => setLineItemForm({...lineItemForm, taxRate: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="Further Tax %" type="number" value={lineItemForm.furtherTax} onChange={e => setLineItemForm({...lineItemForm, furtherTax: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="Extra Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="Withholding Sales Tax" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>
                                             </div>
 
                                             {showRetailFed && (
@@ -1407,13 +1453,11 @@
                                             )}
 
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end border-t border-gray-100 pt-5">
-                                                <div className="md:col-span-2"><Input label="Extra Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
-                                                <div className="md:col-span-2"><Input label="Withholding Sales Tax" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>
-                                                <div className="md:col-span-3"><SearchableDropdown label="SRO Schedule No." value={lineItemForm.sroScheduleNo} options={dynamicSroOptions.length > 0 ? dynamicSroOptions : sroOptions} onChange={v => setLineItemForm({...lineItemForm, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
-                                                <div className="md:col-span-3"><SearchableDropdown label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} options={dynamicSroItemsOptions} onChange={v => setLineItemForm({...lineItemForm, sroItemSerialNo: v})} strict={false} placeholder="Select or type..." /></div>
-                                                
-                                                <div className={`col-span-12 md:col-span-2 flex justify-end gap-3`}>
-                                                    <Button onClick={pushItemToInvoice} className="w-full"><Icons.Plus size={18}/> {lineItemForm.id ? 'Update Item' : 'Add Item'}</Button>
+                                                <div className="md:col-span-4"><SearchableDropdown label="SRO Schedule No." value={lineItemForm.sroScheduleNo} options={dynamicSroOptions.length > 0 ? dynamicSroOptions : sroOptions} onChange={v => setLineItemForm({...lineItemForm, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
+                                                <div className="md:col-span-4"><SearchableDropdown label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} options={dynamicSroItemsOptions} onChange={v => setLineItemForm({...lineItemForm, sroItemSerialNo: v})} strict={false} placeholder="Select or type..." /></div>
+                                                <div className={`col-span-12 md:col-span-4 flex justify-end gap-3`}>
+                                                    {lineItemForm.id && <Button onClick={() => setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user?.settings?.taxRates?.furtherTax || 4) : 0})} variant="secondary" className="px-6">Cancel</Button>}
+                                                    <Button onClick={pushItemToInvoice} className="w-full md:w-auto px-8"><Icons.Plus size={18}/> {lineItemForm.id ? 'Update Line Item' : 'Add Line Item'}</Button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1444,7 +1488,7 @@
                                                         const stAmt = baseVal * (parseFloat(item.taxRate || 0) / 100); 
                                                         const exAmt = baseVal * (parseFloat(item.extraTax || 0) / 100); 
                                                         const furAmt = baseVal * (parseFloat(item.furtherTax || 0) / 100); 
-                                                        const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
+                                                        const fedAmt = isRet ? (parseFloat(item.fedPayable) || 0) : 0;
                                                         return (
                                                             <tr key={item.id} className="hover:bg-gray-50 transition-colors bg-white">
                                                                 <td className="font-bold text-sm desc-col border-r border-gray-100 pl-6">{item.desc} {item.discount > 0 && <span className="block text-[10px] text-red-500 font-normal mt-0.5 uppercase tracking-wide">Discount: {item.discount}</span>}</td>
