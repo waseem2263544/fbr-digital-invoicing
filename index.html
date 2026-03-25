@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FBR Digital Invoice System | Tallied</title>
+    <title>FBR Invoice System | Fair Tax</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -63,10 +63,11 @@
         const FBR_ERRORS = { "0000": "Successful", "0001": "Invalid NTN/Reg. No. format", "0004": "Seller Reg No. doesn't match", "0005": "Buyer Name is empty/invalid", "0007": "Sale Type not allowed/invalid", "0009": "Provide UOM in KG", "0010": "Quantity/Electricity Units missing", "0011": "Provide Value of Sales Excl. ST", "0039": "STWH invoice fields must be same as sale invoice", "0041": "Invoice number cannot be empty", "0042": "Invoice date cannot be empty", "0044": "HS Code cannot be empty", "0053": "Buyer Registration Type is invalid", "0070": "User is not registered, STWH is allowed only for registered user", "0073": "Provide Sale Origination Province of Supplier", "0074": "Provide Destination of Supply", "0077": "SRO/Schedule Number cannot be empty", "0078": "Item serial number cannot be empty", "0082": "The Seller is not registered for sales tax", "0106": "The Buyer is not registered for sales tax", "0401": "Unauthorized access: Seller NTN/CNIC token is invalid", "0402": "Unauthorized access: Buyer NTN/CNIC token is invalid" };
 
         const numberToWords = (num) => {
-            if (num === 0) return "Zero";
+            if (num === null || num === undefined || isNaN(num) || num === 0) return "Zero Rupees Only";
             const a = ["", "One ", "Two ", "Three ", "Four ", "Five ", "Six ", "Seven ", "Eight ", "Nine ", "Ten ", "Eleven ", "Twelve ", "Thirteen ", "Fourteen ", "Fifteen ", "Sixteen ", "Seventeen ", "Eighteen ", "Nineteen "];
             const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
             const format = (n) => {
+                if (!n || isNaN(n)) return "";
                 if (n < 20) return a[n];
                 if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + a[n % 10] : "");
                 return a[Math.floor(n / 100)] + "Hundred " + (n % 100 !== 0 ? format(n % 100) : "");
@@ -109,7 +110,7 @@
         const Input = ({ label, value, onChange, type = "text", placeholder = "", required = false, className = "", readOnly = false, disabled = false }) => (
             <div className={`flex flex-col gap-1.5 ${className}`}>
                 {label && <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-1">{label} {required && <span className="text-red-500">*</span>}</label>}
-                <input type={type} value={value} onChange={onChange} disabled={disabled} placeholder={placeholder} readOnly={readOnly} className={`standard-input ${readOnly || disabled ? 'opacity-70' : ''}`} />
+                <input type={type} value={value ?? ""} onChange={onChange} disabled={disabled} placeholder={placeholder} readOnly={readOnly} className={`standard-input ${readOnly || disabled ? 'opacity-70' : ''}`} />
             </div>
         );
 
@@ -125,7 +126,7 @@
             }, []);
 
             const safeOptions = Array.isArray(options) ? options : [];
-            const filteredOptions = safeOptions.filter(opt => String(opt).toLowerCase().includes(filter.toLowerCase()));
+            const filteredOptions = safeOptions.filter(opt => String(opt || "").toLowerCase().includes(String(filter || "").toLowerCase()));
 
             return (
                 <div className="flex flex-col gap-1.5 relative w-full" ref={wrapperRef}>
@@ -134,7 +135,7 @@
                         {status && <span className={`text-[10px] px-1 rounded ${status.type === 'error' ? 'text-red-600 bg-red-50' : 'text-gray-600 bg-gray-100'}`}>{status.text}</span>}
                     </div>
                     <div className="relative">
-                        <input type="text" value={value || ""} readOnly={strict || readOnly} className={`standard-input ${strict || readOnly ? 'cursor-pointer' : ''}`} placeholder={placeholder} onClick={() => { if (!readOnly) { setShow(!show); setFilter(""); } }} onChange={!strict && !readOnly ? (e) => onChange(e.target.value) : undefined} />
+                        <input type="text" value={value ?? ""} readOnly={strict || readOnly} className={`standard-input ${strict || readOnly ? 'cursor-pointer' : ''}`} placeholder={placeholder} onClick={() => { if (!readOnly) { setShow(!show); setFilter(""); } }} onChange={!strict && !readOnly ? (e) => onChange(e.target.value) : undefined} />
                         {strict && !readOnly && <div className="absolute right-3 top-3 text-gray-400 pointer-events-none"><Icons.Settings size={14} /></div>}
                     </div>
                     {show && !readOnly && (
@@ -168,10 +169,10 @@
 
         const BusinessList = ({ user, onSelect, onLogout, isLobby = false }) => {
             const [searchQuery, setSearchQuery] = useState("");
-            const safeBiz = user.accessibleBusinesses || user.access || [];
+            const safeBiz = Array.isArray(user?.accessibleBusinesses) ? user.accessibleBusinesses : (Array.isArray(user?.access) ? user.access : []);
             const filteredBiz = safeBiz.filter(b => {
-                const bName = b.name || b.businessName || "";
-                return bName.toLowerCase().includes(searchQuery.toLowerCase());
+                const bName = b?.name || b?.businessName || "";
+                return String(bName).toLowerCase().includes(searchQuery.toLowerCase());
             });
 
             return (
@@ -181,7 +182,7 @@
                             <div className="max-w-[1600px] mx-auto px-4 py-4 flex justify-between items-center">
                                 <div className="flex items-center gap-3 font-bold tracking-wide"><Icons.ShieldCheck /> FBR Digital Invoicing</div>
                                 <Button onClick={onLogout} variant="ghost" className="text-sm text-gray-300 hover:text-white hover:bg-white/10">
-                                    <Icons.LogOut size={16}/> {user.isAdminImpersonating ? 'Return to Admin' : 'Logout'}
+                                    <Icons.LogOut size={16}/> {user?.isAdminImpersonating ? 'Return to Admin' : 'Logout'}
                                 </Button>
                             </div>
                         </nav>
@@ -199,29 +200,29 @@
                         </div>
                         <div className="flex flex-col gap-3">
                             {filteredBiz.length > 0 ? filteredBiz.map(b => {
-                                const bId = b.id || b.businessId;
-                                const bName = b.name || b.businessName;
-                                const bAccess = b.accessLevel || 'Unknown';
+                                const bId = b?.id || b?.businessId;
+                                const bName = b?.name || b?.businessName;
+                                const bAccess = b?.accessLevel || 'Unknown';
                                 return (
                                     <Card key={bId} 
                                         className={`p-5 flex flex-col md:flex-row justify-between items-center gap-4 transition-all cursor-pointer group 
-                                        ${bId === user.activeBusinessId && !isLobby ? 'border-black ring-1 ring-black shadow-md' : 'hover:border-gray-300'}`} 
-                                        onClick={() => { if(bId !== user.activeBusinessId || isLobby) onSelect(bId); }}>
+                                        ${bId === user?.activeBusinessId && !isLobby ? 'border-black ring-1 ring-black shadow-md' : 'hover:border-gray-300'}`} 
+                                        onClick={() => { if(bId !== user?.activeBusinessId || isLobby) onSelect(bId); }}>
                                         
                                         <div className="flex-1 flex items-center gap-5">
-                                            <div className={`p-3 rounded-xl transition-colors ${bId === user.activeBusinessId && !isLobby ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-black'}`}>
+                                            <div className={`p-3 rounded-xl transition-colors ${bId === user?.activeBusinessId && !isLobby ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-black'}`}>
                                                 <Icons.Briefcase size={24}/>
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2">
                                                     {bName} 
-                                                    {bId === user.activeBusinessId && !isLobby && <span className="text-[10px] bg-black text-white px-2 py-0.5 rounded-full uppercase tracking-widest font-semibold">Active</span>}
+                                                    {bId === user?.activeBusinessId && !isLobby && <span className="text-[10px] bg-black text-white px-2 py-0.5 rounded-full uppercase tracking-widest font-semibold">Active</span>}
                                                 </h3>
                                                 <p className="text-xs text-gray-500 uppercase tracking-wider mt-1">Role: <span className="font-semibold text-black">{bAccess}</span></p>
                                             </div>
                                         </div>
                                         
-                                        {(!isLobby && bId === user.activeBusinessId) ? null : (
+                                        {(!isLobby && bId === user?.activeBusinessId) ? null : (
                                             <div className="flex items-center text-gray-300 group-hover:text-black transition-colors pr-2 transform group-hover:translate-x-1">
                                                 <Icons.ChevronRight size={24} />
                                             </div>
@@ -330,8 +331,8 @@
             if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading System...</div>;
             if (!user) return <LoginScreen onLogin={handleLogin} />;
             
-            if (user.role !== 'admin' && (!user.settings || !user.businessStatus)) {
-                const safeBiz = user.accessibleBusinesses || user.access || [];
+            if (user.role !== 'admin' && (!user?.settings || !user?.businessStatus)) {
+                const safeBiz = Array.isArray(user.accessibleBusinesses) ? user.accessibleBusinesses : (Array.isArray(user.access) ? user.access : []);
                 if (safeBiz && safeBiz.length > 0) {
                     return <BusinessList user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} isLobby={true} />;
                 }
@@ -413,7 +414,7 @@
             useEffect(() => { fetchData(); }, [activeTab]);
 
             const saveBusiness = async () => {
-                setAdminError(""); if (!editingBiz.businessName) return setAdminError("Business Name is required");
+                setAdminError(""); if (!editingBiz?.businessName) return setAdminError("Business Name is required");
                 const url = editingBiz.id ? `https://app.tallied.pk/api/admin/businesses/${editingBiz.id}` : 'https://app.tallied.pk/api/admin/businesses';
                 const method = editingBiz.id ? 'PUT' : 'POST';
                 try {
@@ -423,7 +424,7 @@
             };
 
             const saveUser = async () => {
-                setAdminError(""); if (!editingUser.username) return setAdminError("Username is required.");
+                setAdminError(""); if (!editingUser?.username) return setAdminError("Username is required.");
                 const isNew = !editingUser.id;
                 if (isNew && (!editingUser.password || editingUser.password.length < 6)) return setAdminError("Password (min 6 chars) required for new users.");
                 const url = isNew ? 'https://app.tallied.pk/api/admin/users' : `https://app.tallied.pk/api/admin/users/${editingUser.id}`;
@@ -434,8 +435,10 @@
                 } catch (e) { setAdminError("Network Error"); }
             };
 
-            const filteredBiz = businesses.filter(b => (b.businessName || "").toLowerCase().includes(bizSearch.toLowerCase()) || (b.ntn || "").includes(bizSearch));
-            const filteredUsers = users.filter(u => (u.username || "").toLowerCase().includes(userSearch.toLowerCase()));
+            const safeBizList = Array.isArray(businesses) ? businesses : [];
+            const safeUserList = Array.isArray(users) ? users : [];
+            const filteredBiz = safeBizList.filter(b => b && (String(b.businessName || "").toLowerCase().includes(String(bizSearch || "").toLowerCase()) || String(b.ntn || "").includes(String(bizSearch || ""))));
+            const filteredUsers = safeUserList.filter(u => u && (String(u.username || "").toLowerCase().includes(String(userSearch || "").toLowerCase())));
 
             return (
                 <div className="min-h-screen bg-gray-50 animate-fade-in">
@@ -527,14 +530,14 @@
                                             <h4 className="font-bold text-sm text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">2. Business Access</h4>
                                             <div className="flex flex-col gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
                                                 <div className="flex items-end gap-3">
-                                                    <div className="flex-1"><SearchableDropdown label="Find Business" value={bizToAdd} options={businesses.filter(b => !editingUser.access?.some(a => a.businessId === b.id)).map(b => b.businessName)} onChange={setBizToAdd} strict={false} /></div>
+                                                    <div className="flex-1"><SearchableDropdown label="Find Business" value={bizToAdd} options={safeBizList.filter(b => b && !editingUser.access?.some(a => a.businessId === b.id)).map(b => b.businessName)} onChange={setBizToAdd} strict={false} /></div>
                                                     <div className="w-32"><label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-1 block mb-1.5">Role</label><select className="standard-input" value={roleToAdd} onChange={e => setRoleToAdd(e.target.value)}><option value="admin">Admin</option><option value="edit">Edit Data</option><option value="view">View Only</option></select></div>
                                                 </div>
-                                                <Button onClick={() => { const b = businesses.find(x => x.businessName === bizToAdd); if (b) { setEditingUser(p => ({ ...p, access: [...(p.access || []), { businessId: b.id, businessName: b.businessName, accessLevel: roleToAdd }] })); setBizToAdd(""); } }} className="w-full">Assign Business</Button>
+                                                <Button onClick={() => { const b = safeBizList.find(x => x && x.businessName === bizToAdd); if (b) { setEditingUser(p => ({ ...p, access: [...(p.access || []), { businessId: b.id, businessName: b.businessName, accessLevel: roleToAdd }] })); setBizToAdd(""); } }} className="w-full">Assign Business</Button>
                                             </div>
                                             <div className="space-y-3 max-h-[300px] overflow-y-auto">
                                                 {(!editingUser.access || editingUser.access.length === 0) ? <div className="text-center p-6 text-sm text-gray-400 border border-dashed border-gray-200 rounded-xl bg-gray-50/50">No businesses assigned yet.</div> : 
-                                                    editingUser.access.map(a => (
+                                                    editingUser.access.map(a => a && (
                                                         <div key={a.businessId} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl shadow-sm bg-white hover:border-gray-300 transition-colors">
                                                             <div><div className="font-bold text-gray-900">{a.businessName}</div><div className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">Role: <span className="text-black font-bold">{a.accessLevel}</span></div></div>
                                                             <button onClick={() => setEditingUser(p => ({...p, access: p.access.filter(x => x.businessId !== a.businessId)}))} className="text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 p-2.5 rounded-lg transition-colors"><Icons.Trash2 size={18}/></button>
@@ -552,7 +555,7 @@
                         {activeTab === 'businesses' && (
                             <div className="flex flex-col gap-4">
                                 {filteredBiz.length > 0 ? filteredBiz.map(biz => {
-                                    const daysLeft = Math.ceil((new Date(biz.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+                                    const daysLeft = calculateDaysLeft(biz?.expiryDate);
                                     return (
                                         <Card key={biz.id} className={`p-5 flex flex-col md:flex-row justify-between items-center gap-5 border-l-4 ${biz.isRevoked ? 'border-red-500 bg-red-50/30' : 'border-black'}`}>
                                             <div className="flex-1">
@@ -601,44 +604,68 @@
         };
 
         const ClientDashboard = ({ user, setUser, onLogout, onSwitch }) => {
-            const isRevoked = user.businessStatus?.isRevoked;
-            const daysLeft = Math.ceil((new Date(user.businessStatus?.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
-            if (isRevoked) { return (<div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 animate-fade-in"><div className="bg-white p-10 rounded-2xl shadow-xl max-w-md w-full border-t-4 border-red-600 text-center"><Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" /><h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1><p className="text-gray-500 mb-8">Your subscription to <b>{user.settings?.businessName}</b> has expired or been suspended.</p><Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700 text-base py-3">Return to Portal</Button></div></div>); }
-
             const [activeTab, setActiveTab] = useState(() => window.location.hash.replace('#', '') || 'invoice');
-            useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
-            const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
-
             const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: "", refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0 });
             
-            const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
+            const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user?.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user?.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
 
-            const [loading, setLoading] = useState(false); const [msg, setMsg] = useState(null); const [showReceipt, setShowReceipt] = useState(false); const [lastInv, setLastInv] = useState(null); const [hsCodes, setHsCodes] = useState([]); const [editingCustId, setEditingCustId] = useState(null); const [editingInvId, setEditingInvId] = useState(null);
-            const [newItem, setNewItem] = useState({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" });
+            const [loading, setLoading] = useState(false); 
+            const [msg, setMsg] = useState(null); 
+            const [showReceipt, setShowReceipt] = useState(false); 
+            const [lastInv, setLastInv] = useState(null); 
+            const [hsCodes, setHsCodes] = useState([]); 
+            const [editingCustId, setEditingCustId] = useState(null); 
+            const [editingInvId, setEditingInvId] = useState(null);
+            const [newItem, setNewItem] = useState({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user?.settings?.taxRates?.salesTax || 18, extraTax: user?.settings?.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" });
             const [newCust, setNewCust] = useState({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
-            const [invSearch, setInvSearch] = useState(""); const [histSearch, setHistSearch] = useState(""); const [custSearch, setCustSearch] = useState(""); const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS); const [invUomStatus, setInvUomStatus] = useState(null);
+            const [invSearch, setInvSearch] = useState(""); 
+            const [histSearch, setHistSearch] = useState(""); 
+            const [custSearch, setCustSearch] = useState(""); 
+            const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS); 
+            const [invUomStatus, setInvUomStatus] = useState(null);
             
-            const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES); const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES); const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
-            const [sroOptions, setSroOptions] = useState([ "THIRD SCHEDULE", "FIFTH SCHEDULE", "SIXTH SCHEDULE Table 1", "SIXTH SCHEDULE Table 2", "EIGHTH SCHEDULE Table 1", "EIGHTH SCHEDULE Table 2", "NINTH SCHEDULE", "ELEVENTH SCHEDULE", "1450(I)/2021", "1579(I)/2021" ]);
+            const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES); 
+            const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES); 
+            const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
+            const [dynamicSaleTypes, setDynamicSaleTypes] = useState(SALE_TYPES);
+            const [provincesData, setProvincesData] = useState([]);
+            const [saleTypesData, setSaleTypesData] = useState([]);
+
+            const [invoiceRates, setInvoiceRates] = useState([]);
+            const [invoiceSros, setInvoiceSros] = useState([]);
+            const [dynamicSroOptions, setDynamicSroOptions] = useState([]);
+            const [dynamicSroItemsOptions, setDynamicSroItemsOptions] = useState([]);
+
+            const [inventoryRates, setInventoryRates] = useState([]);
+            const [inventorySros, setInventorySros] = useState([]);
+            const [invDynamicSroOptions, setInvDynamicSroOptions] = useState([]);
+            const [invDynamicSroItemsOptions, setInvDynamicSroItemsOptions] = useState([]);
 
             const [isValidated, setIsValidated] = useState(false);
 
+            useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
+            const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
+
+            const daysLeft = calculateDaysLeft(user?.businessStatus?.expiryDate);
             const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
             
-            const allowSetting = user.settings?.allowRetailFed;
+            const safeInventory = Array.isArray(user?.inventory) ? user.inventory : [];
+            const safeHistory = Array.isArray(user?.history) ? user.history : [];
+            const safeCustomers = Array.isArray(user?.customers) ? user.customers : [];
+            const safeInvoiceItems = Array.isArray(invoice?.items) ? invoice.items : [];
+
+            const allowSetting = user?.settings?.allowRetailFed;
             const forceRetailFed = allowSetting === true || allowSetting === 1 || String(allowSetting) === "true" || String(allowSetting) === "1";
-            const showRetailFed = forceRetailFed || (activeTab === 'invoice' ? invoice.items.some(i => isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : (user.inventory || []).some(i => i && isRetailFedSale(i.saleType)));
+            const showRetailFed = forceRetailFed || (activeTab === 'invoice' ? safeInvoiceItems.some(i => i && isRetailFedSale(i.saleType)) || isRetailFedSale(lineItemForm.saleType) : safeInventory.some(i => i && isRetailFedSale(i.saleType)));
             
-            const tabs = user.accessibleBusinesses?.length > 1 ? ['businesses', 'invoice', 'inventory', 'customers', 'history', 'settings'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
+            const safeBiz = Array.isArray(user?.accessibleBusinesses) ? user.accessibleBusinesses : (Array.isArray(user?.access) ? user.access : []);
+            const tabs = safeBiz.length > 1 ? ['businesses', 'invoice', 'inventory', 'customers', 'history', 'settings'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
 
             useEffect(() => { if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province })); }, [user?.settings?.province]);
-            
-            // Reset validation lock if any change occurs
-            useEffect(() => { setIsValidated(false); }, [invoice, lineItemForm]);
+            useEffect(() => { setIsValidated(false); }, [invoice.customerRegType, safeInvoiceItems.length, lineItemForm]);
 
-            // Click anywhere to dismiss notification
             useEffect(() => {
                 if (!msg) return;
                 const hideMsg = () => setMsg(null);
@@ -648,40 +675,159 @@
 
             useEffect(() => {
                 const fetchReferenceData = async () => {
-                    const mode = user.settings?.integrationMode || 'sandbox';
-                    const token = mode === 'production' ? (user.settings?.productionToken || user.settings?.production?.token) : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
+                    const mode = user?.settings?.integrationMode || 'sandbox';
+                    const token = mode === 'production' ? (user?.settings?.productionToken || user?.settings?.production?.token) : (user?.settings?.sandboxToken || user?.settings?.sandbox?.token);
                     if (!token) return;
                     const headers = { 'Authorization': `Bearer ${token}` };
                     
-                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.ITEM_CODE}`, { method: 'GET', headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data)) setHsCodes(data.map(item => ({ val: `${item.hS_CODE} - ${item.description}`, desc: item.description }))); } } catch (e) { }
-                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.PROVINCES}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) setDynamicProvinces(data.map(d => d.stateProvinceDesc)); } } catch (e) { }
-                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.DOCTYPECODE}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) setDynamicDocTypes(data.map(d => d.docDescription)); } } catch (e) { }
-                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.UOM}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { const uoms = data.map(d => d.description); setDynamicUOMs(uoms); setInvUomOptions(uoms); } } } catch (e) { }
+                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.ITEM_CODE}`, { method: 'GET', headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data)) setHsCodes(data.map(item => item ? ({ val: `${item.hS_CODE} - ${item.description}`, desc: item.description }) : null).filter(Boolean)); } } catch (e) { }
+                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.PROVINCES}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { setProvincesData(data); setDynamicProvinces(data.map(d => d && (d.stateProvinceDesc || d.StateProvinceDesc)).filter(Boolean)); } } } catch (e) { }
+                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.DOCTYPECODE}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) setDynamicDocTypes(data.map(d => d && (d.docDescription || d.DocDescription)).filter(Boolean)); } } catch (e) { }
+                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.UOM}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { const uoms = data.map(d => d && (d.description || d.Description)).filter(Boolean); setDynamicUOMs(uoms); setInvUomOptions(uoms); } } } catch (e) { }
+                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.TRANSTYPECODE}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { setSaleTypesData(data); setDynamicSaleTypes(data.map(d => d && (d.transactioN_DESC || d.transaction_Desc || d.TransactionDesc)).filter(Boolean)); } } } catch (e) { }
                 };
                 fetchReferenceData();
             }, []);
 
+            const fetchRatesForSaleType = async (saleTypeDesc, provDesc, date) => {
+                const saleTypeObj = saleTypesData.find(s => s && (s.transactioN_DESC || s.transaction_Desc || s.TransactionDesc) === saleTypeDesc);
+                const provObj = provincesData.find(p => p && (p.stateProvinceDesc || p.StateProvinceDesc) === provDesc);
+                if (!saleTypeObj || !provObj) return null;
+                const mode = user?.settings?.integrationMode || 'sandbox';
+                const token = mode === 'production' ? (user?.settings?.productionToken || user?.settings?.production?.token) : (user?.settings?.sandboxToken || user?.settings?.sandbox?.token);
+                if (!token) return null;
+                try {
+                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}/pdi/v2/SaleTypeToRate?date=${date}&transTypeId=${saleTypeObj.transactioN_TYPE_ID || saleTypeObj.transaction_Type_Id}&originationSupplier=${provObj.stateProvinceCode || provObj.StateProvinceCode}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                    if(res.ok) return await res.json();
+                } catch(e){}
+                return null;
+            };
+
+            const fetchSroSchedules = async (rateId, provDesc, date) => {
+                 const provObj = provincesData.find(p => p && (p.stateProvinceDesc || p.StateProvinceDesc) === provDesc);
+                 if (!provObj) return null;
+                 const mode = user?.settings?.integrationMode || 'sandbox';
+                 const token = mode === 'production' ? (user?.settings?.productionToken || user?.settings?.production?.token) : (user?.settings?.sandboxToken || user?.settings?.sandbox?.token);
+                 if (!token) return null;
+                 try {
+                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}/pdi/v1/SroSchedule?rate_id=${rateId}&date=${date}&origination_supplier_csv=${provObj.stateProvinceCode || provObj.StateProvinceCode}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                     if(res.ok) return await res.json();
+                 } catch(e){}
+                 return null;
+            };
+
+            const fetchSroItems = async (sroId, date) => {
+                 const mode = user?.settings?.integrationMode || 'sandbox';
+                 const token = mode === 'production' ? (user?.settings?.productionToken || user?.settings?.production?.token) : (user?.settings?.sandboxToken || user?.settings?.sandbox?.token);
+                 if (!token) return null;
+                 try {
+                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}/pdi/v2/SROItem?date=${date}&sro_id=${sroId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                     if(res.ok) return await res.json();
+                 } catch(e){}
+                 return null;
+            };
+
+            useEffect(() => {
+                if(!lineItemForm.saleType || saleTypesData.length === 0 || provincesData.length === 0) return;
+                const fetchData = async () => {
+                    const rates = await fetchRatesForSaleType(lineItemForm.saleType, invoice.originationProvince, invoice.invoiceDate);
+                    if(rates && Array.isArray(rates)) setInvoiceRates(rates);
+                };
+                fetchData();
+            }, [lineItemForm.saleType, invoice.originationProvince, invoice.invoiceDate, saleTypesData, provincesData]);
+
+            useEffect(() => {
+                if(invoiceRates.length === 0) return;
+                const matchingRate = invoiceRates.find(r => r && parseFloat(r.ratE_VALUE || r.RateValue) === parseFloat(lineItemForm.taxRate || 0));
+                if(!matchingRate) { setDynamicSroOptions([]); return; }
+                const fetchData = async () => {
+                    const sros = await fetchSroSchedules(matchingRate.ratE_ID || matchingRate.RateId, invoice.originationProvince, invoice.invoiceDate);
+                    if(sros && Array.isArray(sros)) {
+                        setInvoiceSros(sros);
+                        setDynamicSroOptions(sros.map(s => s && (s.sro_DESC || s.SroDesc)).filter(Boolean));
+                    } else { setDynamicSroOptions([]); }
+                };
+                fetchData();
+            }, [invoiceRates, lineItemForm.taxRate]);
+
+            useEffect(() => {
+                if(!lineItemForm.sroScheduleNo || invoiceSros.length === 0) return;
+                const matchingSro = invoiceSros.find(s => s && (s.sro_DESC || s.SroDesc) === lineItemForm.sroScheduleNo);
+                if(!matchingSro) return;
+                const fetchData = async () => {
+                    const items = await fetchSroItems(matchingSro.sro_ID || matchingSro.SroId, invoice.invoiceDate);
+                    if(items && Array.isArray(items)) {
+                        setDynamicSroItemsOptions(items.map(i => i && (i.srO_ITEM_DESC || i.SroItemDesc)).filter(Boolean));
+                    } else { setDynamicSroItemsOptions([]); }
+                };
+                fetchData();
+            }, [lineItemForm.sroScheduleNo, invoiceSros]);
+
+            useEffect(() => {
+                if(!newItem.saleType || saleTypesData.length === 0 || provincesData.length === 0) return;
+                const fetchData = async () => {
+                    const rates = await fetchRatesForSaleType(newItem.saleType, user?.settings?.province || "Sindh", getToday());
+                    if(rates && Array.isArray(rates)) setInventoryRates(rates);
+                };
+                fetchData();
+            }, [newItem.saleType, saleTypesData, provincesData]);
+
+            useEffect(() => {
+                if(inventoryRates.length === 0) return;
+                const matchingRate = inventoryRates.find(r => r && parseFloat(r.ratE_VALUE || r.RateValue) === parseFloat(newItem.taxRate || 0));
+                if(!matchingRate) { setInvDynamicSroOptions([]); return; }
+                const fetchData = async () => {
+                    const sros = await fetchSroSchedules(matchingRate.ratE_ID || matchingRate.RateId, user?.settings?.province || "Sindh", getToday());
+                    if(sros && Array.isArray(sros)) {
+                        setInventorySros(sros);
+                        setInvDynamicSroOptions(sros.map(s => s && (s.sro_DESC || s.SroDesc)).filter(Boolean));
+                    } else { setInvDynamicSroOptions([]); }
+                };
+                fetchData();
+            }, [inventoryRates, newItem.taxRate]);
+
+            useEffect(() => {
+                if(!newItem.sroScheduleNo || inventorySros.length === 0) return;
+                const matchingSro = inventorySros.find(s => s && (s.sro_DESC || s.SroDesc) === newItem.sroScheduleNo);
+                if(!matchingSro) return;
+                const fetchData = async () => {
+                    const items = await fetchSroItems(matchingSro.sro_ID || matchingSro.SroId, getToday());
+                    if(items && Array.isArray(items)) {
+                        setInvDynamicSroItemsOptions(items.map(i => i && (i.srO_ITEM_DESC || i.SroItemDesc)).filter(Boolean));
+                    } else { setInvDynamicSroItemsOptions([]); }
+                };
+                fetchData();
+            }, [newItem.sroScheduleNo, inventorySros]);
+
             useEffect(() => {
                 const isUnregistered = invoice.customerRegType === "Unregistered";
-                const ftRate = user.settings.taxRates?.furtherTax || 4;
-                setInvoice(prev => { const newItems = prev.items.map(item => { let newFTRate = parseFloat(item.furtherTax) || 0; if (isUnregistered) { if (newFTRate === 0) newFTRate = ftRate; } else { newFTRate = 0; } return { ...item, furtherTax: newFTRate }; }); return { ...prev, items: newItems }; });
+                const ftRate = user?.settings?.taxRates?.furtherTax || 4;
+                setInvoice(prev => { 
+                    const newItems = safeInvoiceItems.map(item => { 
+                        let newFTRate = parseFloat(item.furtherTax) || 0; 
+                        if (isUnregistered) { if (newFTRate === 0) newFTRate = ftRate; } 
+                        else { newFTRate = 0; } 
+                        return { ...item, furtherTax: newFTRate }; 
+                    }); 
+                    return { ...prev, items: newItems }; 
+                });
                 setLineItemForm(prev => ({ ...prev, furtherTax: isUnregistered ? (parseFloat(prev.furtherTax) || ftRate) : 0 }));
             }, [invoice.customerRegType]);
 
             const fetchAllowedUOMs = async (hsCode) => {
-                if (!hsCode || hsCode.length < 3) { setInvUomStatus(null); return dynamicUOMs; }
-                const actualCode = hsCode.includes(" - ") ? hsCode.split(" - ")[0] : hsCode;
+                if (!hsCode || String(hsCode).length < 3) { setInvUomStatus(null); return dynamicUOMs; }
+                const actualCode = String(hsCode).includes(" - ") ? String(hsCode).split(" - ")[0] : hsCode;
                 const tryFetch = async (code) => {
-                    const mode = user.settings?.integrationMode || 'sandbox';
-                    const token = mode === 'production' ? (user.settings?.productionToken || user.settings?.production?.token) : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
+                    const mode = user?.settings?.integrationMode || 'sandbox';
+                    const token = mode === 'production' ? (user?.settings?.productionToken || user?.settings?.production?.token) : (user?.settings?.sandboxToken || user?.settings?.sandbox?.token);
                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.HS_UOM}?hs_code=${code}&annexure_id=3`, { method: 'GET', headers: { 'Authorization': token ? `Bearer ${token}` : '' } });
                     if (res.status === 401) throw new Error("401"); if (!res.ok) return null;
-                    const data = await res.json(); if (Array.isArray(data)) { if (data.length > 0) return data.map(d => d.description); return []; } return null;
+                    const data = await res.json(); if (Array.isArray(data)) { if (data.length > 0) return data.map(d => d && (d.description || d.Description)).filter(Boolean); return []; } return null;
                 };
                 try {
                     setInvUomStatus({ text: "Fetching...", type: "info" });
                     let uoms = await tryFetch(actualCode); if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; }
-                    const cleanCode = actualCode.replace(/[^0-9]/g, ''); if (cleanCode !== actualCode) { uoms = await tryFetch(cleanCode); if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; } }
+                    const cleanCode = String(actualCode).replace(/[^0-9]/g, ''); if (cleanCode !== actualCode) { uoms = await tryFetch(cleanCode); if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; } }
                     if (cleanCode.length === 8) { const formatted = `${cleanCode.slice(0, 4)}.${cleanCode.slice(4)}`; if (formatted !== actualCode) { uoms = await tryFetch(formatted); if (uoms !== null) { setInvUomStatus({ text: "Updated", type: "success" }); return uoms; } } }
                     setInvUomStatus({ text: "Not Found", type: "error" }); return dynamicUOMs;
                 } catch (e) { setInvUomStatus({ text: "Net Error", type: "error" }); return dynamicUOMs; }
@@ -689,7 +835,8 @@
 
             const calculate = () => {
                 let subtotal = 0, gst = 0, extra = 0, further = 0, fed = 0, wht = 0, totalDisc = 0;
-                invoice.items.forEach(i => {
+                safeInvoiceItems.forEach(i => {
+                    if (!i) return;
                     const price = parseFloat(i.price) || 0, retailPrice = parseFloat(i.retailPrice) || 0, qty = parseFloat(i.qty) || 0, disc = parseFloat(i.discount) || 0;
                     let grossValue = (isRetailFedSale(i.saleType) ? retailPrice : price) * qty;
                     let valueForTax = grossValue - disc;
@@ -698,7 +845,7 @@
                     extra += valueForTax * ((parseFloat(i.extraTax) || 0) / 100); 
                     further += valueForTax * ((parseFloat(i.furtherTax) || 0) / 100); 
                     fed += isRetailFedSale(i.saleType) ? ((parseFloat(i.fedPayable) || 0) * qty) : 0;
-                    wht += parseFloat(i.wht || 0); 
+                    wht += parseFloat(i.wht) || 0; 
                     totalDisc += disc;
                 });
                 const total = subtotal + gst + extra + further + fed - wht;
@@ -716,35 +863,31 @@
                 if(!lineItemForm.desc || !lineItemForm.price || !lineItemForm.qty) return setMsg({type: 'error', text: 'Description, Qty, and Price are required.'});
                 const newItemObj = { ...lineItemForm, id: lineItemForm.id || Date.now() };
                 setInvoice(p => {
-                    const existingIdx = p.items.findIndex(i => i.id === newItemObj.id);
-                    if(existingIdx >= 0) { const newItems = [...p.items]; newItems[existingIdx] = newItemObj; return { ...p, items: newItems }; }
-                    return { ...p, items: [...p.items, newItemObj] };
+                    const existingIdx = safeInvoiceItems.findIndex(i => i && i.id === newItemObj.id);
+                    if(existingIdx >= 0) { const newItems = [...safeInvoiceItems]; newItems[existingIdx] = newItemObj; return { ...p, items: newItems }; }
+                    return { ...p, items: [...safeInvoiceItems, newItemObj] };
                 });
-                setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0});
+                setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user?.settings?.taxRates?.furtherTax || 4) : 0});
             };
 
             const pickProductForInvoiceForm = (prod) => {
-                fetchAllowedUOMs(prod.hsCode).then(uoms => { setLineItemForm(p => ({ ...p, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0, fedPayable: prod.fedPayable, wht: prod.wht || 0, sroScheduleNo: prod.sroScheduleNo || "", sroItemSerialNo: prod.sroItemSerialNo || "", allowedUOMs: uoms, isFromInventory: true })); });
+                fetchAllowedUOMs(prod.hsCode).then(uoms => { setLineItemForm(p => ({ ...p, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax || 0, furtherTax: invoice.customerRegType === 'Unregistered' ? (user?.settings?.taxRates?.furtherTax || 4) : 0, fedPayable: prod.fedPayable, wht: 0, sroScheduleNo: prod.sroScheduleNo || "", sroItemSerialNo: prod.sroItemSerialNo || "", allowedUOMs: uoms, isFromInventory: true })); });
             };
 
-            const addCustomer = () => { if (!newCust.name) return; saveUser({ customers: editingCustId ? (user.customers || []).map(c => c.id === editingCustId ? { ...c, ...newCust } : c) : [...(user.customers || []), { id: Date.now(), ...newCust }] }); setNewCust({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' }); setEditingCustId(null); };
+            const addCustomer = () => { if (!newCust.name) return; saveUser({ customers: editingCustId ? safeCustomers.map(c => c && c.id === editingCustId ? { ...c, ...newCust } : c).filter(Boolean) : [...safeCustomers, { id: Date.now(), ...newCust }] }); setNewCust({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' }); setEditingCustId(null); };
             const editCustomer = (c) => { setNewCust(c); setEditingCustId(c.id); };
-            const deleteCustomer = (id) => saveUser({ customers: (user.customers || []).filter(c => c.id !== id) });
-            const addInventory = () => { if (newItem.name) { saveUser({ inventory: [...(user.inventory || []), { id: Date.now(), ...newItem, status: 'Active' }] }); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } };
-            const deleteInventory = (id) => saveUser({ inventory: (user.inventory || []).filter(i => i.id !== id) });
+            const deleteCustomer = (id) => saveUser({ customers: safeCustomers.filter(c => c && c.id !== id) });
+            const addInventory = () => { if (newItem.name) { saveUser({ inventory: [...safeInventory, { id: Date.now(), ...newItem, status: 'Active' }] }); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user?.settings?.taxRates?.salesTax || 18, extraTax: user?.settings?.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } };
+            const deleteInventory = (id) => saveUser({ inventory: safeInventory.filter(i => i && i.id !== id) });
             const downloadInvoice = (inv) => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inv, null, 2)); a.download = `invoice_${inv.fbrInvoiceNumber}.json`; document.body.appendChild(a); a.click(); a.remove(); };
 
-            const filteredInventory = (user.inventory || []).filter(i => !invSearch || i.name.toLowerCase().includes(invSearch.toLowerCase()) || i.hsCode.toLowerCase().includes(invSearch.toLowerCase()));
-            const filteredHistory = (user.history || []).filter(h => !histSearch || (h.fbrInvoiceNumber && h.fbrInvoiceNumber.toLowerCase().includes(histSearch.toLowerCase())) || (h.customerName && h.customerName.toLowerCase().includes(histSearch.toLowerCase())));
-            const filteredCustomers = (user.customers || []).filter(c => c && (!custSearch || c.name.toLowerCase().includes(custSearch.toLowerCase()) || (c.ntn && c.ntn.includes(custSearch))));
-
-            const onSelectCustomerName = (val) => { const existingCust = (user.customers || []).find(c => c && c.name === val); if (existingCust) setInvoice(prev => ({ ...prev, customerName: existingCust.name, customerNTN: existingCust.ntn, customerDestination: existingCust.destination, customerAddress: existingCust.address, customerRegType: existingCust.regType || 'Unregistered' })); else setInvoice(prev => ({ ...prev, customerName: val })); };
+            const onSelectCustomerName = (val) => { const existingCust = safeCustomers.find(c => c && c.name === val); if (existingCust) setInvoice(prev => ({ ...prev, customerName: existingCust.name, customerNTN: existingCust.ntn, customerDestination: existingCust.destination, customerAddress: existingCust.address, customerRegType: existingCust.regType || 'Unregistered' })); else setInvoice(prev => ({ ...prev, customerName: val })); };
 
             const checkCustomerStatus = async (regNo, isInv = false) => {
-                if (!regNo || regNo.length < 7) return setMsg({ type: 'error', text: 'Invalid NTN' });
+                if (!regNo || String(regNo).length < 7) return setMsg({ type: 'error', text: 'Invalid NTN' });
                 setMsg({ type: 'info', text: 'Verifying...' });
-                const mode = user.settings?.integrationMode || 'sandbox';
-                const token = mode === 'production' ? (user.settings?.productionToken || user.settings?.production?.token) : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
+                const mode = user?.settings?.integrationMode || 'sandbox';
+                const token = mode === 'production' ? (user?.settings?.productionToken || user?.settings?.production?.token) : (user?.settings?.sandboxToken || user?.settings?.sandbox?.token);
                 const headers = { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' };
                 
                 try {
@@ -758,7 +901,7 @@
                             const statlRes = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.STATL}`, { method: 'POST', headers, body: JSON.stringify({ regno: regNo, date: todayDate }) });
                             if (statlRes.ok) {
                                 const statlData = await statlRes.json();
-                                if (statlData.status && statlData.status.toLowerCase().includes("in-active")) {
+                                if (statlData.status && String(statlData.status).toLowerCase().includes("in-active")) {
                                     setMsg({ type: 'error', text: `NTN is Registered, but ${statlData.status} on ATL. Downgrading to Unregistered.` });
                                     if (isInv) setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" })); else setNewCust(prev => ({ ...prev, regType: "Unregistered" }));
                                     return;
@@ -783,24 +926,25 @@
             const callFbrApi = async (isValidate = false, retryRegType = null, retryScenario = null) => {
                 if (isExpired) return setMsg({ type: 'error', text: 'Subscription Expired.' });
                 
-                const mode = user.settings?.integrationMode || 'sandbox';
+                const mode = user?.settings?.integrationMode || 'sandbox';
                 const token = mode === 'production' 
-                    ? (user.settings?.productionToken || user.settings?.production?.token) 
-                    : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
+                    ? (user?.settings?.productionToken || user?.settings?.production?.token) 
+                    : (user?.settings?.sandboxToken || user?.settings?.sandbox?.token);
                 
                 if (!token) return setMsg({ type: 'error', text: 'Token Missing.' });
 
                 let finalRegType = retryRegType || invoice.customerRegType || (invoice.customerNTN && String(invoice.customerNTN).replace(/-/g, '').length >= 7 ? "Registered" : "Unregistered");
                 
-                const safeBuyerProvince = invoice.customerDestination || user.settings?.province || "Sindh";
-                const safeSellerProvince = user.settings?.province || "Sindh";
+                const safeBuyerProvince = invoice.customerDestination || user?.settings?.province || "Sindh";
+                const safeSellerProvince = user?.settings?.province || "Sindh";
 
                 const payload = {
-                    invoiceType: invoice.type, invoiceDate: invoice.invoiceDate, sellerNTNCNIC: String(user.settings?.ntn || "").replace(/-/g, ""), sellerBusinessName: user.settings.businessName, sellerProvince: safeSellerProvince, sellerAddress: user.settings.address,
+                    invoiceType: invoice.type, invoiceDate: invoice.invoiceDate, sellerNTNCNIC: String(user?.settings?.ntn || "").replace(/-/g, ""), sellerBusinessName: user?.settings?.businessName || "", sellerProvince: safeSellerProvince, sellerAddress: user?.settings?.address || "",
                     buyerNTNCNIC: invoice.customerNTN ? String(invoice.customerNTN).replace(/-/g, "") : "", buyerBusinessName: invoice.customerName, buyerProvince: safeBuyerProvince, buyerAddress: invoice.customerAddress, 
                     buyerRegistrationType: finalRegType, 
                     invoiceRefNo: invoice.refInvoiceNumber,
-                    items: invoice.items.map((item, index) => {
+                    items: safeInvoiceItems.map((item, index) => {
+                        if (!item) return null;
                         const type = item.saleType || "";
                         
                         const isRet = type === "3rd Schedule Goods" || type === "Cotton ginners";
@@ -825,7 +969,7 @@
                         const extraTaxApplicable = baseVal * (extraRate / 100);
                         const totalValues = baseVal + salesTaxApplicable + furtherTaxApplicable + extraTaxApplicable + (fedAmt * q);
                         
-                        const cleanHsCode = item.hsCode ? item.hsCode.split(' - ')[0].trim() : "";
+                        const cleanHsCode = item.hsCode ? String(item.hsCode).split(' - ')[0].trim() : "";
                         const serialNo = item.sroItemSerialNo ? String(item.sroItemSerialNo) : "";
 
                         let mappedItem = { 
@@ -861,7 +1005,7 @@
                         }
                         
                         return mappedItem;
-                    })
+                    }).filter(Boolean)
                 };
                 
                 if (mode !== 'production') {
@@ -904,19 +1048,19 @@
                         } 
                         else if (data?.validationResponse && data.validationResponse.statusCode !== "00") {
                             isFbrError = true;
-                            let itemErrors = data.validationResponse.invoiceStatuses?.filter(s => s.error)?.map(s => `Item ${s.itemSNo}: ${s.error}`).join(" | ") || "";
+                            let itemErrors = data.validationResponse.invoiceStatuses?.filter(s => s && s.error)?.map(s => `Item ${s.itemSNo}: ${s.error}`).join(" | ") || "";
                             errorMessage = data.validationResponse.error || itemErrors || "Validation Failed";
                         }
 
                         if (isFbrError) {
-                            if (errorMessage.toLowerCase().includes("registration type does not match") && !retryRegType) {
+                            if (String(errorMessage).toLowerCase().includes("registration type does not match") && !retryRegType) {
                                 const flippedRegType = finalRegType === "Registered" ? "Unregistered" : "Registered";
                                 return callFbrApi(isValidate, flippedRegType, retryScenario);
                             }
-                            if (errorMessage.toLowerCase().includes("scenario not valid for unregistered") && !retryScenario) {
+                            if (String(errorMessage).toLowerCase().includes("scenario not valid for unregistered") && !retryScenario) {
                                 return callFbrApi(isValidate, "Unregistered", "SN002");
                             }
-                            if (errorMessage.toLowerCase().includes("scenario not valid for registered") && !retryScenario) {
+                            if (String(errorMessage).toLowerCase().includes("scenario not valid for registered") && !retryScenario) {
                                 return callFbrApi(isValidate, "Registered", "SN001");
                             }
                             setMsg({ type: 'error', text: `FBR Rejected: ${errorMessage}` });
@@ -930,13 +1074,13 @@
                                 setIsValidated(false);
                                 let actualFbrNo = data?.InvoiceNumber || data?.invoiceNumber || data?.Invoice_Number;
                                 if (!actualFbrNo && Array.isArray(data) && data.length > 0) actualFbrNo = data[0]?.InvoiceNumber || data[0]?.invoiceNumber;
-                                if (!actualFbrNo && data?.data) actualFbrNo = data.data?.InvoiceNumber || data.data?.invoiceNumber;
+                                if (!actualFbrNo && data?.data) actualFbrNo = data.data?.InvoiceNumber || data.data?.InvoiceNumber;
                                 
                                 if (!actualFbrNo) {
                                     setMsg({ type: 'error', text: `FBR Success, but no Invoice Number found. Raw FBR Output: ${JSON.stringify(data)}` });
                                     return; 
                                 }
-                                saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: actualFbrNo }, ...(user.history || [])] }); 
+                                saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: actualFbrNo }, ...safeHistory] }); 
                                 setInvoice({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: "", refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0 }); 
                             }
                         }
@@ -953,13 +1097,14 @@
             };
 
             const renderInvoiceTemplate = () => {
-                let qrUrl = ""; try { qrUrl = new QRious({ value: lastInv?.fbrInvoiceNumber || '', size: 120 }).toDataURL(); } catch (e) {}
-                const printShowRetail = lastInv?.items?.some(i => isRetailFedSale(i.saleType)) || showRetailFed;
+                let qrUrl = ""; try { qrUrl = new QRious({ value: lastInv?.fbrInvoiceNumber || '', size: 96 }).toDataURL(); } catch (e) {}
+                const safeTemplateItems = Array.isArray(lastInv?.items) ? lastInv.items : [];
+                const printShowRetail = safeTemplateItems.some(i => i && isRetailFedSale(i.saleType)) || showRetailFed;
                 
-                const hasDiscount = lastInv?.items?.some(i => parseFloat(i.discount) > 0);
-                const hasExtraTax = lastInv?.items?.some(i => parseFloat(i.extraTax) > 0);
-                const hasFurtherTax = lastInv?.items?.some(i => parseFloat(i.furtherTax) > 0);
-                const hasWht = lastInv?.items?.some(i => parseFloat(i.wht) > 0);
+                const hasDiscount = safeTemplateItems.some(i => i && parseFloat(i.discount) > 0);
+                const hasExtraTax = safeTemplateItems.some(i => i && parseFloat(i.extraTax) > 0);
+                const hasFurtherTax = safeTemplateItems.some(i => i && parseFloat(i.furtherTax) > 0);
+                const hasWht = safeTemplateItems.some(i => i && parseFloat(i.wht) > 0);
 
                 return (
                     <div className="bg-white w-full max-w-5xl rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] relative print:w-full print:max-w-none print:max-h-none print:shadow-none print:overflow-visible animate-fade-in print:m-0 print:p-0">
@@ -968,12 +1113,12 @@
                         <div id="printable-area" className="p-8 text-black bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
                             <div className="flex justify-between items-start mb-6">
                                 <div>
-                                    {user.settings?.logo && <img src={user.settings.logo} className="h-16 mb-2 object-contain" />}
-                                    <h1 className="font-bold text-xl uppercase">{user.settings?.businessName}</h1>
-                                    <div className="text-xs text-gray-700 mt-1">{user.settings?.address} {user.settings?.province}</div>
-                                    {user.settings?.phone && <div className="text-xs text-gray-700 mt-1">Phone No: {user.settings.phone}</div>}
-                                    {user.settings?.email && <div className="text-xs text-gray-700">Email: {user.settings.email}</div>}
-                                    <div className="text-xs text-gray-700 font-bold mt-1">NTN No: {user.settings?.ntn}</div>
+                                    {user?.settings?.logo && <img src={user.settings.logo} className="h-16 mb-2 object-contain" />}
+                                    <h1 className="font-bold text-xl uppercase">{user?.settings?.businessName}</h1>
+                                    <div className="text-xs text-gray-700 mt-1">{user?.settings?.address} {user?.settings?.province}</div>
+                                    {user?.settings?.phone && <div className="text-xs text-gray-700 mt-1">Phone No: {user.settings.phone}</div>}
+                                    {user?.settings?.email && <div className="text-xs text-gray-700">Email: {user.settings.email}</div>}
+                                    <div className="text-xs text-gray-700 font-bold mt-1">NTN No: {user?.settings?.ntn}</div>
                                 </div>
                                 <div className="text-right flex flex-col items-end">
                                     <div className="flex items-center gap-2 mb-2">
@@ -981,7 +1126,7 @@
                                             <img src="http://tallied.pk/wp-content/uploads/2026/03/do-fbr-digital-invoice-integration-for-pakistan-market-2.webp" alt="FBR Digital Invoicing System" className="w-24 h-24 object-contain" />
                                         </div>
                                         
-                                        {qrUrl && <img src={qrUrl} alt="QR Code" className="w-20 h-20" />}
+                                        {qrUrl && <img src={qrUrl} alt="QR Code" style={{ width: '1in', height: '1in' }} />}
                                     </div>
                                     <div className="font-bold text-sm bg-gray-100 px-2 py-1 rounded border border-gray-300">FBR Invoice No: <span className="text-red-600">{lastInv?.fbrInvoiceNumber || 'Pending'}</span></div>
                                 </div>
@@ -1006,7 +1151,7 @@
                                             <tr><td className="font-bold w-32 py-1">Invoice No:</td><td>{lastInv?.invoiceNumber || lastInv?.id}</td></tr>
                                             <tr><td className="font-bold py-1">Document Date:</td><td>{lastInv?.invoiceDate}</td></tr>
                                             <tr><td className="font-bold py-1">Posting Date:</td><td>{lastInv?.invoiceDate}</td></tr>
-                                            <tr><td className="font-bold py-1">Posted By:</td><td>{user.username}</td></tr>
+                                            <tr><td className="font-bold py-1">Posted By:</td><td>{user?.username}</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -1034,7 +1179,8 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {lastInv?.items?.map((item, idx) => {
+                                        {safeTemplateItems.map((item, idx) => {
+                                            if (!item) return null;
                                             const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
                                             const val = (isRet ? r : p) * q;
                                             const itemDisc = parseFloat(item.discount || 0);
@@ -1051,7 +1197,7 @@
                                                     <td className="border border-black p-1 text-center">{idx + 1}</td>
                                                     <td className="border border-black p-1 text-left font-bold">
                                                         {item.desc} <br/>
-                                                        <span className="font-normal text-gray-600">HS Code:{item.hsCode?.split(' - ')[0]}</span>
+                                                        <span className="font-normal text-gray-600">HS Code:{item.hsCode ? String(item.hsCode).split(' - ')[0] : ''}</span>
                                                         {(item.sroScheduleNo || item.sroItemSerialNo) && <br/>}
                                                         {(item.sroScheduleNo || item.sroItemSerialNo) && <span className="font-normal text-gray-500 text-[9px]">SRO: {item.sroScheduleNo || '-'} / {item.sroItemSerialNo || '-'}</span>}
                                                     </td>
@@ -1080,22 +1226,22 @@
                                 <div>
                                     <table className="w-full text-right border-collapse border border-black">
                                         <tbody>
-                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + lastInv?.totalDisc)}</td></tr>}
-                                            {printShowRetail && lastInv?.fed > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">FED:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.fed)}</td></tr>}
+                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value:</td><td className="border-b border-black p-1">{formatCurrency((lastInv?.subtotal || 0) + (lastInv?.totalDisc || 0))}</td></tr>}
+                                            {printShowRetail && (lastInv?.fed || 0) > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">FED:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.fed)}</td></tr>}
                                             
-                                            {lastInv?.totalDisc > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Gross Amount:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.totalDisc || 0))}</td></tr>}
-                                            {lastInv?.totalDisc > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Discount:</td><td className="border-b border-black p-1">-{formatCurrency(lastInv?.totalDisc)}</td></tr>}
+                                            {(lastInv?.totalDisc || 0) > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Gross Amount:</td><td className="border-b border-black p-1">{formatCurrency((lastInv?.subtotal || 0) + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.totalDisc || 0))}</td></tr>}
+                                            {(lastInv?.totalDisc || 0) > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Discount:</td><td className="border-b border-black p-1">-{formatCurrency(lastInv?.totalDisc)}</td></tr>}
                                             
-                                            <tr><td className="border-b border-r border-black p-1 font-bold">Amount Excl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0))}</td></tr>
+                                            <tr><td className="border-b border-r border-black p-1 font-bold">Amount Excl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency((lastInv?.subtotal || 0) + (lastInv?.fed || 0) + (lastInv?.extra || 0))}</td></tr>
                                             
                                             <tr><td className="border-b border-r border-black p-1 font-bold">Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.gst)}</td></tr>
                                             
-                                            {lastInv?.extra > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Extra Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.extra)}</td></tr>}
-                                            {lastInv?.further > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Further Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.further)}</td></tr>}
+                                            {(lastInv?.extra || 0) > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Extra Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.extra)}</td></tr>}
+                                            {(lastInv?.further || 0) > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Further Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.further)}</td></tr>}
                                             
-                                            <tr><td className="border-b border-r border-black p-1 font-bold">Amount Incl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.gst || 0) + (lastInv?.further || 0))}</td></tr>
+                                            <tr><td className="border-b border-r border-black p-1 font-bold">Amount Incl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency((lastInv?.subtotal || 0) + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.gst || 0) + (lastInv?.further || 0))}</td></tr>
                                             
-                                            {lastInv?.wht > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Withholding Sales Tax:</td><td className="border-b border-black p-1">-{formatCurrency(lastInv?.wht)}</td></tr>}
+                                            {(lastInv?.wht || 0) > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Withholding Sales Tax:</td><td className="border-b border-black p-1">-{formatCurrency(lastInv?.wht)}</td></tr>}
                                             
                                             <tr><td className="border-r border-black p-1 font-bold text-sm bg-gray-100">Total Amount Payable:</td><td className="p-1 font-bold text-sm bg-gray-100">{formatCurrency(lastInv?.total)}</td></tr>
                                         </tbody>
@@ -1127,24 +1273,24 @@
                             <div>
                                 <h3 className="font-bold text-sm text-gray-900 uppercase tracking-wider mb-5 opacity-60">Locked Business Profile</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5">
-                                    <Input label="Business Name" value={user?.settings?.businessName} readOnly />
-                                    <Input label="Business Address" value={user?.settings?.address} readOnly />
+                                    <Input label="Business Name" value={user?.settings?.businessName || ''} readOnly />
+                                    <Input label="Business Address" value={user?.settings?.address || ''} readOnly />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5">
-                                    <Input label="NTN" value={user?.settings?.ntn} readOnly />
-                                    <Input label="STRN" value={user?.settings?.strn} readOnly />
+                                    <Input label="NTN" value={user?.settings?.ntn || ''} readOnly />
+                                    <Input label="STRN" value={user?.settings?.strn || ''} readOnly />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5">
                                     <Input label="Contact Phone" value={user?.settings?.phone || ''} readOnly placeholder="Set by Admin" />
                                     <Input label="Contact Email" value={user?.settings?.email || ''} readOnly placeholder="Set by Admin" />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-60 pointer-events-none mb-5">
-                                    <Input label="Sale Origination Province" value={user?.settings?.province} readOnly />
+                                    <Input label="Sale Origination Province" value={user?.settings?.province || ''} readOnly />
                                     <Input label="Active Environment" value={user?.settings?.integrationMode === 'production' ? 'Production' : 'Sandbox'} readOnly />
                                 </div>
                                 <div className="opacity-60 pointer-events-none">
                                     <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-1 block mb-2">Company Logo</label>
-                                    {user.settings?.logo ? <img src={user.settings.logo} className="h-16 mt-2 object-contain" /> : <p className="text-sm">No Logo Uploaded</p>}
+                                    {user?.settings?.logo ? <img src={user.settings.logo} className="h-16 mt-2 object-contain" /> : <p className="text-sm">No Logo Uploaded</p>}
                                 </div>
                             </div>
                         </div>
@@ -1153,7 +1299,10 @@
                 );
             };
 
-            const userCanEdit = user.accessLevel !== 'view';
+            const userCanEdit = user?.accessLevel !== 'view';
+            
+            // SECURITY CHECK: All hooks must be loaded BEFORE this conditional return.
+            if (user?.businessStatus?.isRevoked) { return (<div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 animate-fade-in"><div className="bg-white p-10 rounded-2xl shadow-xl max-w-md w-full border-t-4 border-red-600 text-center"><Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" /><h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1><p className="text-gray-500 mb-8">Your subscription to <b>{user?.settings?.businessName}</b> has expired or been suspended.</p><Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700 text-base py-3">Return to Portal</Button></div></div>); }
 
             return (
                 <div className="min-h-screen pb-20 relative bg-gray-50 animate-fade-in">
@@ -1183,12 +1332,12 @@
                     <nav className="bg-black text-white shadow-lg sticky top-0 z-40">
                         <div className="max-w-[1600px] mx-auto px-6 py-4 flex justify-between items-center">
                             <div className="flex items-center gap-4">
-                                <div className="bg-white/10 p-2.5 rounded-xl">{user.settings?.logo ? <img src={user.settings.logo} className="w-6 h-6 object-contain" /> : <Icons.FileText size={24} />}</div>
-                                <div><h1 className="font-bold text-lg leading-tight tracking-tight">Hi, {user.username || 'User'}</h1><span className="text-gray-400 text-xs font-medium uppercase tracking-widest">{user.settings?.businessName}</span></div>
+                                <div className="bg-white/10 p-2.5 rounded-xl">{user?.settings?.logo ? <img src={user.settings.logo} className="w-6 h-6 object-contain" /> : <Icons.FileText size={24} />}</div>
+                                <div><h1 className="font-bold text-lg leading-tight tracking-tight">Hi, {user?.username || 'User'}</h1><span className="text-gray-400 text-xs font-medium uppercase tracking-widest">{user?.settings?.businessName}</span></div>
                             </div>
                             <div className="flex items-center gap-6">
                                 <div className="flex gap-2 bg-gray-800/50 p-1 rounded-xl">
-                                    {tabs.map(t => (<button key={t} onClick={() => changeTab(t)} className={`px-4 py-1.5 rounded-lg text-sm transition-all duration-200 capitalize ${activeTab === t ? 'bg-white text-black font-bold shadow-sm' : 'text-gray-300 hover:text-white hover:bg-white/10 font-medium'}`}>{t}</button>))}
+                                    {(tabs || []).map(t => (<button key={t} onClick={() => changeTab(t)} className={`px-4 py-1.5 rounded-lg text-sm transition-all duration-200 capitalize ${activeTab === t ? 'bg-white text-black font-bold shadow-sm' : 'text-gray-300 hover:text-white hover:bg-white/10 font-medium'}`}>{t}</button>))}
                                 </div>
                                 <Button variant="ghost" onClick={onLogout} className="text-gray-300 hover:text-white hover:bg-red-500/20"><Icons.LogOut size={18}/></Button>
                             </div>
@@ -1209,15 +1358,15 @@
                                         <Input label={invoice.type === "Sale Invoice" ? "Invoice No" : "Document No"} value={invoice.invoiceNumber} onChange={e => setInvoice({ ...invoice, invoiceNumber: e.target.value })} />
                                         {invoice.type !== "Sale Invoice" && <Input label="Ref Invoice #" value={invoice.refInvoiceNumber} onChange={e => setInvoice({ ...invoice, refInvoiceNumber: e.target.value })} placeholder="Required" required />}
                                         <SearchableDropdown label="Origin" value={invoice.originationProvince} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, originationProvince: v })} />
-                                        <SearchableDropdown label="Customer Name" value={invoice.customerName} options={(user.customers || []).filter(c => c).map(c => c.name)} placeholder="Search Customer..." onChange={onSelectCustomerName} strict={false} />
+                                        <SearchableDropdown label="Customer Name" value={invoice.customerName} options={safeCustomers.map(c => c && c.name).filter(Boolean)} placeholder="Search Customer..." onChange={onSelectCustomerName} strict={false} />
                                         <div className="relative">
                                             <Input label="Reg No / NTN" value={invoice.customerNTN} onChange={e => setInvoice({ ...invoice, customerNTN: e.target.value })} />
                                             <button onClick={() => checkCustomerStatus(invoice.customerNTN, true)} disabled={loading} className="absolute right-1 top-6 text-[10px] bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200 font-bold tracking-wider transition-colors">Verify</button>
                                         </div>
                                         <SearchableDropdown label="Destination" value={invoice.customerDestination} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, customerDestination: v })} />
                                         
-                                        <div className={user.settings.integrationMode !== 'production' ? "md:col-span-2" : "md:col-span-3"}><Input label="Customer Address" value={invoice.customerAddress} onChange={e => setInvoice({ ...invoice, customerAddress: e.target.value })} /></div>
-                                        {user.settings.integrationMode !== 'production' && <div className="md:col-span-1"><SearchableDropdown label="Scenario ID (Sandbox)" value={invoice.scenarioId} options={SCENARIOS} onChange={v => setInvoice({ ...invoice, scenarioId: v })} placeholder="Auto-Assign" strict={false} /></div>}
+                                        <div className={user?.settings?.integrationMode !== 'production' ? "md:col-span-2" : "md:col-span-3"}><Input label="Customer Address" value={invoice.customerAddress} onChange={e => setInvoice({ ...invoice, customerAddress: e.target.value })} /></div>
+                                        {user?.settings?.integrationMode !== 'production' && <div className="md:col-span-1"><SearchableDropdown label="Scenario ID (Sandbox)" value={invoice.scenarioId} options={SCENARIOS} onChange={v => setInvoice({ ...invoice, scenarioId: v })} placeholder="Auto-Assign" strict={false} /></div>}
                                     </div>
 
                                     <div className="mb-8 border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -1227,29 +1376,27 @@
                                         </div>
                                         <div className="p-6 bg-white">
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end">
-                                                <div className="md:col-span-4"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={(user.inventory || []).filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = (user.inventory || []).find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
-                                                <div className="md:col-span-3"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
+                                                <div className="md:col-span-5"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={safeInventory.filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = safeInventory.find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
+                                                <div className="md:col-span-4"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h && h.val ? h.val : h).filter(Boolean)} onChange={val => { const code = String(val).includes(" - ") ? String(val).split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h && h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
                                                 <div className="md:col-span-3">
-                                                    <SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={SALE_TYPES} onChange={v => {
+                                                    <SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={dynamicSaleTypes.length > 0 ? dynamicSaleTypes : SALE_TYPES} onChange={v => {
                                                         let autoTax = lineItemForm.taxRate;
                                                         let autoFurther = lineItemForm.furtherTax;
-                                                        if (v === "Goods at reduced rate") { autoTax = 5; autoFurther = 0; }
-                                                        else if (v === "Goods at zero-rate" || v === "Exempt goods") { autoTax = 0; autoFurther = 0; }
-                                                        else if (v.includes("standard rate")) { autoTax = 18; }
+                                                        if (String(v).includes("reduced rate")) { autoTax = 5; autoFurther = 0; }
+                                                        else if (String(v).includes("zero-rate") || String(v).includes("Exempt goods")) { autoTax = 0; autoFurther = 0; }
+                                                        else if (String(v).includes("standard rate")) { autoTax = 18; }
                                                         setLineItemForm({...lineItemForm, saleType: v, taxRate: autoTax, furtherTax: autoFurther});
                                                     }} />
                                                 </div>
-                                                <div className="md:col-span-1"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
-                                                <div className="md:col-span-1"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
                                             </div>
                                             
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end bg-gray-50/50 p-5 rounded-xl border border-gray-100">
+                                                <div className="md:col-span-2"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
                                                 <div className="md:col-span-2"><Input label="Unit Price" type="number" value={lineItemForm.price} onChange={e => setLineItemForm({...lineItemForm, price: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="Discount Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={lineItemForm.taxRate} onChange={e => setLineItemForm({...lineItemForm, taxRate: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="Further Tax %" type="number" value={lineItemForm.furtherTax} onChange={e => setLineItemForm({...lineItemForm, furtherTax: e.target.value})} /></div>
-                                                <div className="md:col-span-2"><Input label="Extra Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
-                                                <div className="md:col-span-2"><Input label="Withholding Sales Tax" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>
                                             </div>
 
                                             {showRetailFed && (
@@ -1260,11 +1407,13 @@
                                             )}
 
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end border-t border-gray-100 pt-5">
-                                                <div className="md:col-span-4"><SearchableDropdown label="SRO Schedule No." value={lineItemForm.sroScheduleNo} options={sroOptions} onChange={v => setLineItemForm({...lineItemForm, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
-                                                <div className="md:col-span-4"><Input label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} onChange={e => setLineItemForm({...lineItemForm, sroItemSerialNo: e.target.value})} /></div>
-                                                <div className={`col-span-12 md:col-span-4 flex justify-end gap-3`}>
-                                                    {lineItemForm.id && <Button onClick={() => setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0})} variant="secondary" className="px-6">Cancel</Button>}
-                                                    <Button onClick={pushItemToInvoice} className="w-full md:w-auto px-8"><Icons.Plus size={18}/> {lineItemForm.id ? 'Update Line Item' : 'Add Line Item'}</Button>
+                                                <div className="md:col-span-2"><Input label="Extra Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="Withholding Sales Tax" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>
+                                                <div className="md:col-span-3"><SearchableDropdown label="SRO Schedule No." value={lineItemForm.sroScheduleNo} options={dynamicSroOptions.length > 0 ? dynamicSroOptions : sroOptions} onChange={v => setLineItemForm({...lineItemForm, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
+                                                <div className="md:col-span-3"><SearchableDropdown label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} options={dynamicSroItemsOptions} onChange={v => setLineItemForm({...lineItemForm, sroItemSerialNo: v})} strict={false} placeholder="Select or type..." /></div>
+                                                
+                                                <div className={`col-span-12 md:col-span-2 flex justify-end gap-3`}>
+                                                    <Button onClick={pushItemToInvoice} className="w-full"><Icons.Plus size={18}/> {lineItemForm.id ? 'Update Item' : 'Add Item'}</Button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1286,7 +1435,8 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100">
-                                                    {invoice.items.length === 0 ? <tr><td colSpan="15" className="p-12 text-center text-gray-400 bg-white">No items added to invoice.</td></tr> : invoice.items.map(item => {
+                                                    {safeInvoiceItems.length === 0 ? <tr><td colSpan="15" className="p-12 text-center text-gray-400 bg-white">No items added to invoice.</td></tr> : safeInvoiceItems.map(item => {
+                                                        if (!item) return null;
                                                         const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
                                                         const val = (isRet ? r : p) * q; 
                                                         const itemDisc = parseFloat(item.discount || 0);
@@ -1298,7 +1448,7 @@
                                                         return (
                                                             <tr key={item.id} className="hover:bg-gray-50 transition-colors bg-white">
                                                                 <td className="font-bold text-sm desc-col border-r border-gray-100 pl-6">{item.desc} {item.discount > 0 && <span className="block text-[10px] text-red-500 font-normal mt-0.5 uppercase tracking-wide">Discount: {item.discount}</span>}</td>
-                                                                <td className="text-xs text-gray-500 hs-col">{item.hsCode?.split(' - ')[0]}</td>
+                                                                <td className="text-xs text-gray-500 hs-col">{item.hsCode ? String(item.hsCode).split(' - ')[0] : ''}</td>
                                                                 <td className="text-xs text-gray-500">{item.saleType}</td>
                                                                 <td className="text-sm font-medium">{q} <span className="text-xs text-gray-400">{item.uom}</span></td>
                                                                 <td className="text-sm">{formatCurrency(p)}</td>
@@ -1313,7 +1463,7 @@
                                                                 <td className="text-center pr-6">
                                                                     <div className="flex justify-center gap-3">
                                                                         <button onClick={() => setLineItemForm(item)} className="text-gray-400 hover:text-black transition-colors"><Icons.Edit size={18} /></button>
-                                                                        <button onClick={() => setInvoice(p => ({ ...p, items: p.items.filter(i => i.id !== item.id) }))} className="text-gray-400 hover:text-red-500 transition-colors"><Icons.Trash2 size={18} /></button>
+                                                                        <button onClick={() => setInvoice(p => ({ ...p, items: p.items.filter(i => i && i.id !== item.id) }))} className="text-gray-400 hover:text-red-500 transition-colors"><Icons.Trash2 size={18} /></button>
                                                                     </div>
                                                                 </td>
                                                             </tr>
@@ -1342,7 +1492,7 @@
                                     <div className="flex justify-end items-center gap-4 border-t border-gray-100 pt-6 mt-8">
                                         <button className="px-6 py-3 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors" onClick={() => setLastInv({ ...invoice, ...totals, id: invoice.invoiceNumber }) || setShowReceipt(true)}>Print Preview</button>
                                         
-                                        {!isValidated && <button className="px-8 py-3 bg-gray-100 text-black border border-gray-300 rounded-xl font-bold shadow-sm hover:bg-gray-200 transition-colors flex items-center gap-2" onClick={() => callFbrApi(true)} disabled={loading || invoice.items.length === 0}><Icons.CheckCircle size={18}/> {loading ? 'Validating...' : 'Validate Details'}</button>}
+                                        {!isValidated && <button className="px-8 py-3 bg-gray-100 text-black border border-gray-300 rounded-xl font-bold shadow-sm hover:bg-gray-200 transition-colors flex items-center gap-2" onClick={() => callFbrApi(true)} disabled={loading || safeInvoiceItems.length === 0}><Icons.CheckCircle size={18}/> {loading ? 'Validating...' : 'Validate Details'}</button>}
                                         
                                         {isValidated && <button className="px-10 py-3 bg-black text-white rounded-xl font-bold shadow-xl hover:bg-gray-800 transition-transform active:scale-95 animate-fade-in flex items-center gap-2" onClick={() => callFbrApi(false)} disabled={loading}><Icons.Save size={18}/> {loading ? 'Submitting...' : 'Submit to FBR'}</button>}
                                     </div>
@@ -1357,10 +1507,10 @@
                                         <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4"><h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 tracking-tight"><div className="bg-blue-50 text-blue-600 p-2 rounded-lg"><Icons.Box size={24} /></div> {editingInvId ? 'Edit Product' : 'Add Product'}</h2></div>
                                         <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
                                             <div className="md:col-span-4"><Input label="Product Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} /></div>
-                                            <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
+                                            <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h && h.val ? h.val : h).filter(Boolean)} onChange={val => { const code = String(val).includes(" - ") ? String(val).split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h && h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
                                             <div className="md:col-span-3"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
                                             
-                                            <div className="md:col-span-6"><SearchableDropdown label="Sales Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
+                                            <div className="md:col-span-6"><SearchableDropdown label="Sales Type" value={newItem.saleType} options={dynamicSaleTypes.length > 0 ? dynamicSaleTypes : SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
                                             <div className="md:col-span-3"><Input label="Price" type="number" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} /></div>
                                             <div className="md:col-span-3"><Input label="S.Tax %" type="number" value={newItem.taxRate} onChange={e => setNewItem({ ...newItem, taxRate: e.target.value })} /></div>
                                             
@@ -1371,12 +1521,12 @@
                                                 </div>
                                             )}
 
-                                            <div className="md:col-span-6"><SearchableDropdown label="SRO Schedule No" value={newItem.sroScheduleNo} options={sroOptions} onChange={v => setNewItem({...newItem, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
-                                            <div className="md:col-span-6"><Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
+                                            <div className="md:col-span-6"><SearchableDropdown label="SRO Schedule No" value={newItem.sroScheduleNo} options={invDynamicSroOptions.length > 0 ? invDynamicSroOptions : sroOptions} onChange={v => setNewItem({...newItem, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
+                                            <div className="md:col-span-6"><SearchableDropdown label="SRO Serial No" value={newItem.sroItemSerialNo} options={invDynamicSroItemsOptions} onChange={v => setNewItem({...newItem, sroItemSerialNo: v})} strict={false} placeholder="Select or type..." /></div>
                                             
                                             <div className="md:col-span-12 flex justify-end gap-3 mt-4 border-t border-gray-100 pt-6">
-                                                {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-6 shadow-sm">Cancel</Button>}
-                                                <Button onClick={() => { if (editingInvId) { saveUser({ inventory: (user.inventory || []).map(i => i.id === editingInvId ? { ...i, ...newItem } : i) }); setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } else addInventory(); }} className="px-8 shadow-sm"><Icons.Save size={18} /> {editingInvId ? 'Update Item' : 'Save Item'}</Button>
+                                                {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user?.settings?.taxRates?.salesTax || 18, extraTax: user?.settings?.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-6 shadow-sm">Cancel</Button>}
+                                                <Button onClick={() => { if (editingInvId) { saveUser({ inventory: safeInventory.map(i => i && i.id === editingInvId ? { ...i, ...newItem } : i).filter(Boolean) }); setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user?.settings?.taxRates?.salesTax || 18, extraTax: user?.settings?.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } else addInventory(); }} className="px-8 shadow-sm"><Icons.Save size={18} /> {editingInvId ? 'Update Item' : 'Save Item'}</Button>
                                             </div>
                                         </div>
                                     </Card>
@@ -1391,21 +1541,25 @@
                                                     <th className="p-4 border-r border-gray-200">Product Name</th><th className="p-4">HS Code</th><th className="p-4">Type</th><th className="p-4">UoM</th><th className="p-4 text-right">Price</th>
                                                     {showRetailFed && <th className="p-4 text-right">Ret.Price</th>}
                                                     <th className="p-4 text-center">S.Tax%</th>
+                                                    <th className="p-4 text-center">Ex.Tax%</th>
                                                     {showRetailFed && <th className="p-4 text-right">FED</th>}
                                                     <th className="p-4">SRO Sch/Ser</th>
                                                     {userCanEdit && <th className="p-4 text-center">Action</th>}
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
-                                                {filteredInventory.length === 0 ? <tr><td colSpan="15" className="p-12 text-center text-gray-400 bg-white">No items added to inventory.</td></tr> : filteredInventory.map(i => (
+                                                {filteredInventory.length === 0 ? <tr><td colSpan="15" className="p-12 text-center text-gray-400 bg-white">No items added to inventory.</td></tr> : filteredInventory.map(i => {
+                                                    if (!i) return null;
+                                                    return (
                                                     <tr key={i.id} className="hover:bg-gray-50 transition-colors bg-white">
                                                         <td className="p-4 font-bold text-sm border-r border-gray-100">{i.name}</td>
-                                                        <td className="p-4 text-xs text-gray-500">{i.hsCode?.split(' - ')[0]}</td>
+                                                        <td className="p-4 text-xs text-gray-500">{i.hsCode ? String(i.hsCode).split(' - ')[0] : ''}</td>
                                                         <td className="p-4 text-xs text-gray-500">{i.saleType}</td>
                                                         <td className="p-4 text-sm font-medium">{i.uom}</td>
                                                         <td className="p-4 text-sm text-right">{formatCurrency(i.price)}</td>
                                                         {showRetailFed && <td className="p-4 text-sm font-medium text-gray-900 text-right">{formatCurrency(i.retailPrice)}</td>}
                                                         <td className="p-4 text-sm text-center">{i.taxRate}%</td>
+                                                        <td className="p-4 text-sm text-center">{i.extraTax}%</td>
                                                         {showRetailFed && <td className="p-4 text-sm text-right">{i.fedPayable}</td>}
                                                         <td className="p-4 text-xs text-gray-500">{i.sroScheduleNo || '-'}/{i.sroItemSerialNo || '-'}</td>
                                                         {userCanEdit && <td className="p-4 text-center">
@@ -1415,7 +1569,7 @@
                                                             </div>
                                                         </td>}
                                                     </tr>
-                                                ))}
+                                                )})}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1440,7 +1594,11 @@
                                 )}
                                 <Card className="p-0 overflow-hidden shadow-sm">
                                     <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-white"><div className="font-bold text-gray-900 text-lg">Customer Directory</div><div className="relative w-64"><input type="text" placeholder="Search..." className="px-4 py-2 border border-gray-200 rounded-lg outline-none w-full pl-10 text-sm focus:border-black transition-colors" value={custSearch} onChange={e => setCustSearch(e.target.value)} /><span className="absolute left-3 top-2.5 text-gray-400"><Icons.Search size={16} /></span></div></div>
-                                    <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wider font-bold"><tr><th className="p-4">Name</th><th className="p-4">NTN</th><th className="p-4">Reg Type</th><th className="p-4">Destination</th><th className="p-4">Address</th>{userCanEdit && <th className="p-4 text-right">Action</th>}</tr></thead><tbody className="divide-y divide-gray-100">{filteredCustomers.map(c => (<tr key={c.id} className="hover:bg-gray-50 transition-colors bg-white"><td className="p-4 font-bold text-gray-900">{c.name}</td><td className="p-4 text-gray-500">{c.ntn}</td><td className="p-4"><span className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase ${c.regType === 'Registered' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{c.regType || 'Unregistered'}</span></td><td className="p-4 text-gray-700">{c.destination}</td><td className="p-4 text-gray-500">{c.address}</td>{userCanEdit && <td className="p-4 text-right"><div className="flex justify-end gap-3"><button onClick={() => editCustomer(c)} className="text-gray-400 hover:text-black transition-colors"><Icons.Edit size={18}/></button><button onClick={() => deleteCustomer(c.id)} className="text-gray-400 hover:text-red-500 transition-colors"><Icons.Trash2 size={18}/></button></div></td>}</tr>))}</tbody></table>
+                                    <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wider font-bold"><tr><th className="p-4">Name</th><th className="p-4">NTN</th><th className="p-4">Reg Type</th><th className="p-4">Destination</th><th className="p-4">Address</th>{userCanEdit && <th className="p-4 text-right">Action</th>}</tr></thead><tbody className="divide-y divide-gray-100">{filteredCustomers.map(c => {
+                                        if (!c) return null;
+                                        return (
+                                        <tr key={c.id} className="hover:bg-gray-50 transition-colors bg-white"><td className="p-4 font-bold text-gray-900">{c.name}</td><td className="p-4 text-gray-500">{c.ntn}</td><td className="p-4"><span className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase ${c.regType === 'Registered' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{c.regType || 'Unregistered'}</span></td><td className="p-4 text-gray-700">{c.destination}</td><td className="p-4 text-gray-500">{c.address}</td>{userCanEdit && <td className="p-4 text-right"><div className="flex justify-end gap-3"><button onClick={() => editCustomer(c)} className="text-gray-400 hover:text-black transition-colors"><Icons.Edit size={18}/></button><button onClick={() => deleteCustomer(c.id)} className="text-gray-400 hover:text-red-500 transition-colors"><Icons.Trash2 size={18}/></button></div></td>}</tr>
+                                    )})}</tbody></table>
                                 </Card>
                             </div>
                         )}
@@ -1449,7 +1607,11 @@
                             <Card className="p-0 overflow-hidden w-full shadow-sm animate-fade-in">
                                 <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-white"><div className="font-bold text-gray-900 text-lg">Invoice History</div><div className="relative w-64"><input type="text" placeholder="Search..." className="px-4 py-2 border border-gray-200 rounded-lg outline-none w-full pl-10 text-sm focus:border-black transition-colors" value={histSearch} onChange={e => setHistSearch(e.target.value)} /><span className="absolute left-3 top-2.5 text-gray-400"><Icons.Search size={16} /></span></div></div>
                                 <div className="table-container">
-                                    <table className="w-full text-left text-sm fbr-table"><thead className="bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wider font-bold border-b border-gray-100"><tr><th className="p-4 border-r border-gray-200 pl-6">FBR Invoice #</th><th className="p-4">Date</th><th className="p-4">Customer</th><th className="p-4">NTN</th><th className="p-4 text-right">Subtotal</th><th className="p-4 text-right">Sales Tax</th><th className="p-4 text-right">FED</th><th className="p-4 text-right">Fur.Tax</th><th className="p-4 text-right">WHT</th><th className="p-4 text-right">Grand Total</th><th className="p-4 text-center pr-6">Action</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredHistory.map(inv => (<tr key={inv.id} className="hover:bg-gray-50 transition-colors bg-white"><td className="p-4 pl-6 text-xs font-bold text-red-600 border-r border-gray-100">{inv.fbrInvoiceNumber}</td><td className="p-4 text-xs text-gray-500">{inv.invoiceDate || inv.date}</td><td className="p-4 text-sm font-bold text-gray-900">{inv.customerName}</td><td className="p-4 text-xs text-gray-500">{inv.customerNTN}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.subtotal)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.gst)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.fed)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.further)}</td><td className="p-4 text-sm text-right text-blue-600">{formatCurrency(inv.wht)}</td><td className="p-4 text-lg text-right font-bold text-gray-900 tracking-tight">{formatCurrency(inv.total)}</td><td className="p-4 text-center pr-6"><div className="flex justify-center gap-3"><button onClick={() => { setLastInv(inv); setShowReceipt(true); }} className="text-gray-400 hover:text-black transition-colors" title="Print"><Icons.Printer size={18}/></button><button onClick={() => downloadInvoice(inv)} className="text-gray-400 hover:text-black transition-colors" title="Download JSON"><Icons.Download size={18}/></button></div></td></tr>))}</tbody></table>
+                                    <table className="w-full text-left text-sm fbr-table"><thead className="bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wider font-bold border-b border-gray-100"><tr><th className="p-4 border-r border-gray-200 pl-6">FBR Invoice #</th><th className="p-4">Date</th><th className="p-4">Customer</th><th className="p-4">NTN</th><th className="p-4 text-right">Subtotal</th><th className="p-4 text-right">Sales Tax</th><th className="p-4 text-right">FED</th><th className="p-4 text-right">Fur.Tax</th><th className="p-4 text-right">WHT</th><th className="p-4 text-right">Grand Total</th><th className="p-4 text-center pr-6">Action</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredHistory.map(inv => {
+                                        if (!inv) return null;
+                                        return (
+                                        <tr key={inv.id} className="hover:bg-gray-50 transition-colors bg-white"><td className="p-4 pl-6 text-xs font-bold text-red-600 border-r border-gray-100">{inv.fbrInvoiceNumber}</td><td className="p-4 text-xs text-gray-500">{inv.invoiceDate || inv.date}</td><td className="p-4 text-sm font-bold text-gray-900">{inv.customerName}</td><td className="p-4 text-xs text-gray-500">{inv.customerNTN}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.subtotal)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.gst)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.fed)}</td><td className="p-4 text-sm text-right text-gray-600">{formatCurrency(inv.further)}</td><td className="p-4 text-sm text-right text-blue-600">{formatCurrency(inv.wht)}</td><td className="p-4 text-lg text-right font-bold text-gray-900 tracking-tight">{formatCurrency(inv.total)}</td><td className="p-4 text-center pr-6"><div className="flex justify-center gap-3"><button onClick={() => { setLastInv(inv); setShowReceipt(true); }} className="text-gray-400 hover:text-black transition-colors" title="Print"><Icons.Printer size={18}/></button><button onClick={() => downloadInvoice(inv)} className="text-gray-400 hover:text-black transition-colors" title="Download JSON"><Icons.Download size={18}/></button></div></td></tr>
+                                    )})}</tbody></table>
                                 </div>
                             </Card>
                         )}
