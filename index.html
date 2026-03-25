@@ -62,12 +62,11 @@
         const SCENARIOS = [ "SN001", "SN002", "SN003", "SN004", "SN005", "SN006", "SN007", "SN008", "SN009", "SN010", "SN011", "SN012", "SN013", "SN014", "SN015", "SN016", "SN017", "SN018", "SN019", "SN020", "SN021", "SN022", "SN023", "SN024", "SN025", "SN026", "SN027", "SN028" ];
         const FBR_ERRORS = { "0000": "Successful", "0001": "Invalid NTN/Reg. No. format", "0004": "Seller Reg No. doesn't match", "0005": "Buyer Name is empty/invalid", "0007": "Sale Type not allowed/invalid", "0009": "Provide UOM in KG", "0010": "Quantity/Electricity Units missing", "0011": "Provide Value of Sales Excl. ST", "0039": "STWH invoice fields must be same as sale invoice", "0041": "Invoice number cannot be empty", "0042": "Invoice date cannot be empty", "0044": "HS Code cannot be empty", "0053": "Buyer Registration Type is invalid", "0070": "User is not registered, STWH is allowed only for registered user", "0073": "Provide Sale Origination Province of Supplier", "0074": "Provide Destination of Supply", "0077": "SRO/Schedule Number cannot be empty", "0078": "Item serial number cannot be empty", "0082": "The Seller is not registered for sales tax", "0106": "The Buyer is not registered for sales tax", "0401": "Unauthorized access: Seller NTN/CNIC token is invalid", "0402": "Unauthorized access: Buyer NTN/CNIC token is invalid" };
 
-        // Bulletproof Date Calculator
         const calculateDaysLeft = (dateStr) => {
             if (!dateStr) return 0;
-            const parsed = new Date(dateStr);
-            if (isNaN(parsed)) return 0;
-            return Math.ceil((parsed - new Date()) / (1000 * 60 * 60 * 24));
+            const ms = Date.parse(dateStr);
+            if (isNaN(ms)) return 0;
+            return Math.ceil((ms - Date.now()) / (1000 * 60 * 60 * 24));
         };
 
         const numberToWords = (num) => {
@@ -466,8 +465,8 @@
 
             const safeBizList = Array.isArray(businesses) ? businesses : [];
             const safeUserList = Array.isArray(users) ? users : [];
-            const filteredBiz = safeBizList.filter(b => b && ((b.businessName || "").toLowerCase().includes(bizSearch.toLowerCase()) || (b.ntn || "").includes(bizSearch)));
-            const filteredUsers = safeUserList.filter(u => u && ((u.username || "").toLowerCase().includes(userSearch.toLowerCase())));
+            const filteredBiz = safeBizList.filter(b => b && (String(b.businessName || "").toLowerCase().includes(String(bizSearch || "").toLowerCase()) || String(b.ntn || "").includes(String(bizSearch || ""))));
+            const filteredUsers = safeUserList.filter(u => u && (String(u.username || "").toLowerCase().includes(String(userSearch || "").toLowerCase())));
 
             return (
                 <div className="min-h-screen bg-gray-50 animate-fade-in">
@@ -676,7 +675,8 @@
             useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
             const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
 
-            const isExpired = calculateDaysLeft(user?.businessStatus?.expiryDate) <= 0;
+            const daysLeft = calculateDaysLeft(user?.businessStatus?.expiryDate);
+            const isExpired = daysLeft <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
             
             const safeInventory = Array.isArray(user?.inventory) ? user.inventory : [];
@@ -908,10 +908,6 @@
             const addInventory = () => { if (newItem.name) { saveUser({ inventory: [...safeInventory, { id: Date.now(), ...newItem, status: 'Active' }] }); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user?.settings?.taxRates?.salesTax || 18, extraTax: user?.settings?.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } };
             const deleteInventory = (id) => saveUser({ inventory: safeInventory.filter(i => i && i.id !== id) });
             const downloadInvoice = (inv) => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inv, null, 2)); a.download = `invoice_${inv.fbrInvoiceNumber}.json`; document.body.appendChild(a); a.click(); a.remove(); };
-
-            const filteredInventory = safeInventory.filter(i => i && (!invSearch || String(i.name || '').toLowerCase().includes(invSearch.toLowerCase()) || String(i.hsCode || '').toLowerCase().includes(invSearch.toLowerCase())));
-            const filteredHistory = safeHistory.filter(h => h && (!histSearch || (h.fbrInvoiceNumber && String(h.fbrInvoiceNumber).toLowerCase().includes(histSearch.toLowerCase())) || (h.customerName && String(h.customerName).toLowerCase().includes(histSearch.toLowerCase()))));
-            const filteredCustomers = safeCustomers.filter(c => c && (!custSearch || String(c.name || '').toLowerCase().includes(custSearch.toLowerCase()) || (c.ntn && String(c.ntn).includes(custSearch))));
 
             const onSelectCustomerName = (val) => { const existingCust = safeCustomers.find(c => c && c.name === val); if (existingCust) setInvoice(prev => ({ ...prev, customerName: existingCust.name, customerNTN: existingCust.ntn, customerDestination: existingCust.destination, customerAddress: existingCust.address, customerRegType: existingCust.regType || 'Unregistered' })); else setInvoice(prev => ({ ...prev, customerName: val })); };
 
