@@ -21,7 +21,7 @@
             body, html { margin: 0 !important; padding: 0 !important; background: white !important; height: auto !important; }
             body * { visibility: hidden; } 
             #printable-area, #printable-area * { visibility: visible; } 
-            #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none !important; border-radius: 0 !important; transform: scale(0.90); transform-origin: top left; page-break-inside: avoid; } 
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none !important; border-radius: 0 !important; page-break-inside: avoid; } 
             .no-print { display: none !important; } 
             .fixed.inset-0.z-50 { position: absolute !important; display: block !important; overflow: visible !important; background: transparent !important; backdrop-filter: none !important; padding: 0 !important; align-items: flex-start !important; min-height: 0 !important; height: auto !important; }
             .max-h-\[90vh\] { max-height: none !important; overflow: visible !important; }
@@ -168,7 +168,11 @@
 
         const BusinessList = ({ user, onSelect, onLogout, isLobby = false }) => {
             const [searchQuery, setSearchQuery] = useState("");
-            const filteredBiz = user.accessibleBusinesses.filter(b => b.name.toLowerCase().includes(searchQuery.toLowerCase()));
+            const safeBiz = user.accessibleBusinesses || user.access || [];
+            const filteredBiz = safeBiz.filter(b => {
+                const bName = b.name || b.businessName || "";
+                return bName.toLowerCase().includes(searchQuery.toLowerCase());
+            });
 
             return (
                 <div className={`flex flex-col animate-fade-in ${isLobby ? 'min-h-screen bg-gray-50' : 'w-full mt-4'}`}>
@@ -194,32 +198,37 @@
                             </div>
                         </div>
                         <div className="flex flex-col gap-3">
-                            {filteredBiz.length > 0 ? filteredBiz.map(b => (
-                                <Card key={b.id} 
-                                    className={`p-5 flex flex-col md:flex-row justify-between items-center gap-4 transition-all cursor-pointer group 
-                                    ${b.id === user.activeBusinessId && !isLobby ? 'border-black ring-1 ring-black shadow-md' : 'hover:border-gray-300'}`} 
-                                    onClick={() => { if(b.id !== user.activeBusinessId || isLobby) onSelect(b.id); }}>
-                                    
-                                    <div className="flex-1 flex items-center gap-5">
-                                        <div className={`p-3 rounded-xl transition-colors ${b.id === user.activeBusinessId && !isLobby ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-black'}`}>
-                                            <Icons.Briefcase size={24}/>
+                            {filteredBiz.length > 0 ? filteredBiz.map(b => {
+                                const bId = b.id || b.businessId;
+                                const bName = b.name || b.businessName;
+                                const bAccess = b.accessLevel || 'Unknown';
+                                return (
+                                    <Card key={bId} 
+                                        className={`p-5 flex flex-col md:flex-row justify-between items-center gap-4 transition-all cursor-pointer group 
+                                        ${bId === user.activeBusinessId && !isLobby ? 'border-black ring-1 ring-black shadow-md' : 'hover:border-gray-300'}`} 
+                                        onClick={() => { if(bId !== user.activeBusinessId || isLobby) onSelect(bId); }}>
+                                        
+                                        <div className="flex-1 flex items-center gap-5">
+                                            <div className={`p-3 rounded-xl transition-colors ${bId === user.activeBusinessId && !isLobby ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-black'}`}>
+                                                <Icons.Briefcase size={24}/>
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2">
+                                                    {bName} 
+                                                    {bId === user.activeBusinessId && !isLobby && <span className="text-[10px] bg-black text-white px-2 py-0.5 rounded-full uppercase tracking-widest font-semibold">Active</span>}
+                                                </h3>
+                                                <p className="text-xs text-gray-500 uppercase tracking-wider mt-1">Role: <span className="font-semibold text-black">{bAccess}</span></p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2">
-                                                {b.name} 
-                                                {b.id === user.activeBusinessId && !isLobby && <span className="text-[10px] bg-black text-white px-2 py-0.5 rounded-full uppercase tracking-widest font-semibold">Active</span>}
-                                            </h3>
-                                            <p className="text-xs text-gray-500 uppercase tracking-wider mt-1">Role: <span className="font-semibold text-black">{b.accessLevel}</span></p>
-                                        </div>
-                                    </div>
-                                    
-                                    {(!isLobby && b.id === user.activeBusinessId) ? null : (
-                                        <div className="flex items-center text-gray-300 group-hover:text-black transition-colors pr-2 transform group-hover:translate-x-1">
-                                            <Icons.ChevronRight size={24} />
-                                        </div>
-                                    )}
-                                </Card>
-                            )) : <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-dashed border-gray-200">No businesses match your search.</div>}
+                                        
+                                        {(!isLobby && bId === user.activeBusinessId) ? null : (
+                                            <div className="flex items-center text-gray-300 group-hover:text-black transition-colors pr-2 transform group-hover:translate-x-1">
+                                                <Icons.ChevronRight size={24} />
+                                            </div>
+                                        )}
+                                    </Card>
+                                );
+                            }) : <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-dashed border-gray-200">No businesses match your search.</div>}
                         </div>
                     </main>
                 </div>
@@ -322,7 +331,8 @@
             if (!user) return <LoginScreen onLogin={handleLogin} />;
             
             if (user.role !== 'admin' && (!user.settings || !user.businessStatus)) {
-                if (user.accessibleBusinesses && user.accessibleBusinesses.length > 0) {
+                const safeBiz = user.accessibleBusinesses || user.access || [];
+                if (safeBiz && safeBiz.length > 0) {
                     return <BusinessList user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} isLobby={true} />;
                 }
                 return <LoginScreen onLogin={handleLogin} />;
@@ -599,13 +609,13 @@
             useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
             const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
 
-            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0 });
+            const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: "", refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0 });
             
             const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
 
             const [loading, setLoading] = useState(false); const [msg, setMsg] = useState(null); const [showReceipt, setShowReceipt] = useState(false); const [lastInv, setLastInv] = useState(null); const [hsCodes, setHsCodes] = useState([]); const [editingCustId, setEditingCustId] = useState(null); const [editingInvId, setEditingInvId] = useState(null);
-            const [newItem, setNewItem] = useState({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" });
+            const [newItem, setNewItem] = useState({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" });
             const [newCust, setNewCust] = useState({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
             const [invSearch, setInvSearch] = useState(""); const [histSearch, setHistSearch] = useState(""); const [custSearch, setCustSearch] = useState(""); const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS); const [invUomStatus, setInvUomStatus] = useState(null);
             
@@ -682,7 +692,7 @@
                 invoice.items.forEach(i => {
                     const price = parseFloat(i.price) || 0, retailPrice = parseFloat(i.retailPrice) || 0, qty = parseFloat(i.qty) || 0, disc = parseFloat(i.discount) || 0;
                     let grossValue = (isRetailFedSale(i.saleType) ? retailPrice : price) * qty;
-                    let valueForTax = grossValue - disc;
+                    let valueForTax = grossValue; 
                     subtotal += valueForTax; 
                     gst += valueForTax * ((parseFloat(i.taxRate) || 0) / 100); 
                     extra += valueForTax * ((parseFloat(i.extraTax) || 0) / 100); 
@@ -691,7 +701,7 @@
                     wht += parseFloat(i.wht || 0); 
                     totalDisc += disc;
                 });
-                const total = subtotal + gst + extra + further + fed - wht;
+                const total = subtotal + gst + extra + further + fed - totalDisc - wht;
                 return { subtotal, gst, extra, further, fed, wht, total, totalDisc };
             };
             const totals = calculate();
@@ -714,13 +724,13 @@
             };
 
             const pickProductForInvoiceForm = (prod) => {
-                fetchAllowedUOMs(prod.hsCode).then(uoms => { setLineItemForm(p => ({ ...p, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0, fedPayable: prod.fedPayable, wht: prod.wht, sroScheduleNo: prod.sroScheduleNo || "", sroItemSerialNo: prod.sroItemSerialNo || "", allowedUOMs: uoms, isFromInventory: true })); });
+                fetchAllowedUOMs(prod.hsCode).then(uoms => { setLineItemForm(p => ({ ...p, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0, fedPayable: prod.fedPayable, wht: prod.wht || 0, sroScheduleNo: prod.sroScheduleNo || "", sroItemSerialNo: prod.sroItemSerialNo || "", allowedUOMs: uoms, isFromInventory: true })); });
             };
 
             const addCustomer = () => { if (!newCust.name) return; saveUser({ customers: editingCustId ? (user.customers || []).map(c => c.id === editingCustId ? { ...c, ...newCust } : c) : [...(user.customers || []), { id: Date.now(), ...newCust }] }); setNewCust({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' }); setEditingCustId(null); };
             const editCustomer = (c) => { setNewCust(c); setEditingCustId(c.id); };
             const deleteCustomer = (id) => saveUser({ customers: (user.customers || []).filter(c => c.id !== id) });
-            const addInventory = () => { if (newItem.name) { saveUser({ inventory: [...(user.inventory || []), { id: Date.now(), ...newItem, status: 'Active' }] }); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } };
+            const addInventory = () => { if (newItem.name) { saveUser({ inventory: [...(user.inventory || []), { id: Date.now(), ...newItem, status: 'Active' }] }); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } };
             const deleteInventory = (id) => saveUser({ inventory: (user.inventory || []).filter(i => i.id !== id) });
             const downloadInvoice = (inv) => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inv, null, 2)); a.download = `invoice_${inv.fbrInvoiceNumber}.json`; document.body.appendChild(a); a.click(); a.remove(); };
 
@@ -778,7 +788,7 @@
                         const r = isRet ? (parseFloat(item.retailPrice) || 0) : 0; 
                         const grossVal = (isRet ? r : p) * q;
                         const itemDisc = parseFloat(item.discount) || 0;
-                        const baseVal = grossVal - itemDisc;
+                        const baseVal = grossVal;
                         
                         const taxRate = parseFloat(item.taxRate) || 0;
                         const furtherRate = isExemptOrReduced ? 0 : (parseFloat(item.furtherTax) || 0);
@@ -895,14 +905,14 @@
                                 setIsValidated(false);
                                 let actualFbrNo = data?.InvoiceNumber || data?.invoiceNumber || data?.Invoice_Number;
                                 if (!actualFbrNo && Array.isArray(data) && data.length > 0) actualFbrNo = data[0]?.InvoiceNumber || data[0]?.invoiceNumber;
-                                if (!actualFbrNo && data?.data) actualFbrNo = data.data?.InvoiceNumber || data.data?.invoiceNumber;
+                                if (!actualFbrNo && data?.data) actualFbrNo = data.data?.InvoiceNumber || data.data?.InvoiceNumber;
                                 
                                 if (!actualFbrNo) {
                                     setMsg({ type: 'error', text: `FBR Success, but no Invoice Number found. Raw FBR Output: ${JSON.stringify(data)}` });
                                     return; 
                                 }
                                 saveUser({ history: [{ ...invoice, ...totals, id: Date.now(), fbrInvoiceNumber: actualFbrNo }, ...(user.history || [])] }); 
-                                setInvoice({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0 }); 
+                                setInvoice({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: "", refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0 }); 
                             }
                         }
                     } else {
@@ -1003,18 +1013,23 @@
                                             const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
                                             const val = (isRet ? r : p) * q;
                                             const itemDisc = parseFloat(item.discount || 0);
-                                            const baseVal = val - itemDisc;
+                                            const baseVal = val;
                                             const stAmt = baseVal * (parseFloat(item.taxRate) / 100 || 0);
                                             const furAmt = baseVal * (parseFloat(item.furtherTax) / 100 || 0);
                                             const exAmt = baseVal * (parseFloat(item.extraTax) / 100 || 0);
                                             const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
                                             const amtExclSt = baseVal + fedAmt + exAmt; 
-                                            const lineTotal = amtExclSt + stAmt + furAmt;
+                                            const lineTotal = amtExclSt + stAmt + furAmt - itemDisc;
 
                                             return (
                                                 <tr key={idx}>
                                                     <td className="border border-black p-1 text-center">{idx + 1}</td>
-                                                    <td className="border border-black p-1 text-left font-bold">{item.desc} <br/><span className="font-normal text-gray-600">HS Code:{item.hsCode?.split(' - ')[0]}</span></td>
+                                                    <td className="border border-black p-1 text-left font-bold">
+                                                        {item.desc} <br/>
+                                                        <span className="font-normal text-gray-600">HS Code:{item.hsCode?.split(' - ')[0]}</span>
+                                                        {(item.sroScheduleNo || item.sroItemSerialNo) && <br/>}
+                                                        {(item.sroScheduleNo || item.sroItemSerialNo) && <span className="font-normal text-gray-500 text-[9px]">SRO: {item.sroScheduleNo || '-'} / {item.sroItemSerialNo || '-'}</span>}
+                                                    </td>
                                                     <td className="border border-black p-1 text-center">{q} {item.uom}</td>
                                                     <td className="border border-black p-1 text-right">{formatCurrency(p)}</td>
                                                     {printShowRetail && <td className="border border-black p-1 text-right">{formatCurrency(val)}</td>}
@@ -1040,10 +1055,10 @@
                                 <div>
                                     <table className="w-full text-right border-collapse border border-black">
                                         <tbody>
-                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + lastInv?.totalDisc)}</td></tr>}
+                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal)}</td></tr>}
                                             {printShowRetail && lastInv?.fed > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">FED:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.fed)}</td></tr>}
                                             
-                                            {lastInv?.totalDisc > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Gross Amount:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.totalDisc || 0))}</td></tr>}
+                                            {lastInv?.totalDisc > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Gross Amount:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0))}</td></tr>}
                                             {lastInv?.totalDisc > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Discount:</td><td className="border-b border-black p-1">-{formatCurrency(lastInv?.totalDisc)}</td></tr>}
                                             
                                             <tr><td className="border-b border-r border-black p-1 font-bold">Amount Excl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0))}</td></tr>
@@ -1133,7 +1148,7 @@
                                 </div>
                                 <div className="p-4 bg-white border-t border-gray-100 flex justify-center">
                                     <Button onClick={() => setMsg(null)} className="w-full max-w-[200px]" variant={msg.type === 'error' ? 'danger' : 'primary'}>
-                                        {msg.type === 'error' ? 'Review & Fix' : 'Continue'}
+                                        Close
                                     </Button>
                                 </div>
                             </div>
@@ -1187,8 +1202,8 @@
                                         </div>
                                         <div className="p-6 bg-white">
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end">
-                                                <div className="md:col-span-5"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={(user.inventory || []).filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = (user.inventory || []).find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
-                                                <div className="md:col-span-4"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
+                                                <div className="md:col-span-4"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={(user.inventory || []).filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = (user.inventory || []).find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
+                                                <div className="md:col-span-3"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
                                                 <div className="md:col-span-3">
                                                     <SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={SALE_TYPES} onChange={v => {
                                                         let autoTax = lineItemForm.taxRate;
@@ -1199,31 +1214,30 @@
                                                         setLineItemForm({...lineItemForm, saleType: v, taxRate: autoTax, furtherTax: autoFurther});
                                                     }} />
                                                 </div>
+                                                <div className="md:col-span-1"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
+                                                <div className="md:col-span-1"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
                                             </div>
                                             
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end bg-gray-50/50 p-5 rounded-xl border border-gray-100">
-                                                <div className="md:col-span-2"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
-                                                <div className="md:col-span-2"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
                                                 <div className="md:col-span-2"><Input label="Unit Price" type="number" value={lineItemForm.price} onChange={e => setLineItemForm({...lineItemForm, price: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="Discount Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={lineItemForm.taxRate} onChange={e => setLineItemForm({...lineItemForm, taxRate: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="Further Tax %" type="number" value={lineItemForm.furtherTax} onChange={e => setLineItemForm({...lineItemForm, furtherTax: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="Extra Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><Input label="Withholding Sales Tax" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>
                                             </div>
 
                                             {showRetailFed && (
                                                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end bg-yellow-50/30 p-5 rounded-xl border border-yellow-100">
-                                                    <div className="md:col-span-4"><Input label="Retail Price" type="number" value={lineItemForm.retailPrice} onChange={e => setLineItemForm({...lineItemForm, retailPrice: e.target.value})} /></div>
-                                                    <div className="md:col-span-4"><Input label="FED Amount" type="number" value={lineItemForm.fedPayable} onChange={e => setLineItemForm({...lineItemForm, fedPayable: e.target.value})} /></div>
-                                                    <div className="md:col-span-4"><Input label="ST WHT Amount" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>
+                                                    <div className="md:col-span-6"><Input label="Retail Price" type="number" value={lineItemForm.retailPrice} onChange={e => setLineItemForm({...lineItemForm, retailPrice: e.target.value})} /></div>
+                                                    <div className="md:col-span-6"><Input label="FED Amount" type="number" value={lineItemForm.fedPayable} onChange={e => setLineItemForm({...lineItemForm, fedPayable: e.target.value})} /></div>
                                                 </div>
                                             )}
 
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end border-t border-gray-100 pt-5">
-                                                <div className="md:col-span-3"><Input label="Discount Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
-                                                <div className="md:col-span-3"><SearchableDropdown label="SRO Schedule No." value={lineItemForm.sroScheduleNo} options={sroOptions} onChange={v => setLineItemForm({...lineItemForm, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
-                                                <div className="md:col-span-3"><Input label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} onChange={e => setLineItemForm({...lineItemForm, sroItemSerialNo: e.target.value})} /></div>
-                                                {!showRetailFed && <div className="md:col-span-3"><Input label="ST WHT Amount" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>}
-                                                <div className={`col-span-12 ${!showRetailFed ? 'md:col-span-12 mt-4' : 'md:col-span-12 mt-4'} flex justify-end gap-3`}>
+                                                <div className="md:col-span-4"><SearchableDropdown label="SRO Schedule No." value={lineItemForm.sroScheduleNo} options={sroOptions} onChange={v => setLineItemForm({...lineItemForm, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
+                                                <div className="md:col-span-4"><Input label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} onChange={e => setLineItemForm({...lineItemForm, sroItemSerialNo: e.target.value})} /></div>
+                                                <div className={`col-span-12 md:col-span-4 flex justify-end gap-3`}>
                                                     {lineItemForm.id && <Button onClick={() => setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0})} variant="secondary" className="px-6">Cancel</Button>}
                                                     <Button onClick={pushItemToInvoice} className="w-full md:w-auto px-8"><Icons.Plus size={18}/> {lineItemForm.id ? 'Update Line Item' : 'Add Line Item'}</Button>
                                                 </div>
@@ -1249,7 +1263,13 @@
                                                 <tbody className="divide-y divide-gray-100">
                                                     {invoice.items.length === 0 ? <tr><td colSpan="15" className="p-12 text-center text-gray-400 bg-white">No items added to invoice.</td></tr> : invoice.items.map(item => {
                                                         const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
-                                                        const val = (isRet ? r : p) * q; const stAmt = val * (parseFloat(item.taxRate || 0) / 100); const exAmt = (isRet ? val : val) * (parseFloat(item.extraTax || 0) / 100); const furAmt = val * (parseFloat(item.furtherTax || 0) / 100); const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
+                                                        const val = (isRet ? r : p) * q; 
+                                                        const itemDisc = parseFloat(item.discount || 0);
+                                                        const baseVal = val;
+                                                        const stAmt = baseVal * (parseFloat(item.taxRate || 0) / 100); 
+                                                        const exAmt = baseVal * (parseFloat(item.extraTax || 0) / 100); 
+                                                        const furAmt = baseVal * (parseFloat(item.furtherTax || 0) / 100); 
+                                                        const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
                                                         return (
                                                             <tr key={item.id} className="hover:bg-gray-50 transition-colors bg-white">
                                                                 <td className="font-bold text-sm desc-col border-r border-gray-100 pl-6">{item.desc} {item.discount > 0 && <span className="block text-[10px] text-red-500 font-normal mt-0.5 uppercase tracking-wide">Discount: {item.discount}</span>}</td>
@@ -1297,7 +1317,7 @@
                                     <div className="flex justify-end items-center gap-4 border-t border-gray-100 pt-6 mt-8">
                                         <button className="px-6 py-3 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors" onClick={() => setLastInv({ ...invoice, ...totals, id: invoice.invoiceNumber }) || setShowReceipt(true)}>Print Preview</button>
                                         
-                                        {!isValidated && <button className="px-8 py-3 bg-gray-100 text-black border border-gray-300 rounded-xl font-bold shadow-sm hover:bg-gray-200 transition-colors flex items-center gap-2" onClick={() => callFbrApi(true)} disabled={loading || invoice.items.length === 0}><Icons.CheckCircle size={18}/> Validate Details</button>}
+                                        {!isValidated && <button className="px-8 py-3 bg-gray-100 text-black border border-gray-300 rounded-xl font-bold shadow-sm hover:bg-gray-200 transition-colors flex items-center gap-2" onClick={() => callFbrApi(true)} disabled={loading || invoice.items.length === 0}><Icons.CheckCircle size={18}/> {loading ? 'Validating...' : 'Validate Details'}</button>}
                                         
                                         {isValidated && <button className="px-10 py-3 bg-black text-white rounded-xl font-bold shadow-xl hover:bg-gray-800 transition-transform active:scale-95 animate-fade-in flex items-center gap-2" onClick={() => callFbrApi(false)} disabled={loading}><Icons.Save size={18}/> {loading ? 'Submitting...' : 'Submit to FBR'}</button>}
                                     </div>
@@ -1315,27 +1335,24 @@
                                             <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
                                             <div className="md:col-span-3"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
                                             
-                                            <div className="md:col-span-6"><SearchableDropdown label="Sales Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
-                                            <div className="md:col-span-2"><Input label="Price" type="number" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} /></div>
-                                            <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={newItem.taxRate} onChange={e => setNewItem({ ...newItem, taxRate: e.target.value })} /></div>
-                                            <div className="md:col-span-2"><Input label="Fur.Tax %" type="number" value={newItem.furtherTax} onChange={e => setNewItem({ ...newItem, furtherTax: e.target.value })} /></div>
-                                            
-                                            <div className="md:col-span-4"><Input label="Extra Tax %" type="number" value={newItem.extraTax} onChange={e => setNewItem({ ...newItem, extraTax: e.target.value })} /></div>
+                                            <div className="md:col-span-4"><SearchableDropdown label="Sales Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
+                                            <div className="md:col-span-3"><Input label="Price" type="number" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} /></div>
+                                            <div className="md:col-span-3"><Input label="S.Tax %" type="number" value={newItem.taxRate} onChange={e => setNewItem({ ...newItem, taxRate: e.target.value })} /></div>
+                                            <div className="md:col-span-2"><Input label="Extra Tax %" type="number" value={newItem.extraTax} onChange={e => setNewItem({ ...newItem, extraTax: e.target.value })} /></div>
                                             
                                             {showRetailFed && (
-                                                <div className="md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-5 bg-yellow-50/50 p-5 rounded-xl border border-yellow-100">
+                                                <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-5 bg-yellow-50/50 p-5 rounded-xl border border-yellow-100">
                                                     <div><Input label="Retail Price" type="number" value={newItem.retailPrice} onChange={e => setNewItem({ ...newItem, retailPrice: e.target.value })} /></div>
                                                     <div><Input label="FED Amount" type="number" value={newItem.fedPayable} onChange={e => setNewItem({ ...newItem, fedPayable: e.target.value })} /></div>
                                                 </div>
                                             )}
 
-                                            <div className="md:col-span-4"><SearchableDropdown label="SRO Schedule No" value={newItem.sroScheduleNo} options={sroOptions} onChange={v => setNewItem({...newItem, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
-                                            <div className="md:col-span-4"><Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
-                                            <div className="md:col-span-4"><Input label="ST WHT Amount" type="number" value={newItem.wht} onChange={e => setNewItem({ ...newItem, wht: e.target.value })} /></div>
+                                            <div className="md:col-span-6"><SearchableDropdown label="SRO Schedule No" value={newItem.sroScheduleNo} options={sroOptions} onChange={v => setNewItem({...newItem, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
+                                            <div className="md:col-span-6"><Input label="SRO Serial No" value={newItem.sroItemSerialNo} onChange={e => setNewItem({ ...newItem, sroItemSerialNo: e.target.value })} /></div>
                                             
                                             <div className="md:col-span-12 flex justify-end gap-3 mt-4 border-t border-gray-100 pt-6">
-                                                {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-6 shadow-sm">Cancel</Button>}
-                                                <Button onClick={() => { if (editingInvId) { saveUser({ inventory: (user.inventory || []).map(i => i.id === editingInvId ? { ...i, ...newItem } : i) }); setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } else addInventory(); }} className="px-8 shadow-sm"><Icons.Save size={18} /> {editingInvId ? 'Update Item' : 'Save Item'}</Button>
+                                                {editingInvId && <Button onClick={() => { setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); }} variant="secondary" className="px-6 shadow-sm">Cancel</Button>}
+                                                <Button onClick={() => { if (editingInvId) { saveUser({ inventory: (user.inventory || []).map(i => i.id === editingInvId ? { ...i, ...newItem } : i) }); setEditingInvId(null); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } else addInventory(); }} className="px-8 shadow-sm"><Icons.Save size={18} /> {editingInvId ? 'Update Item' : 'Save Item'}</Button>
                                             </div>
                                         </div>
                                     </Card>
@@ -1349,10 +1366,10 @@
                                                 <tr>
                                                     <th className="p-4 border-r border-gray-200">Product Name</th><th className="p-4">HS Code</th><th className="p-4">Type</th><th className="p-4">UoM</th><th className="p-4 text-right">Price</th>
                                                     {showRetailFed && <th className="p-4 text-right">Ret.Price</th>}
-                                                    <th className="p-4 text-center">S.Tax%</th><th className="p-4 text-center">Fur.Tax%</th>
+                                                    <th className="p-4 text-center">S.Tax%</th>
                                                     <th className="p-4 text-center">Ex.Tax%</th>
                                                     {showRetailFed && <th className="p-4 text-right">FED</th>}
-                                                    <th className="p-4 text-right">WHT</th><th className="p-4">SRO Sch/Ser</th>
+                                                    <th className="p-4">SRO Sch/Ser</th>
                                                     {userCanEdit && <th className="p-4 text-center">Action</th>}
                                                 </tr>
                                             </thead>
@@ -1366,10 +1383,8 @@
                                                         <td className="p-4 text-sm text-right">{formatCurrency(i.price)}</td>
                                                         {showRetailFed && <td className="p-4 text-sm font-medium text-gray-900 text-right">{formatCurrency(i.retailPrice)}</td>}
                                                         <td className="p-4 text-sm text-center">{i.taxRate}%</td>
-                                                        <td className="p-4 text-sm text-center">{i.furtherTax}%</td>
                                                         <td className="p-4 text-sm text-center">{i.extraTax}%</td>
                                                         {showRetailFed && <td className="p-4 text-sm text-right">{i.fedPayable}</td>}
-                                                        <td className="p-4 text-sm text-right">{i.wht}</td>
                                                         <td className="p-4 text-xs text-gray-500">{i.sroScheduleNo || '-'}/{i.sroItemSerialNo || '-'}</td>
                                                         {userCanEdit && <td className="p-4 text-center">
                                                             <div className="flex justify-center gap-3">
