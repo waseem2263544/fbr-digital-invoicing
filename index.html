@@ -18,11 +18,12 @@
         
         @media print { 
             @page { size: landscape; margin: 10mm; }
+            body, html { margin: 0 !important; padding: 0 !important; background: white !important; height: auto !important; }
             body * { visibility: hidden; } 
             #printable-area, #printable-area * { visibility: visible; } 
-            #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none !important; border-radius: 0 !important; } 
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none !important; border-radius: 0 !important; transform: scale(0.90); transform-origin: top left; page-break-inside: avoid; } 
             .no-print { display: none !important; } 
-            .fixed.inset-0.z-50 { position: absolute !important; display: block !important; overflow: visible !important; background: transparent !important; backdrop-filter: none !important; padding: 0 !important; align-items: flex-start !important; }
+            .fixed.inset-0.z-50 { position: absolute !important; display: block !important; overflow: visible !important; background: transparent !important; backdrop-filter: none !important; padding: 0 !important; align-items: flex-start !important; min-height: 0 !important; height: auto !important; }
             .max-h-\[90vh\] { max-height: none !important; overflow: visible !important; }
         }
         ::-webkit-scrollbar { width: 6px; height: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; } ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
@@ -320,11 +321,12 @@
             if (isAppLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading System...</div>;
             if (!user) return <LoginScreen onLogin={handleLogin} />;
             
-            if (user.needsBusinessSelection) {
-                return <BusinessList user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} isLobby={true} />;
+            if (user.role !== 'admin' && (!user.settings || !user.businessStatus)) {
+                if (user.accessibleBusinesses && user.accessibleBusinesses.length > 0) {
+                    return <BusinessList user={user} onSelect={handleBusinessSwitch} onLogout={handleLogout} isLobby={true} />;
+                }
+                return <LoginScreen onLogin={handleLogin} />;
             }
-
-            if (user.role !== 'admin' && (!user.settings || !user.businessStatus)) return <LoginScreen onLogin={handleLogin} />;
 
             return (
                 <ErrorBoundary>
@@ -626,6 +628,14 @@
             // Reset validation lock if any change occurs
             useEffect(() => { setIsValidated(false); }, [invoice, lineItemForm]);
 
+            // Click anywhere to dismiss notification
+            useEffect(() => {
+                if (!msg) return;
+                const hideMsg = () => setMsg(null);
+                const timer = setTimeout(() => window.addEventListener('click', hideMsg), 50);
+                return () => { clearTimeout(timer); window.removeEventListener('click', hideMsg); };
+            }, [msg]);
+
             useEffect(() => {
                 const fetchReferenceData = async () => {
                     const mode = user.settings?.integrationMode || 'sandbox';
@@ -671,12 +681,17 @@
                 let subtotal = 0, gst = 0, extra = 0, further = 0, fed = 0, wht = 0, totalDisc = 0;
                 invoice.items.forEach(i => {
                     const price = parseFloat(i.price) || 0, retailPrice = parseFloat(i.retailPrice) || 0, qty = parseFloat(i.qty) || 0, disc = parseFloat(i.discount) || 0;
-                    let valueForTax = (isRetailFedSale(i.saleType) ? retailPrice : price) * qty;
-                    subtotal += valueForTax; gst += valueForTax * ((parseFloat(i.taxRate) || 0) / 100); extra += isRetailFedSale(i.saleType) ? (valueForTax * ((parseFloat(i.extraTax) || 0) / 100)) : 0;
-                    further += valueForTax * ((parseFloat(i.furtherTax) || 0) / 100); fed += isRetailFedSale(i.saleType) ? ((parseFloat(i.fedPayable) || 0) * qty) : 0;
-                    wht += parseFloat(i.wht || 0); totalDisc += disc;
+                    let grossValue = (isRetailFedSale(i.saleType) ? retailPrice : price) * qty;
+                    let valueForTax = grossValue - disc;
+                    subtotal += valueForTax; 
+                    gst += valueForTax * ((parseFloat(i.taxRate) || 0) / 100); 
+                    extra += valueForTax * ((parseFloat(i.extraTax) || 0) / 100); 
+                    further += valueForTax * ((parseFloat(i.furtherTax) || 0) / 100); 
+                    fed += isRetailFedSale(i.saleType) ? ((parseFloat(i.fedPayable) || 0) * qty) : 0;
+                    wht += parseFloat(i.wht || 0); 
+                    totalDisc += disc;
                 });
-                const total = subtotal + gst + extra + further + fed - totalDisc - wht;
+                const total = subtotal + gst + extra + further + fed - wht;
                 return { subtotal, gst, extra, further, fed, wht, total, totalDisc };
             };
             const totals = calculate();
@@ -761,7 +776,9 @@
                         const p = parseFloat(item.price) || 0; 
                         
                         const r = isRet ? (parseFloat(item.retailPrice) || 0) : 0; 
-                        const baseVal = (isRet ? r : p) * q;
+                        const grossVal = (isRet ? r : p) * q;
+                        const itemDisc = parseFloat(item.discount) || 0;
+                        const baseVal = grossVal - itemDisc;
                         
                         const taxRate = parseFloat(item.taxRate) || 0;
                         const furtherRate = isExemptOrReduced ? 0 : (parseFloat(item.furtherTax) || 0);
@@ -788,13 +805,13 @@
                             fixedNotifiedValueOrRetailPrice: Number((isRet ? r : 0).toFixed(2)), 
                             salesTaxApplicable: Number(salesTaxApplicable.toFixed(2)), 
                             
-                            extraTax: (isExemptOrReduced || extraTaxApplicable === 0) ? "" : Number(extraTaxApplicable.toFixed(2)),
+                            extraTax: isExemptOrReduced ? "" : Number(extraTaxApplicable.toFixed(2)),
                             furtherTax: Number(furtherTaxApplicable.toFixed(2)),
                             fedPayable: Number((fedAmt * q).toFixed(2)),
                             salesTaxWithheldAtSource: Number((parseFloat(item.wht) || 0).toFixed(2)),
                             
                             sroScheduleNo: item.sroScheduleNo || "", 
-                            discount: Number((parseFloat(item.discount) || 0).toFixed(2)), 
+                            discount: Number(itemDisc.toFixed(2)), 
                             saleType: type, 
                             sroItemSerialNo: serialNo,
                             sroItemSNo: serialNo,
@@ -985,12 +1002,14 @@
                                         {lastInv?.items?.map((item, idx) => {
                                             const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
                                             const val = (isRet ? r : p) * q;
-                                            const stAmt = val * (parseFloat(item.taxRate) / 100 || 0);
-                                            const furAmt = val * (parseFloat(item.furtherTax) / 100 || 0);
-                                            const exAmt = isRet ? (val * (parseFloat(item.extraTax) / 100 || 0)) : 0;
+                                            const itemDisc = parseFloat(item.discount || 0);
+                                            const baseVal = val - itemDisc;
+                                            const stAmt = baseVal * (parseFloat(item.taxRate) / 100 || 0);
+                                            const furAmt = baseVal * (parseFloat(item.furtherTax) / 100 || 0);
+                                            const exAmt = baseVal * (parseFloat(item.extraTax) / 100 || 0);
                                             const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
-                                            const amtExclSt = val + fedAmt + exAmt; 
-                                            const lineTotal = amtExclSt + stAmt + furAmt - parseFloat(item.discount || 0);
+                                            const amtExclSt = baseVal + fedAmt + exAmt; 
+                                            const lineTotal = amtExclSt + stAmt + furAmt;
 
                                             return (
                                                 <tr key={idx}>
@@ -1021,7 +1040,7 @@
                                 <div>
                                     <table className="w-full text-right border-collapse border border-black">
                                         <tbody>
-                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal)}</td></tr>}
+                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + lastInv?.totalDisc)}</td></tr>}
                                             {printShowRetail && lastInv?.fed > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">FED:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.fed)}</td></tr>}
                                             
                                             {lastInv?.totalDisc > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Gross Amount:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.totalDisc || 0))}</td></tr>}
@@ -1036,7 +1055,7 @@
                                             
                                             <tr><td className="border-b border-r border-black p-1 font-bold">Amount Incl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.gst || 0) + (lastInv?.further || 0))}</td></tr>
                                             
-                                            {lastInv?.wht > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Advance Tax (WHT):</td><td className="border-b border-black p-1">-{formatCurrency(lastInv?.wht)}</td></tr>}
+                                            {lastInv?.wht > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Withholding Sales Tax:</td><td className="border-b border-black p-1">-{formatCurrency(lastInv?.wht)}</td></tr>}
                                             
                                             <tr><td className="border-r border-black p-1 font-bold text-sm bg-gray-100">Total Amount Payable:</td><td className="p-1 font-bold text-sm bg-gray-100">{formatCurrency(lastInv?.total)}</td></tr>
                                         </tbody>
@@ -1269,7 +1288,7 @@
                                             
                                             {showRetailFed && <div><div className="text-gray-400 text-[11px] uppercase tracking-wider font-bold mb-1">FED</div><div className="font-semibold text-lg">{formatCurrency(totals.fed)}</div></div>}
                                             
-                                            {totals.wht > 0 && <div><div className="text-blue-500 text-[11px] uppercase tracking-wider font-bold mb-1">ST Withheld</div><div className="font-bold text-lg text-blue-600">-{formatCurrency(totals.wht)}</div></div>}
+                                            {totals.wht > 0 && <div><div className="text-blue-500 text-[11px] uppercase tracking-wider font-bold mb-1">Withholding Sales Tax</div><div className="font-bold text-lg text-blue-600">-{formatCurrency(totals.wht)}</div></div>}
                                             
                                             <div className="pl-6 border-l border-gray-300"><div className="text-gray-900 text-[11px] uppercase tracking-wider font-bold mb-1">Grand Total</div><div className="font-bold text-3xl tracking-tight">{formatCurrency(totals.total)}</div></div>
                                         </div>
