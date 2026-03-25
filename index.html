@@ -54,7 +54,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, Component } = React;
 
-        const SYSTEM_CONFIG = { BASE_URL: "https://gw.fbr.gov.pk", PATHS: { POST_INVOICE_SB: "/di_data/v1/di/postinvoicedata_sb", POST_INVOICE_PROD: "/di_data/v1/di/postinvoicedata", VALIDATE_INVOICE_SB: "/di_data/v1/di/validateinvoicedata_sb", VALIDATE_INVOICE_PROD: "/di_data/v1/di/validateinvoicedata", PROVINCES: "/pdi/v1/provinces", DOCTYPECODE: "/pdi/v1/doctypecode", SROITEMCODE: "/pdi/v1/sroitemcode", TRANSTYPECODE: "/pdi/v1/transtypecode", UOM: "/pdi/v1/uom", HS_UOM: "/pdi/v2/HS_UOM", ITEM_CODE: "/pdi/v1/itemdesccode", GET_REG_TYPE: "/dist/v1/Get_Reg_Type" } };
+        const SYSTEM_CONFIG = { BASE_URL: "https://gw.fbr.gov.pk", PATHS: { POST_INVOICE_SB: "/di_data/v1/di/postinvoicedata_sb", POST_INVOICE_PROD: "/di_data/v1/di/postinvoicedata", VALIDATE_INVOICE_SB: "/di_data/v1/di/validateinvoicedata_sb", VALIDATE_INVOICE_PROD: "/di_data/v1/di/validateinvoicedata", PROVINCES: "/pdi/v1/provinces", DOCTYPECODE: "/pdi/v1/doctypecode", SROITEMCODE: "/pdi/v1/sroitemcode", TRANSTYPECODE: "/pdi/v1/transtypecode", UOM: "/pdi/v1/uom", HS_UOM: "/pdi/v2/HS_UOM", ITEM_CODE: "/pdi/v1/itemdesccode", GET_REG_TYPE: "/dist/v1/Get_Reg_Type", STATL: "/dist/v1/statl" } };
         const SALE_TYPES = [ "Goods at standard rate (default)", "Goods at reduced rate", "Goods at zero-rate", "Petroleum Products", "Electricity Supply to Retailers", "SIM", "Gas to CNG stations", "Mobile Phones", "Processing/Conversion of Goods", "3rd Schedule Goods", "Goods (FED in ST Mode)", "Services (FED in ST Mode)", "Services", "Exempt goods", "DTRE goods", "Cotton ginners", "Electric Vehicle", "Cement /Concrete Block", "Telecommunication services", "Steel melting and re-rolling", "Ship breaking", "Potassium Chlorate", "CNG Sales", "Goods as per SRO.297(I)/2023", "Toll Manufacturing", "Non-Adjustable Supplies" ];
         const DOCUMENT_TYPES = [ "Sale Invoice", "Debit Note" ];
         const UOM_OPTIONS = [ "Numbers, pieces, units", "MT", "Bill of lading", "SET", "KWH", "40KG", "Liter", "SqY", "Bag", "KG", "MMBTU", "Meter", "Carat", "Cubic Metre", "Dozen", "Gram", "Gallon", "Kilogram", "Pound", "Timber logs", "Packs", "Pair", "Square Foot", "Square Metre", "Thousand Unit", "Mega Watt", "Foot", "Barrels", "NO", "Others", "1000kWh" ];
@@ -692,7 +692,7 @@
                 invoice.items.forEach(i => {
                     const price = parseFloat(i.price) || 0, retailPrice = parseFloat(i.retailPrice) || 0, qty = parseFloat(i.qty) || 0, disc = parseFloat(i.discount) || 0;
                     let grossValue = (isRetailFedSale(i.saleType) ? retailPrice : price) * qty;
-                    let valueForTax = grossValue; 
+                    let valueForTax = grossValue - disc;
                     subtotal += valueForTax; 
                     gst += valueForTax * ((parseFloat(i.taxRate) || 0) / 100); 
                     extra += valueForTax * ((parseFloat(i.extraTax) || 0) / 100); 
@@ -701,7 +701,7 @@
                     wht += parseFloat(i.wht || 0); 
                     totalDisc += disc;
                 });
-                const total = subtotal + gst + extra + further + fed - totalDisc - wht;
+                const total = subtotal + gst + extra + further + fed - wht;
                 return { subtotal, gst, extra, further, fed, wht, total, totalDisc };
             };
             const totals = calculate();
@@ -745,13 +745,38 @@
                 setMsg({ type: 'info', text: 'Verifying...' });
                 const mode = user.settings?.integrationMode || 'sandbox';
                 const token = mode === 'production' ? (user.settings?.productionToken || user.settings?.production?.token) : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
+                const headers = { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' };
+                
                 try {
-                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.GET_REG_TYPE}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' }, body: JSON.stringify({ Registration_No: regNo }) });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.statuscode === "00") { setMsg({ type: 'success', text: `Verified: ${data.REGISTRATION_TYPE}` }); if (isInv) setInvoice(prev => ({ ...prev, customerRegType: data.REGISTRATION_TYPE })); else setNewCust(prev => ({ ...prev, regType: data.REGISTRATION_TYPE })); } 
-                        else { setMsg({ type: 'error', text: `Error: ${FBR_ERRORS[data.statuscode] || 'Inactive'}` }); if (isInv) setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" })); else setNewCust(prev => ({ ...prev, regType: "Unregistered" })); }
-                    } else setMsg({ type: 'error', text: 'API Failed' });
+                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.GET_REG_TYPE}`, { method: 'POST', headers, body: JSON.stringify({ Registration_No: regNo }) });
+                    if (!res.ok) return setMsg({ type: 'error', text: 'API Failed' });
+                    const data = await res.json();
+                    
+                    if (data.statuscode === "00" && data.REGISTRATION_TYPE === "Registered") {
+                        const todayDate = new Date().toISOString().split('T')[0];
+                        try {
+                            const statlRes = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.STATL}`, { method: 'POST', headers, body: JSON.stringify({ regno: regNo, date: todayDate }) });
+                            if (statlRes.ok) {
+                                const statlData = await statlRes.json();
+                                if (statlData.status && statlData.status.toLowerCase().includes("in-active")) {
+                                    setMsg({ type: 'error', text: `NTN is Registered, but ${statlData.status} on ATL. Downgrading to Unregistered.` });
+                                    if (isInv) setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" })); else setNewCust(prev => ({ ...prev, regType: "Unregistered" }));
+                                    return;
+                                }
+                            }
+                        } catch(e) {}
+                        
+                        setMsg({ type: 'success', text: `Verified: Registered & Active` });
+                        if (isInv) setInvoice(prev => ({ ...prev, customerRegType: "Registered" })); else setNewCust(prev => ({ ...prev, regType: "Registered" }));
+                    } 
+                    else if (data.statuscode === "00") {
+                        setMsg({ type: 'success', text: `Verified: ${data.REGISTRATION_TYPE}` }); 
+                        if (isInv) setInvoice(prev => ({ ...prev, customerRegType: data.REGISTRATION_TYPE })); else setNewCust(prev => ({ ...prev, regType: data.REGISTRATION_TYPE }));
+                    }
+                    else { 
+                        setMsg({ type: 'error', text: `Error: ${FBR_ERRORS[data.statuscode] || 'Inactive/Unregistered'}` }); 
+                        if (isInv) setInvoice(prev => ({ ...prev, customerRegType: "Unregistered" })); else setNewCust(prev => ({ ...prev, regType: "Unregistered" })); 
+                    }
                 } catch (e) { setMsg({ type: 'error', text: 'Verification Error' }); }
             };
 
@@ -788,7 +813,7 @@
                         const r = isRet ? (parseFloat(item.retailPrice) || 0) : 0; 
                         const grossVal = (isRet ? r : p) * q;
                         const itemDisc = parseFloat(item.discount) || 0;
-                        const baseVal = grossVal;
+                        const baseVal = grossVal - itemDisc;
                         
                         const taxRate = parseFloat(item.taxRate) || 0;
                         const furtherRate = isExemptOrReduced ? 0 : (parseFloat(item.furtherTax) || 0);
@@ -905,7 +930,7 @@
                                 setIsValidated(false);
                                 let actualFbrNo = data?.InvoiceNumber || data?.invoiceNumber || data?.Invoice_Number;
                                 if (!actualFbrNo && Array.isArray(data) && data.length > 0) actualFbrNo = data[0]?.InvoiceNumber || data[0]?.invoiceNumber;
-                                if (!actualFbrNo && data?.data) actualFbrNo = data.data?.InvoiceNumber || data.data?.InvoiceNumber;
+                                if (!actualFbrNo && data?.data) actualFbrNo = data.data?.InvoiceNumber || data.data?.invoiceNumber;
                                 
                                 if (!actualFbrNo) {
                                     setMsg({ type: 'error', text: `FBR Success, but no Invoice Number found. Raw FBR Output: ${JSON.stringify(data)}` });
@@ -1013,13 +1038,13 @@
                                             const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
                                             const val = (isRet ? r : p) * q;
                                             const itemDisc = parseFloat(item.discount || 0);
-                                            const baseVal = val;
+                                            const baseVal = val - itemDisc;
                                             const stAmt = baseVal * (parseFloat(item.taxRate) / 100 || 0);
                                             const furAmt = baseVal * (parseFloat(item.furtherTax) / 100 || 0);
                                             const exAmt = baseVal * (parseFloat(item.extraTax) / 100 || 0);
                                             const fedAmt = isRet ? ((parseFloat(item.fedPayable) || 0) * q) : 0;
                                             const amtExclSt = baseVal + fedAmt + exAmt; 
-                                            const lineTotal = amtExclSt + stAmt + furAmt - itemDisc;
+                                            const lineTotal = amtExclSt + stAmt + furAmt;
 
                                             return (
                                                 <tr key={idx}>
@@ -1055,10 +1080,10 @@
                                 <div>
                                     <table className="w-full text-right border-collapse border border-black">
                                         <tbody>
-                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal)}</td></tr>}
+                                            {printShowRetail && <tr><td className="border-b border-r border-black p-1 font-bold w-1/2">Assessed Value:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + lastInv?.totalDisc)}</td></tr>}
                                             {printShowRetail && lastInv?.fed > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">FED:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.fed)}</td></tr>}
                                             
-                                            {lastInv?.totalDisc > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Gross Amount:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0))}</td></tr>}
+                                            {lastInv?.totalDisc > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Gross Amount:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0) + (lastInv?.totalDisc || 0))}</td></tr>}
                                             {lastInv?.totalDisc > 0 && <tr><td className="border-b border-r border-black p-1 font-bold">Discount:</td><td className="border-b border-black p-1">-{formatCurrency(lastInv?.totalDisc)}</td></tr>}
                                             
                                             <tr><td className="border-b border-r border-black p-1 font-bold">Amount Excl Sales Tax:</td><td className="border-b border-black p-1">{formatCurrency(lastInv?.subtotal + (lastInv?.fed || 0) + (lastInv?.extra || 0))}</td></tr>
@@ -1265,7 +1290,7 @@
                                                         const q = parseFloat(item.qty) || 0, p = parseFloat(item.price) || 0, r = parseFloat(item.retailPrice) || 0, isRet = isRetailFedSale(item.saleType);
                                                         const val = (isRet ? r : p) * q; 
                                                         const itemDisc = parseFloat(item.discount || 0);
-                                                        const baseVal = val;
+                                                        const baseVal = val - itemDisc;
                                                         const stAmt = baseVal * (parseFloat(item.taxRate || 0) / 100); 
                                                         const exAmt = baseVal * (parseFloat(item.extraTax || 0) / 100); 
                                                         const furAmt = baseVal * (parseFloat(item.furtherTax || 0) / 100); 
@@ -1335,10 +1360,9 @@
                                             <div className="md:col-span-5"><SearchableDropdown label="HS Code" value={newItem.hsCode} options={hsCodes.map(h => h.val ? h.val : h)} onChange={val => { const code = val.includes(" - ") ? val.split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h.val === val); setNewItem(prev => ({ ...prev, hsCode: val, name: (!prev.name && matchingObj?.desc) ? matchingObj.desc : prev.name })); fetchAllowedUOMs(code).then(uoms => { setInvUomOptions(uoms); if (uoms && uoms.length === 1) { setNewItem(prev => ({ ...prev, uom: uoms[0] })); } }); }} placeholder="Search HS Code" strict={false} /></div>
                                             <div className="md:col-span-3"><SearchableDropdown label="UoM" value={newItem.uom} options={invUomOptions} onChange={val => setNewItem({ ...newItem, uom: val })} status={invUomStatus} /></div>
                                             
-                                            <div className="md:col-span-4"><SearchableDropdown label="Sales Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
+                                            <div className="md:col-span-6"><SearchableDropdown label="Sales Type" value={newItem.saleType} options={SALE_TYPES} onChange={val => setNewItem({ ...newItem, saleType: val })} /></div>
                                             <div className="md:col-span-3"><Input label="Price" type="number" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} /></div>
                                             <div className="md:col-span-3"><Input label="S.Tax %" type="number" value={newItem.taxRate} onChange={e => setNewItem({ ...newItem, taxRate: e.target.value })} /></div>
-                                            <div className="md:col-span-2"><Input label="Extra Tax %" type="number" value={newItem.extraTax} onChange={e => setNewItem({ ...newItem, extraTax: e.target.value })} /></div>
                                             
                                             {showRetailFed && (
                                                 <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-5 bg-yellow-50/50 p-5 rounded-xl border border-yellow-100">
@@ -1367,7 +1391,6 @@
                                                     <th className="p-4 border-r border-gray-200">Product Name</th><th className="p-4">HS Code</th><th className="p-4">Type</th><th className="p-4">UoM</th><th className="p-4 text-right">Price</th>
                                                     {showRetailFed && <th className="p-4 text-right">Ret.Price</th>}
                                                     <th className="p-4 text-center">S.Tax%</th>
-                                                    <th className="p-4 text-center">Ex.Tax%</th>
                                                     {showRetailFed && <th className="p-4 text-right">FED</th>}
                                                     <th className="p-4">SRO Sch/Ser</th>
                                                     {userCanEdit && <th className="p-4 text-center">Action</th>}
@@ -1383,7 +1406,6 @@
                                                         <td className="p-4 text-sm text-right">{formatCurrency(i.price)}</td>
                                                         {showRetailFed && <td className="p-4 text-sm font-medium text-gray-900 text-right">{formatCurrency(i.retailPrice)}</td>}
                                                         <td className="p-4 text-sm text-center">{i.taxRate}%</td>
-                                                        <td className="p-4 text-sm text-center">{i.extraTax}%</td>
                                                         {showRetailFed && <td className="p-4 text-sm text-right">{i.fedPayable}</td>}
                                                         <td className="p-4 text-xs text-gray-500">{i.sroScheduleNo || '-'}/{i.sroItemSerialNo || '-'}</td>
                                                         {userCanEdit && <td className="p-4 text-center">
