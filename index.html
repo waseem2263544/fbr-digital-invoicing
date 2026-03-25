@@ -601,25 +601,30 @@
         };
 
         const ClientDashboard = ({ user, setUser, onLogout, onSwitch }) => {
-            const isRevoked = user.businessStatus?.isRevoked;
-            const daysLeft = Math.ceil((new Date(user.businessStatus?.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
-            if (isRevoked) { return (<div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 animate-fade-in"><div className="bg-white p-10 rounded-2xl shadow-xl max-w-md w-full border-t-4 border-red-600 text-center"><Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" /><h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1><p className="text-gray-500 mb-8">Your subscription to <b>{user.settings?.businessName}</b> has expired or been suspended.</p><Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700 text-base py-3">Return to Portal</Button></div></div>); }
-
             const [activeTab, setActiveTab] = useState(() => window.location.hash.replace('#', '') || 'invoice');
-            useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
-            const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
-
             const [invoice, setInvoice] = useState({ type: "Sale Invoice", invoiceDate: getToday(), invoiceNumber: "", refInvoiceNumber: "", customerName: "", customerNTN: "", customerDestination: "", customerRegType: "Unregistered", originationProvince: user?.settings?.province || "Sindh", customerAddress: "", scenarioId: "", items: [], discount: 0 });
             
             const defaultLineItem = { id: '', desc: '', hsCode: '', qty: 1, price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: '', taxRate: user.settings?.taxRates?.salesTax || 18, furtherTax: 0, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, wht: 0, discount: 0, sroScheduleNo: "", sroItemSerialNo: "", isFromInventory: false, allowedUOMs: UOM_OPTIONS };
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
 
-            const [loading, setLoading] = useState(false); const [msg, setMsg] = useState(null); const [showReceipt, setShowReceipt] = useState(false); const [lastInv, setLastInv] = useState(null); const [hsCodes, setHsCodes] = useState([]); const [editingCustId, setEditingCustId] = useState(null); const [editingInvId, setEditingInvId] = useState(null);
-            const [newItem, setNewItem] = useState({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings?.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" });
+            const [loading, setLoading] = useState(false); 
+            const [msg, setMsg] = useState(null); 
+            const [showReceipt, setShowReceipt] = useState(false); 
+            const [lastInv, setLastInv] = useState(null); 
+            const [hsCodes, setHsCodes] = useState([]); 
+            const [editingCustId, setEditingCustId] = useState(null); 
+            const [editingInvId, setEditingInvId] = useState(null);
+            const [newItem, setNewItem] = useState({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings?.taxRates?.salesTax || 18, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" });
             const [newCust, setNewCust] = useState({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
-            const [invSearch, setInvSearch] = useState(""); const [histSearch, setHistSearch] = useState(""); const [custSearch, setCustSearch] = useState(""); const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS); const [invUomStatus, setInvUomStatus] = useState(null);
+            const [invSearch, setInvSearch] = useState(""); 
+            const [histSearch, setHistSearch] = useState(""); 
+            const [custSearch, setCustSearch] = useState(""); 
+            const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS); 
+            const [invUomStatus, setInvUomStatus] = useState(null);
             
-            const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES); const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES); const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
+            const [dynamicProvinces, setDynamicProvinces] = useState(PROVINCES); 
+            const [dynamicDocTypes, setDynamicDocTypes] = useState(DOCUMENT_TYPES); 
+            const [dynamicUOMs, setDynamicUOMs] = useState(UOM_OPTIONS);
             const [dynamicSaleTypes, setDynamicSaleTypes] = useState(SALE_TYPES);
             const [provincesData, setProvincesData] = useState([]);
             const [saleTypesData, setSaleTypesData] = useState([]);
@@ -636,7 +641,10 @@
 
             const [isValidated, setIsValidated] = useState(false);
 
-            const isExpired = daysLeft <= 0;
+            useEffect(() => { const handleHash = () => { const hash = window.location.hash.replace('#', ''); if (hash) setActiveTab(hash); }; window.addEventListener('hashchange', handleHash); return () => window.removeEventListener('hashchange', handleHash); }, []);
+            const changeTab = (t) => { window.location.hash = t; setActiveTab(t); };
+
+            const isExpired = Math.ceil((new Date(user.businessStatus?.expiryDate) - new Date()) / (1000 * 60 * 60 * 24)) <= 0;
             const isRetailFedSale = (type) => type === "3rd Schedule Goods" || type === "Cotton ginners";
             
             const allowSetting = user.settings?.allowRetailFed;
@@ -646,11 +654,8 @@
             const tabs = user.accessibleBusinesses?.length > 1 ? ['businesses', 'invoice', 'inventory', 'customers', 'history', 'settings'] : ['invoice', 'inventory', 'customers', 'history', 'settings'];
 
             useEffect(() => { if (user?.settings?.province) setInvoice(prev => ({ ...prev, originationProvince: user.settings.province })); }, [user?.settings?.province]);
-            
-            // Reset validation lock if any change occurs
             useEffect(() => { setIsValidated(false); }, [invoice, lineItemForm]);
 
-            // Click anywhere to dismiss notification
             useEffect(() => {
                 if (!msg) return;
                 const hideMsg = () => setMsg(null);
@@ -666,37 +671,36 @@
                     const headers = { 'Authorization': `Bearer ${token}` };
                     
                     try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.ITEM_CODE}`, { method: 'GET', headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data)) setHsCodes(data.map(item => ({ val: `${item.hS_CODE} - ${item.description}`, desc: item.description }))); } } catch (e) { }
-                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.PROVINCES}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { setProvincesData(data); setDynamicProvinces(data.map(d => d.stateProvinceDesc)); } } } catch (e) { }
-                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.DOCTYPECODE}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) setDynamicDocTypes(data.map(d => d.docDescription)); } } catch (e) { }
-                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.UOM}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { const uoms = data.map(d => d.description); setDynamicUOMs(uoms); setInvUomOptions(uoms); } } } catch (e) { }
-                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.TRANSTYPECODE}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { setSaleTypesData(data); setDynamicSaleTypes(data.map(d => d.transactioN_DESC)); } } } catch (e) { }
+                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.PROVINCES}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { setProvincesData(data); setDynamicProvinces(data.map(d => d.stateProvinceDesc || d.StateProvinceDesc)); } } } catch (e) { }
+                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.DOCTYPECODE}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) setDynamicDocTypes(data.map(d => d.docDescription || d.DocDescription)); } } catch (e) { }
+                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.UOM}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { const uoms = data.map(d => d.description || d.Description); setDynamicUOMs(uoms); setInvUomOptions(uoms); } } } catch (e) { }
+                    try { const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.TRANSTYPECODE}`, { headers }); if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { setSaleTypesData(data); setDynamicSaleTypes(data.map(d => d.transactioN_DESC || d.transaction_Desc || d.TransactionDesc)); } } } catch (e) { }
                 };
                 fetchReferenceData();
             }, []);
 
-            // Dynamic FBR Fetching Helpers
             const fetchRatesForSaleType = async (saleTypeDesc, provDesc, date) => {
-                const saleTypeObj = saleTypesData.find(s => s.transactioN_DESC === saleTypeDesc);
-                const provObj = provincesData.find(p => p.stateProvinceDesc === provDesc);
+                const saleTypeObj = saleTypesData.find(s => (s.transactioN_DESC || s.transaction_Desc || s.TransactionDesc) === saleTypeDesc);
+                const provObj = provincesData.find(p => (p.stateProvinceDesc || p.StateProvinceDesc) === provDesc);
                 if (!saleTypeObj || !provObj) return null;
                 const mode = user.settings?.integrationMode || 'sandbox';
                 const token = mode === 'production' ? (user.settings?.productionToken || user.settings?.production?.token) : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
                 if (!token) return null;
                 try {
-                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}/pdi/v2/SaleTypeToRate?date=${date}&transTypeId=${saleTypeObj.transactioN_TYPE_ID}&originationSupplier=${provObj.stateProvinceCode}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                    const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}/pdi/v2/SaleTypeToRate?date=${date}&transTypeId=${saleTypeObj.transactioN_TYPE_ID || saleTypeObj.transaction_Type_Id}&originationSupplier=${provObj.stateProvinceCode || provObj.StateProvinceCode}`, { headers: { 'Authorization': `Bearer ${token}` } });
                     if(res.ok) return await res.json();
                 } catch(e){}
                 return null;
             };
 
             const fetchSroSchedules = async (rateId, provDesc, date) => {
-                 const provObj = provincesData.find(p => p.stateProvinceDesc === provDesc);
+                 const provObj = provincesData.find(p => (p.stateProvinceDesc || p.StateProvinceDesc) === provDesc);
                  if (!provObj) return null;
                  const mode = user.settings?.integrationMode || 'sandbox';
                  const token = mode === 'production' ? (user.settings?.productionToken || user.settings?.production?.token) : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
                  if (!token) return null;
                  try {
-                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}/pdi/v1/SroSchedule?rate_id=${rateId}&date=${date}&origination_supplier_csv=${provObj.stateProvinceCode}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}/pdi/v1/SroSchedule?rate_id=${rateId}&date=${date}&origination_supplier_csv=${provObj.stateProvinceCode || provObj.StateProvinceCode}`, { headers: { 'Authorization': `Bearer ${token}` } });
                      if(res.ok) return await res.json();
                  } catch(e){}
                  return null;
@@ -713,7 +717,6 @@
                  return null;
             };
 
-            // Invoice Form Dynamic Cascade
             useEffect(() => {
                 if(!lineItemForm.saleType || saleTypesData.length === 0 || provincesData.length === 0) return;
                 const fetchData = async () => {
@@ -725,13 +728,13 @@
 
             useEffect(() => {
                 if(invoiceRates.length === 0) return;
-                const matchingRate = invoiceRates.find(r => parseFloat(r.ratE_VALUE) === parseFloat(lineItemForm.taxRate || 0));
+                const matchingRate = invoiceRates.find(r => parseFloat(r.ratE_VALUE || r.RateValue) === parseFloat(lineItemForm.taxRate || 0));
                 if(!matchingRate) { setDynamicSroOptions([]); return; }
                 const fetchData = async () => {
-                    const sros = await fetchSroSchedules(matchingRate.ratE_ID, invoice.originationProvince, invoice.invoiceDate);
+                    const sros = await fetchSroSchedules(matchingRate.ratE_ID || matchingRate.RateId, invoice.originationProvince, invoice.invoiceDate);
                     if(sros && Array.isArray(sros)) {
                         setInvoiceSros(sros);
-                        setDynamicSroOptions(sros.map(s => s.sro_DESC));
+                        setDynamicSroOptions(sros.map(s => s.sro_DESC || s.SroDesc));
                     } else { setDynamicSroOptions([]); }
                 };
                 fetchData();
@@ -739,18 +742,17 @@
 
             useEffect(() => {
                 if(!lineItemForm.sroScheduleNo || invoiceSros.length === 0) return;
-                const matchingSro = invoiceSros.find(s => s.sro_DESC === lineItemForm.sroScheduleNo);
+                const matchingSro = invoiceSros.find(s => (s.sro_DESC || s.SroDesc) === lineItemForm.sroScheduleNo);
                 if(!matchingSro) return;
                 const fetchData = async () => {
-                    const items = await fetchSroItems(matchingSro.sro_ID, invoice.invoiceDate);
+                    const items = await fetchSroItems(matchingSro.sro_ID || matchingSro.SroId, invoice.invoiceDate);
                     if(items && Array.isArray(items)) {
-                        setDynamicSroItemsOptions(items.map(i => i.srO_ITEM_DESC));
+                        setDynamicSroItemsOptions(items.map(i => i.srO_ITEM_DESC || i.SroItemDesc));
                     } else { setDynamicSroItemsOptions([]); }
                 };
                 fetchData();
             }, [lineItemForm.sroScheduleNo, invoiceSros]);
 
-            // Inventory Form Dynamic Cascade
             useEffect(() => {
                 if(!newItem.saleType || saleTypesData.length === 0 || provincesData.length === 0) return;
                 const fetchData = async () => {
@@ -762,13 +764,13 @@
 
             useEffect(() => {
                 if(inventoryRates.length === 0) return;
-                const matchingRate = inventoryRates.find(r => parseFloat(r.ratE_VALUE) === parseFloat(newItem.taxRate || 0));
+                const matchingRate = inventoryRates.find(r => parseFloat(r.ratE_VALUE || r.RateValue) === parseFloat(newItem.taxRate || 0));
                 if(!matchingRate) { setInvDynamicSroOptions([]); return; }
                 const fetchData = async () => {
-                    const sros = await fetchSroSchedules(matchingRate.ratE_ID, user.settings?.province || "Sindh", getToday());
+                    const sros = await fetchSroSchedules(matchingRate.ratE_ID || matchingRate.RateId, user.settings?.province || "Sindh", getToday());
                     if(sros && Array.isArray(sros)) {
                         setInventorySros(sros);
-                        setInvDynamicSroOptions(sros.map(s => s.sro_DESC));
+                        setInvDynamicSroOptions(sros.map(s => s.sro_DESC || s.SroDesc));
                     } else { setInvDynamicSroOptions([]); }
                 };
                 fetchData();
@@ -776,12 +778,12 @@
 
             useEffect(() => {
                 if(!newItem.sroScheduleNo || inventorySros.length === 0) return;
-                const matchingSro = inventorySros.find(s => s.sro_DESC === newItem.sroScheduleNo);
+                const matchingSro = inventorySros.find(s => (s.sro_DESC || s.SroDesc) === newItem.sroScheduleNo);
                 if(!matchingSro) return;
                 const fetchData = async () => {
-                    const items = await fetchSroItems(matchingSro.sro_ID, getToday());
+                    const items = await fetchSroItems(matchingSro.sro_ID || matchingSro.SroId, getToday());
                     if(items && Array.isArray(items)) {
-                        setInvDynamicSroItemsOptions(items.map(i => i.srO_ITEM_DESC));
+                        setInvDynamicSroItemsOptions(items.map(i => i.srO_ITEM_DESC || i.SroItemDesc));
                     } else { setInvDynamicSroItemsOptions([]); }
                 };
                 fetchData();
@@ -789,7 +791,7 @@
 
             useEffect(() => {
                 const isUnregistered = invoice.customerRegType === "Unregistered";
-                const ftRate = user.settings.taxRates?.furtherTax || 4;
+                const ftRate = user.settings?.taxRates?.furtherTax || 4;
                 setInvoice(prev => { const newItems = prev.items.map(item => { let newFTRate = parseFloat(item.furtherTax) || 0; if (isUnregistered) { if (newFTRate === 0) newFTRate = ftRate; } else { newFTRate = 0; } return { ...item, furtherTax: newFTRate }; }); return { ...prev, items: newItems }; });
                 setLineItemForm(prev => ({ ...prev, furtherTax: isUnregistered ? (parseFloat(prev.furtherTax) || ftRate) : 0 }));
             }, [invoice.customerRegType]);
@@ -802,7 +804,7 @@
                     const token = mode === 'production' ? (user.settings?.productionToken || user.settings?.production?.token) : (user.settings?.sandboxToken || user.settings?.sandbox?.token);
                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.HS_UOM}?hs_code=${code}&annexure_id=3`, { method: 'GET', headers: { 'Authorization': token ? `Bearer ${token}` : '' } });
                     if (res.status === 401) throw new Error("401"); if (!res.ok) return null;
-                    const data = await res.json(); if (Array.isArray(data)) { if (data.length > 0) return data.map(d => d.description); return []; } return null;
+                    const data = await res.json(); if (Array.isArray(data)) { if (data.length > 0) return data.map(d => d.description || d.Description); return []; } return null;
                 };
                 try {
                     setInvUomStatus({ text: "Fetching...", type: "info" });
@@ -850,13 +852,13 @@
             };
 
             const pickProductForInvoiceForm = (prod) => {
-                fetchAllowedUOMs(prod.hsCode).then(uoms => { setLineItemForm(p => ({ ...p, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0, fedPayable: prod.fedPayable, wht: 0, sroScheduleNo: prod.sroScheduleNo || "", sroItemSerialNo: prod.sroItemSerialNo || "", allowedUOMs: uoms, isFromInventory: true })); });
+                fetchAllowedUOMs(prod.hsCode).then(uoms => { setLineItemForm(p => ({ ...p, desc: prod.name, hsCode: prod.hsCode, price: prod.price, taxRate: prod.taxRate, uom: prod.uom, saleType: prod.saleType, retailPrice: prod.retailPrice || 0, extraTax: prod.extraTax || 0, furtherTax: invoice.customerRegType === 'Unregistered' ? (user.settings?.taxRates?.furtherTax || 4) : 0, fedPayable: prod.fedPayable, wht: 0, sroScheduleNo: prod.sroScheduleNo || "", sroItemSerialNo: prod.sroItemSerialNo || "", allowedUOMs: uoms, isFromInventory: true })); });
             };
 
             const addCustomer = () => { if (!newCust.name) return; saveUser({ customers: editingCustId ? (user.customers || []).map(c => c.id === editingCustId ? { ...c, ...newCust } : c) : [...(user.customers || []), { id: Date.now(), ...newCust }] }); setNewCust({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' }); setEditingCustId(null); };
             const editCustomer = (c) => { setNewCust(c); setEditingCustId(c.id); };
             const deleteCustomer = (id) => saveUser({ customers: (user.customers || []).filter(c => c.id !== id) });
-            const addInventory = () => { if (newItem.name) { saveUser({ inventory: [...(user.inventory || []), { id: Date.now(), ...newItem, status: 'Active' }] }); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } };
+            const addInventory = () => { if (newItem.name) { saveUser({ inventory: [...(user.inventory || []), { id: Date.now(), ...newItem, status: 'Active' }] }); setNewItem({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings?.taxRates?.salesTax || 18, extraTax: user.settings?.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" }); } };
             const deleteInventory = (id) => saveUser({ inventory: (user.inventory || []).filter(i => i.id !== id) });
             const downloadInvoice = (inv) => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inv, null, 2)); a.download = `invoice_${inv.fbrInvoiceNumber}.json`; document.body.appendChild(a); a.click(); a.remove(); };
 
@@ -1280,6 +1282,9 @@
             };
 
             const userCanEdit = user.accessLevel !== 'view';
+            
+            // SECURITY CHECK: All hooks must be loaded BEFORE this conditional return.
+            if (isRevoked) { return (<div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 animate-fade-in"><div className="bg-white p-10 rounded-2xl shadow-xl max-w-md w-full border-t-4 border-red-600 text-center"><Icons.AlertCircle size={48} className="mx-auto text-red-600 mb-4" /><h1 className="text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1><p className="text-gray-500 mb-8">Your subscription to <b>{user.settings?.businessName}</b> has expired or been suspended.</p><Button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700 text-base py-3">Return to Portal</Button></div></div>); }
 
             return (
                 <div className="min-h-screen pb-20 relative bg-gray-50 animate-fade-in">
