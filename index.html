@@ -465,8 +465,8 @@
 
             const safeBizList = Array.isArray(businesses) ? businesses : [];
             const safeUserList = Array.isArray(users) ? users : [];
-            const filteredBiz = safeBizList.filter(b => b && (String(b.businessName || "").toLowerCase().includes(String(bizSearch || "").toLowerCase()) || String(b.ntn || "").includes(String(bizSearch || ""))));
-            const filteredUsers = safeUserList.filter(u => u && (String(u.username || "").toLowerCase().includes(String(userSearch || "").toLowerCase())));
+            const filteredBiz = safeBizList.filter(b => b && ((b.businessName || "").toLowerCase().includes(bizSearch.toLowerCase()) || (b.ntn || "").includes(bizSearch)));
+            const filteredUsers = safeUserList.filter(u => u && ((u.username || "").toLowerCase().includes(userSearch.toLowerCase())));
 
             return (
                 <div className="min-h-screen bg-gray-50 animate-fade-in">
@@ -914,10 +914,10 @@
             const onSelectCustomerName = (val) => { const existingCust = safeCustomers.find(c => c && c.name === val); if (existingCust) setInvoice(prev => ({ ...prev, customerName: existingCust.name, customerNTN: existingCust.ntn, customerDestination: existingCust.destination, customerAddress: existingCust.address, customerRegType: existingCust.regType || 'Unregistered' })); else setInvoice(prev => ({ ...prev, customerName: val })); };
 
             const checkCustomerStatus = async (regNo, isInv = false) => {
-                if (!regNo || String(regNo).length < 7) {
-                    setMsg({ type: 'error', text: 'Invalid NTN' });
-                    if (isInv) setHasVerifiedNtn(true);
-                    return;
+                if (!regNo || String(regNo).length < 7) { 
+                    setMsg({ type: 'error', text: 'Invalid NTN' }); 
+                    if (isInv) setHasVerifiedNtn(false);
+                    return; 
                 }
                 setMsg({ type: 'info', text: 'Verifying...' });
                 const mode = user?.settings?.integrationMode || 'sandbox';
@@ -926,10 +926,10 @@
                 
                 try {
                     const res = await fbrFetch(`${SYSTEM_CONFIG.BASE_URL}${SYSTEM_CONFIG.PATHS.GET_REG_TYPE}`, { method: 'POST', headers, body: JSON.stringify({ Registration_No: regNo }) });
-                    if (!res.ok) {
-                        setMsg({ type: 'error', text: 'API Failed' });
-                        if (isInv) setHasVerifiedNtn(true);
-                        return;
+                    if (!res.ok) { 
+                        setMsg({ type: 'error', text: 'API Failed' }); 
+                        if (isInv) setHasVerifiedNtn(false);
+                        return; 
                     }
                     const data = await res.json();
                     
@@ -960,14 +960,14 @@
                     }
                 } catch (e) { 
                     setMsg({ type: 'error', text: 'Verification Error' }); 
-                    if (isInv) setHasVerifiedNtn(true);
+                    if (isInv) setHasVerifiedNtn(false);
                 }
             };
 
             const callFbrApi = async (isValidate = false, retryRegType = null, retryScenario = null) => {
                 if (isExpired) return setMsg({ type: 'error', text: 'Subscription Expired.' });
-                if (!invoice.invoiceNumber || invoice.invoiceNumber.trim() === '') return setMsg({ type: 'error', text: 'Invoice Number is required.' });
-                if (invoice.customerNTN && invoice.customerNTN.trim() !== '' && !hasVerifiedNtn) return setMsg({ type: 'error', text: 'Please click Verify to assess the NTN status before validating.' });
+                if (!invoice.invoiceNumber || String(invoice.invoiceNumber).trim() === '') return setMsg({ type: 'error', text: 'Invoice Number is required.' });
+                if (invoice.customerNTN && String(invoice.customerNTN).trim() !== '' && !hasVerifiedNtn) return setMsg({ type: 'error', text: 'Please click Verify to assess the NTN status before validating.' });
                 
                 const mode = user?.settings?.integrationMode || 'sandbox';
                 const token = mode === 'production' 
@@ -1404,7 +1404,7 @@
                                         <SearchableDropdown label="Origin" value={invoice.originationProvince} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, originationProvince: v })} />
                                         <SearchableDropdown label="Customer Name" value={invoice.customerName} options={safeCustomers.map(c => c && c.name).filter(Boolean)} placeholder="Search Customer..." onChange={onSelectCustomerName} strict={false} />
                                         <div className="relative">
-                                            <Input label="Reg No / NTN" value={invoice.customerNTN} onChange={e => { setInvoice({ ...invoice, customerNTN: e.target.value }); setHasVerifiedNtn(false); }} />
+                                            <Input label="Reg No / NTN" value={invoice.customerNTN} onChange={e => { setInvoice({ ...invoice, customerNTN: e.target.value }); setHasVerifiedNtn(false); setIsValidated(false); }} />
                                             <button onClick={() => checkCustomerStatus(invoice.customerNTN, true)} disabled={loading} className="absolute right-1 top-6 text-[10px] bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200 font-bold tracking-wider transition-colors">Verify</button>
                                         </div>
                                         <SearchableDropdown label="Destination" value={invoice.customerDestination} options={dynamicProvinces} onChange={v => setInvoice({ ...invoice, customerDestination: v })} />
@@ -1420,8 +1420,8 @@
                                         </div>
                                         <div className="p-6 bg-white">
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end">
-                                                <div className="md:col-span-4"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={safeInventory.filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = safeInventory.find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
-                                                <div className="md:col-span-3"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h && h.val ? h.val : h).filter(Boolean)} onChange={val => { const code = String(val).includes(" - ") ? String(val).split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h && h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
+                                                <div className="md:col-span-5"><SearchableDropdown label="Product Description" value={lineItemForm.desc} options={safeInventory.filter(i => i && i.status === 'Active').map(i => i.name)} onChange={(val) => { const p = safeInventory.find(inv => inv && inv.name === val); if (p) pickProductForInvoiceForm(p); else setLineItemForm(p => ({...p, desc: val})); }} strict={false} /></div>
+                                                <div className="md:col-span-4"><SearchableDropdown label="HS Code" value={lineItemForm.hsCode} options={hsCodes.map(h => h && h.val ? h.val : h).filter(Boolean)} onChange={val => { const code = String(val).includes(" - ") ? String(val).split(" - ")[0] : val; const matchingObj = hsCodes.find(h => h && h.val === val); setLineItemForm(p => ({ ...p, hsCode: val, desc: (!p.desc && matchingObj?.desc) ? matchingObj.desc : p.desc })); fetchAllowedUOMs(code).then(uoms => { setLineItemForm(p => ({...p, allowedUOMs: uoms, uom: (uoms&&uoms.length===1)?uoms[0]:p.uom})); }); }} strict={false} /></div>
                                                 <div className="md:col-span-3">
                                                     <SearchableDropdown label="Sales Type" value={lineItemForm.saleType} options={dynamicSaleTypes.length > 0 ? dynamicSaleTypes : SALE_TYPES} onChange={v => {
                                                         let autoTax = lineItemForm.taxRate;
@@ -1432,17 +1432,15 @@
                                                         setLineItemForm({...lineItemForm, saleType: v, taxRate: autoTax, furtherTax: autoFurther});
                                                     }} />
                                                 </div>
-                                                <div className="md:col-span-1"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
-                                                <div className="md:col-span-1"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
                                             </div>
                                             
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5 items-end bg-gray-50/50 p-5 rounded-xl border border-gray-100">
+                                                <div className="md:col-span-2"><Input label="Qty" type="number" value={lineItemForm.qty} onChange={e => setLineItemForm({...lineItemForm, qty: e.target.value})} /></div>
+                                                <div className="md:col-span-2"><SearchableDropdown label="UoM" value={lineItemForm.uom} options={lineItemForm.allowedUOMs || UOM_OPTIONS} onChange={v => setLineItemForm({...lineItemForm, uom: v})} /></div>
                                                 <div className="md:col-span-2"><Input label="Unit Price" type="number" value={lineItemForm.price} onChange={e => setLineItemForm({...lineItemForm, price: e.target.value})} /></div>
-                                                <div className="md:col-span-2"><Input label="Discount Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="S.Tax %" type="number" value={lineItemForm.taxRate} onChange={e => setLineItemForm({...lineItemForm, taxRate: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="Further Tax %" type="number" value={lineItemForm.furtherTax} onChange={e => setLineItemForm({...lineItemForm, furtherTax: e.target.value})} /></div>
                                                 <div className="md:col-span-2"><Input label="Extra Tax %" type="number" value={lineItemForm.extraTax} onChange={e => setLineItemForm({...lineItemForm, extraTax: e.target.value})} /></div>
-                                                <div className="md:col-span-2"><Input label="Withholding Sales Tax" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>
                                             </div>
 
                                             {showRetailFed && (
@@ -1453,9 +1451,11 @@
                                             )}
 
                                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end border-t border-gray-100 pt-5">
-                                                <div className="md:col-span-4"><SearchableDropdown label="SRO Schedule No." value={lineItemForm.sroScheduleNo} options={dynamicSroOptions.length > 0 ? dynamicSroOptions : sroOptions} onChange={v => setLineItemForm({...lineItemForm, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
-                                                <div className="md:col-span-4"><SearchableDropdown label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} options={dynamicSroItemsOptions} onChange={v => setLineItemForm({...lineItemForm, sroItemSerialNo: v})} strict={false} placeholder="Select or type..." /></div>
-                                                <div className={`col-span-12 md:col-span-4 flex justify-end gap-3`}>
+                                                <div className="md:col-span-3"><Input label="Discount Amt" type="number" value={lineItemForm.discount} onChange={e => setLineItemForm({...lineItemForm, discount: e.target.value})} /></div>
+                                                <div className="md:col-span-3"><SearchableDropdown label="SRO Schedule No." value={lineItemForm.sroScheduleNo} options={dynamicSroOptions.length > 0 ? dynamicSroOptions : sroOptions} onChange={v => setLineItemForm({...lineItemForm, sroScheduleNo: v})} strict={false} placeholder="Select or type..." /></div>
+                                                <div className="md:col-span-3"><SearchableDropdown label="SRO Item Serial No." value={lineItemForm.sroItemSerialNo} options={dynamicSroItemsOptions} onChange={v => setLineItemForm({...lineItemForm, sroItemSerialNo: v})} strict={false} placeholder="Select or type..." /></div>
+                                                {!showRetailFed && <div className="md:col-span-3"><Input label="Withholding Sales Tax" type="number" value={lineItemForm.wht} onChange={e => setLineItemForm({...lineItemForm, wht: e.target.value})} /></div>}
+                                                <div className={`col-span-12 ${!showRetailFed ? 'md:col-span-12 mt-4' : 'md:col-span-12 mt-4'} flex justify-end gap-3`}>
                                                     {lineItemForm.id && <Button onClick={() => setLineItemForm({...defaultLineItem, furtherTax: invoice.customerRegType === 'Unregistered' ? (user?.settings?.taxRates?.furtherTax || 4) : 0})} variant="secondary" className="px-6">Cancel</Button>}
                                                     <Button onClick={pushItemToInvoice} className="w-full md:w-auto px-8"><Icons.Plus size={18}/> {lineItemForm.id ? 'Update Line Item' : 'Add Line Item'}</Button>
                                                 </div>
