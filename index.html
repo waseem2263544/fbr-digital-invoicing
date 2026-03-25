@@ -615,7 +615,7 @@
             const [lineItemForm, setLineItemForm] = useState(defaultLineItem);
 
             const [loading, setLoading] = useState(false); const [msg, setMsg] = useState(null); const [showReceipt, setShowReceipt] = useState(false); const [lastInv, setLastInv] = useState(null); const [hsCodes, setHsCodes] = useState([]); const [editingCustId, setEditingCustId] = useState(null); const [editingInvId, setEditingInvId] = useState(null);
-            const [newItem, setNewItem] = useState({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" });
+            const [newItem, setNewItem] = useState({ name: '', hsCode: '', price: '', uom: "", saleType: "Goods at standard rate (default)", retailPrice: 0, taxRate: user.settings?.taxRates?.salesTax || 18, extraTax: user.settings.taxRates?.extraTax || 0, fedPayable: 0, sroScheduleNo: "", sroItemSerialNo: "" });
             const [newCust, setNewCust] = useState({ name: '', ntn: '', destination: 'Sindh', address: '', regType: 'Unregistered' });
             const [invSearch, setInvSearch] = useState(""); const [histSearch, setHistSearch] = useState(""); const [custSearch, setCustSearch] = useState(""); const [invUomOptions, setInvUomOptions] = useState(UOM_OPTIONS); const [invUomStatus, setInvUomStatus] = useState(null);
             
